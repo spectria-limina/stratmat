@@ -18,4 +18,6 @@ A full list of planned features:
 1. **Variations**: Support for variations on a strat based on party comp or minor variations (e.g. invuln/no-invuln).
 1. **Waymark Export**: Compatibility with the Waymark Preset Plugin.
 
+Stratmat is written in [Rust](https://rust-lang.org/) using the [Bevy](https://bevyengine.org/) game engine.
+
 Name is thanks to Elina Chan of Sargatanas.
