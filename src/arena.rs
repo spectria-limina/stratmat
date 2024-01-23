@@ -3,16 +3,16 @@ use bevy::render::camera::ScalingMode;
 
 #[derive(Clone, Resource, Debug)]
 pub struct Arena {
-    name: &'static str,
-    image_handle: Handle<Image>,
+    pub name: &'static str,
+    pub image_handle: Handle<Image>,
     /// The size of the arena image, in yalms.
-    size: Vec2,
-    /// The coordinates of the center of the arena, in yalms.
+    pub size: Vec2,
+    /// The in-game coordinates of the center of the arena, in yalms.
     /// The Y-coordinate in stratmat corresponds to the Z-coordinate in FFXIV.
-    /// Used for waymark import/export only; stratmat puts the arena center at the origin always.
-    center: Vec2,
+    /// Used for import/export only; internally the origin is always the center.
+    pub offset: Vec2,
     /// The FFXIV map ID.
-    map_id: u32,
+    pub map_id: u32,
 }
 
 impl FromWorld for Arena {
@@ -24,7 +24,7 @@ impl FromWorld for Arena {
             image_handle,
             size: Vec2::new(44.0, 44.0),
             map_id: 937,
-            center: Vec2::new(100.0, 100.0),
+            offset: Vec2::new(100.0, 100.0),
         }
     }
 }
