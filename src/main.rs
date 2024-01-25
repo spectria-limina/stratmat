@@ -8,6 +8,7 @@ use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_vector_shapes::prelude::*;
 
 mod arena;
+mod color;
 mod cursor;
 mod waymark;
 
@@ -27,6 +28,8 @@ fn main() {
     .add_plugins(DefaultPickingPlugins)
     .insert_resource(WinitSettings::desktop_app())
     .add_plugins(arena::plugin())
+    .add_plugins(color::plugin())
+    .add_plugins(cursor::plugin())
     .add_systems(Startup, spawn_waymarks);
     if cfg!(debug_assertions) {
         app.add_plugins(WorldInspectorPlugin::new());

@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
 
+use crate::cursor::DragSurface;
+
 #[derive(Clone, Resource, Debug)]
 pub struct Arena {
     pub name: &'static str,
@@ -53,13 +55,16 @@ impl Plugin for ArenaPlugin {
                     ..default()
                 });
                 commands.spawn((
+                    Name::new("Arena"),
                     ArenaView {},
+                    DragSurface,
                     SpriteBundle {
                         sprite: Sprite {
                             custom_size: Some(arena.size),
                             ..default()
                         },
                         texture: arena.image_handle.clone(),
+                        transform: Transform::from_xyz(0.0, 0.0, -999.0),
                         ..default()
                     },
                 ));

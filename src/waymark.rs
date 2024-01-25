@@ -10,6 +10,8 @@ use bevy_vector_shapes::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::cursor::DraggableBundle;
+
 /// The diameter, in yalms, of a waymark.
 const WAYMARK_SIZE: f32 = 2.4;
 /// The scaling to apply to the waymark letter/number image.
@@ -116,12 +118,12 @@ impl Waymark {
     fn spawn_shape(&self, builder: &mut ChildBuilder, config: &ShapeConfig, name: &'static str) {
         match self {
             Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => builder.spawn((
-                ShapeBundle::rect(config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
                 Name::new(name),
+                ShapeBundle::rect(config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
             )),
             Waymark::A | Waymark::B | Waymark::C | Waymark::D => builder.spawn((
-                ShapeBundle::circle(config, WAYMARK_SIZE / 2.0),
                 Name::new(name),
+                ShapeBundle::circle(config, WAYMARK_SIZE / 2.0),
             )),
         };
     }
@@ -139,29 +141,23 @@ impl Waymark {
     ) -> WaymarkEntityCommands<'w, 's, 'a> {
         let mut entity_commands = commands.spawn((
             self,
-            SpatialBundle::default(),
-            PickableBundle::default(),
-            On::<Pointer<Drag>>::run(crate::cursor::drag_listener),
             Name::new(self.name()),
+            PickableBundle::default(),
+            DraggableBundle::default(),
+            SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(
+                        WAYMARK_SIZE * IMAGE_SCALE,
+                        WAYMARK_SIZE * IMAGE_SCALE,
+                    )),
+                    ..default()
+                },
+                texture: asset_server.load(self.asset_path()),
+                ..default()
+            },
         ));
 
         entity_commands.with_children(|parent| {
-            parent.spawn((
-                SpriteBundle {
-                    sprite: Sprite {
-                        custom_size: Some(Vec2::new(
-                            WAYMARK_SIZE * IMAGE_SCALE,
-                            WAYMARK_SIZE * IMAGE_SCALE,
-                        )),
-                        ..default()
-                    },
-                    transform: Transform::from_xyz(0.0, 0.0, 2.0),
-                    texture: asset_server.load(self.asset_path()),
-                    ..default()
-                },
-                Name::new("Waymark Image"),
-            ));
-
             self.spawn_shape(
                 parent,
                 &ShapeConfig {
@@ -169,7 +165,7 @@ impl Waymark {
                     thickness: STROKE_WIDTH,
                     hollow: true,
                     alpha_mode: AlphaMode::Blend,
-                    transform: Transform::from_xyz(0.0, 0.0, 1.0),
+                    transform: Transform::from_xyz(0.0, 0.0, -0.1),
                     ..ShapeConfig::default_2d()
                 },
                 "Waymark Stroke",
@@ -181,7 +177,7 @@ impl Waymark {
                     color: self.color().with_a(FILL_OPACITY),
                     hollow: false,
                     alpha_mode: AlphaMode::Blend,
-                    transform: Transform::from_xyz(0.0, 0.0, 1.0),
+                    transform: Transform::from_xyz(0.0, 0.0, -0.2),
                     ..ShapeConfig::default_2d()
                 },
                 "Waymark Fill",
