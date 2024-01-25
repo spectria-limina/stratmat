@@ -6,8 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.12.0", features = ["jpeg", "png"] }
-bevy-inspector-egui = "0.22.1"
+bevy = { version = "0.12.0", default-features = false, features = [
+    "animation", "bevy_animation", "bevy_asset", "bevy_core_pipeline", "bevy_pbr", "bevy_render",
+    "bevy_scene", "bevy_sprite", "bevy_text", "bevy_winit", "default_font", "jpeg", "multi-threaded",
+    "serialize", "subpixel_glyph_atlas", "png", "trace", "webgl2", "x11",
+]}
+bevy-inspector-egui = "0.22.1" 
 bevy_egui = "0.24.0"
 bevy_vector_shapes = "0.6.0"
 chrono = "0.4.31"

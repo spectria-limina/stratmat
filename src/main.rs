@@ -12,23 +12,25 @@ mod waymark;
 use waymark::Waymark;
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Stratmat".into(),
-                fit_canvas_to_parent: true,
-                prevent_default_event_handling: false,
-                ..default()
-            }),
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Stratmat".into(),
+            fit_canvas_to_parent: true,
+            prevent_default_event_handling: false,
             ..default()
-        }))
-        .add_plugins(EguiPlugin)
-        .add_plugins(Shape2dPlugin::default())
-        .insert_resource(WinitSettings::desktop_app())
-        .add_plugins(arena::plugin())
-        .add_plugins(WorldInspectorPlugin::new())
-        .add_systems(Startup, spawn_waymarks)
-        .run();
+        }),
+        ..default()
+    }))
+    .add_plugins(EguiPlugin)
+    .add_plugins(Shape2dPlugin::default())
+    .insert_resource(WinitSettings::desktop_app())
+    .add_plugins(arena::plugin())
+    .add_systems(Startup, spawn_waymarks);
+    if cfg!(debug_assertions) {
+        app.add_plugins(WorldInspectorPlugin::new());
+    }
+    app.run();
 }
 
 const P9S_PRESET: &'static str = r#"{
