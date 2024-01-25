@@ -4,12 +4,20 @@ use bevy_vector_shapes::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// The diameter, in yalms, of a waymark.
 const WAYMARK_SIZE: f32 = 2.4;
+/// The scaling to apply to the waymark letter/number image.
 const IMAGE_SCALE: f32 = 1.0;
+/// The opacity of the fill of a waymark.
 const FILL_OPACITY: f32 = 0.22;
+/// The opacity of the outer line of a waymark.
 const STROKE_OPACITY: f32 = 0.75;
+/// The stroke width of the outer line of a waymark.
 const STROKE_WIDTH: f32 = 0.05;
 
+/// A waymark preset in the JSON format of the Waymark Preset plugin.
+///
+/// This type can be directly serialized from/to the Waymark Preset format.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Preset {
     #[serde(rename = "Name")]
@@ -21,6 +29,9 @@ pub struct Preset {
     waymarks: HashMap<Waymark, PresetEntry>,
 }
 
+/// A single waymark entry in the Waymark Preset format.
+///
+/// Coordinates are all in the FFXIV coordinate system, not the Stratmap coordinate system.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct PresetEntry {
     /// Corresponds to the X axis in Stratmap.
@@ -32,14 +43,15 @@ pub struct PresetEntry {
     /// Corresponds to the negative Y axis in Stratmap.
     #[serde(rename = "Z")]
     z: f32,
-    /// Numeric ID of the waymark (redundant but important).
+    /// Numeric ID of the waymark (redundant but important for the plugin).
     #[serde(rename = "ID")]
     id: u8,
-    /// We just discard inactive waymarks.
+    /// Whether the waymark is active. Stratmat simply discards inactive waymarks.
     #[serde(rename = "Active")]
     active: bool,
 }
 
+/// A placeable marker for players to reference movements during a fight.
 #[repr(C)]
 #[derive(
     Copy, Clone, Component, Serialize, Deserialize, Debug, Hash, PartialOrd, Ord, PartialEq, Eq,
@@ -56,6 +68,7 @@ pub enum Waymark {
 }
 
 impl Waymark {
+    /// Produces the asset path for the image with the letter or number of the waymark.
     pub fn asset_path(&self) -> &'static str {
         match self {
             Waymark::One => "waymarks/way_1.png",
@@ -78,6 +91,7 @@ impl Waymark {
         }
     }
 
+    /// Produces a name suitable for use as an entity label.
     fn name(self) -> &'static str {
         match self {
             Waymark::A => "Waymark A",
@@ -91,6 +105,8 @@ impl Waymark {
         }
     }
 
+    /// Spawns a single shape, circle or rectangle, for this waymark according to the provided
+    /// [[ShapeConfig]] and bearing the specified `name`.
     fn spawn_shape(&self, builder: &mut ChildBuilder, config: &ShapeConfig, name: &'static str) {
         match self {
             Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => builder.spawn((
@@ -104,18 +120,20 @@ impl Waymark {
         };
     }
 
+    /// Spawns the entities for this waymark.
+    ///
+    /// The entities include the `Waymark` entity itself as well as the necessary sprite entities
+    /// to render it correctly.
+    ///
+    /// The returned [[WaymarkEntityCommands]] can be used to configure the resulting waymark.
     pub fn spawn<'w, 's, 'a>(
         self,
         commands: &'a mut Commands<'w, 's>,
         asset_server: &AssetServer,
     ) -> WaymarkEntityCommands<'w, 's, 'a> {
-        let mut entity_commands = commands.spawn((
-            WaymarkBundle {
-                waymark: self,
-                spatial: default(),
-            },
-            Name::new(self.name()),
-        ));
+        let mut entity_commands =
+            commands.spawn((self, SpatialBundle::default(), Name::new(self.name())));
+
         entity_commands.with_children(|parent| {
             parent.spawn((
                 SpriteBundle {
@@ -161,6 +179,12 @@ impl Waymark {
         WaymarkEntityCommands { entity_commands }
     }
 
+    /// Spawns all of the waymarks specified in the given `preset`.
+    ///
+    /// An `offset` must be provided representing the X and Y (or, rather, Z) coordinates
+    /// of the center of the boss arena, in yalms. This is frequently taken from the `offset`
+    /// field of an [[Arena]]. The offset is required because Stratmap treats the center of
+    /// the boss arena as the origin, but waymark presets use the in-game coordinates.
     pub fn spawn_from_preset(
         commands: &mut Commands,
         asset_server: &AssetServer,
@@ -177,29 +201,31 @@ impl Waymark {
     }
 }
 
+/// A list of commands that will be run to modify a [[Waymark]] entity.
 pub struct WaymarkEntityCommands<'w, 's, 'a> {
-    entity_commands: EntityCommands<'w, 's, 'a>,
+    /// These entity commands correspond to the top-level [[Waymark]] entity only.
+    pub entity_commands: EntityCommands<'w, 's, 'a>,
 }
 
 impl<'w, 's, 'a> WaymarkEntityCommands<'w, 's, 'a> {
+    /// Apply the position from a [[PresetEntry]] to this waymark.
+    ///
+    /// Overwrites any previous [[Transform]].
     pub fn with_entry(&mut self, entry: &PresetEntry, offset: Vec2) -> &mut Self {
         self.entity_commands.insert(Transform::from_xyz(
             entry.x - offset.x,
-            // The use of Z here is intentional; see docs for PresetEntry.
+            // The entry's Z axis is our negative Y axis.
             offset.y - entry.z,
             0.0,
         ));
         self
     }
 
+    /// Apply the provided transform to this waymark.
+    ///
+    /// Overwrites any previous [[Transform]].
     pub fn with_transform(&mut self, transform: Transform) -> &mut Self {
         self.entity_commands.insert(transform);
         self
     }
-}
-
-#[derive(Bundle)]
-struct WaymarkBundle {
-    pub waymark: Waymark,
-    pub spatial: SpatialBundle,
 }
