@@ -1,6 +1,6 @@
 //! Utilities for working with cursor manipulation.
 //!
-//! Callbacks in this module are intended to be used in conjunction with [[bevy_mod_picking::prelude::On::run]]
+//! Callbacks in this module are intended to be used in conjunction with [bevy_mod_picking::prelude::On::run]
 //! in conjunction with various events.
 
 use bevy::{prelude::*, render::primitives::Aabb};
@@ -14,10 +14,10 @@ const OOB_ALPHA_FACTOR: f32 = 0.1;
 /// Callback to allow dragging the listener entity around.
 ///
 /// It converts the cursor delta into world coordinates and applies the resulting delta to
-/// the [[Transform]] of the listener entity (not the target entity).
+/// the [Transform] of the listener entity (not the target entity).
 ///
-/// It also applies or removes the [[OutOfBounds]] marker according to whether the dragged
-/// entity is within the bounding box of a [[DragSurface]] or not, computed using the dragged
+/// It also applies or removes the [OutOfBounds] marker according to whether the dragged
+/// entity is within the bounding box of a [DragSurface] or not, computed using the dragged
 /// entity's translation.
 ///
 /// TODO: Allow the dragged entity to have better collision logic than only checking its
@@ -84,7 +84,7 @@ fn drag_update_oob(
     }
 }
 
-/// When the listener entity is dropped [[OutOfBounds]], despawn it and its children.
+/// When the listener entity is dropped [OutOfBounds], despawn it and its children.
 pub fn despawn_dropped_oob(
     event: Listener<Pointer<DragEnd>>,
     mut commands: Commands,
@@ -110,10 +110,10 @@ pub struct OutOfBounds;
 #[derive(Debug, Component)]
 /// Marker component for draggable entities.
 ///
-/// Do not insert this directly; use a [[DraggableBundle]] instead.
+/// Do not insert this directly; use a [DraggableBundle] instead.
 pub struct Draggable;
 
-/// Bundle for entities that can be dragged onto [[DragSurface]]s.
+/// Bundle for entities that can be dragged onto [DragSurface]s.
 #[derive(Bundle)]
 pub struct DraggableBundle {
     draggable: Draggable,

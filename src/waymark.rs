@@ -114,7 +114,7 @@ impl Waymark {
     }
 
     /// Spawns a single shape, circle or rectangle, for this waymark according to the provided
-    /// [[ShapeConfig]] and bearing the specified `name`.
+    /// [ShapeConfig] and bearing the specified `name`.
     fn spawn_shape(&self, builder: &mut ChildBuilder, config: &ShapeConfig, name: &'static str) {
         match self {
             Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => builder.spawn((
@@ -133,7 +133,7 @@ impl Waymark {
     /// The entities include the `Waymark` entity itself as well as the necessary sprite entities
     /// to render it correctly.
     ///
-    /// The returned [[WaymarkEntityCommands]] can be used to configure the resulting waymark.
+    /// The returned [WaymarkEntityCommands] can be used to configure the resulting waymark.
     pub fn spawn<'w, 's, 'a>(
         self,
         commands: &'a mut Commands<'w, 's>,
@@ -190,8 +190,9 @@ impl Waymark {
     ///
     /// An `offset` must be provided representing the X and Y (or, rather, Z) coordinates
     /// of the center of the boss arena, in yalms. This is frequently taken from the `offset`
-    /// field of an [[Arena]]. The offset is required because Stratmap treats the center of
-    /// the boss arena as the origin, but waymark presets use the in-game coordinates.
+    /// field of an [Arena](crate::arena::Arena). The offset is required because Stratmap
+    /// treats the center of the boss arena as the origin, but waymark presets use the
+    /// in-game coordinates.
     pub fn spawn_from_preset(
         commands: &mut Commands,
         asset_server: &AssetServer,
@@ -208,16 +209,16 @@ impl Waymark {
     }
 }
 
-/// A list of commands that will be run to modify a [[Waymark]] entity.
+/// A list of commands that will be run to modify a [Waymark] entity.
 pub struct WaymarkEntityCommands<'w, 's, 'a> {
-    /// These entity commands correspond to the top-level [[Waymark]] entity only.
+    /// These entity commands correspond to the top-level [Waymark] entity only.
     pub entity_commands: EntityCommands<'w, 's, 'a>,
 }
 
 impl<'w, 's, 'a> WaymarkEntityCommands<'w, 's, 'a> {
-    /// Apply the position from a [[PresetEntry]] to this waymark.
+    /// Apply the position from a [PresetEntry] to this waymark.
     ///
-    /// Overwrites any previous [[Transform]].
+    /// Overwrites any previous [Transform].
     pub fn with_entry(&mut self, entry: &PresetEntry, offset: Vec2) -> &mut Self {
         self.entity_commands.insert(Transform::from_xyz(
             entry.x - offset.x,
@@ -230,7 +231,7 @@ impl<'w, 's, 'a> WaymarkEntityCommands<'w, 's, 'a> {
 
     /// Apply the provided transform to this waymark.
     ///
-    /// Overwrites any previous [[Transform]].
+    /// Overwrites any previous [Transform].
     pub fn with_transform(&mut self, transform: Transform) -> &mut Self {
         self.entity_commands.insert(transform);
         self
