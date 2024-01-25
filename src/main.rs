@@ -4,12 +4,12 @@ use bevy::prelude::*;
 use bevy::winit::WinitSettings;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_vector_shapes::prelude::*;
 
 mod arena;
+mod cursor;
 mod waymark;
-
-use waymark::Waymark;
 
 fn main() {
     let mut app = App::new();
@@ -24,6 +24,7 @@ fn main() {
     }))
     .add_plugins(EguiPlugin)
     .add_plugins(Shape2dPlugin::default())
+    .add_plugins(DefaultPickingPlugins)
     .insert_resource(WinitSettings::desktop_app())
     .add_plugins(arena::plugin())
     .add_systems(Startup, spawn_waymarks);
@@ -52,5 +53,5 @@ pub fn spawn_waymarks(
     arena: Res<arena::Arena>,
 ) {
     let preset: waymark::Preset = serde_json::from_str(P9S_PRESET).unwrap();
-    Waymark::spawn_from_preset(&mut commands, &*asset_server, arena.offset, &preset);
+    waymark::Waymark::spawn_from_preset(&mut commands, &*asset_server, arena.offset, &preset);
 }

@@ -1,5 +1,11 @@
+//! Waymark support.
+//!
+//! This module implements support for FFXIV waymarks.
+//! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
+
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use bevy_mod_picking::prelude::*;
 use bevy_vector_shapes::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -131,8 +137,13 @@ impl Waymark {
         commands: &'a mut Commands<'w, 's>,
         asset_server: &AssetServer,
     ) -> WaymarkEntityCommands<'w, 's, 'a> {
-        let mut entity_commands =
-            commands.spawn((self, SpatialBundle::default(), Name::new(self.name())));
+        let mut entity_commands = commands.spawn((
+            self,
+            SpatialBundle::default(),
+            PickableBundle::default(),
+            On::<Pointer<Drag>>::run(crate::cursor::drag_listener),
+            Name::new(self.name()),
+        ));
 
         entity_commands.with_children(|parent| {
             parent.spawn((
