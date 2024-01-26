@@ -76,11 +76,10 @@ fn drag_update_oob(
         }
     }
 
-    let mut commands = commands.get_entity(entity).unwrap();
     if on_surface {
-        commands.remove::<OutOfBounds>();
+        commands.entity(entity).remove::<OutOfBounds>();
     } else {
-        commands.insert(OutOfBounds);
+        commands.entity(entity).insert(OutOfBounds);
     }
 }
 
@@ -92,7 +91,7 @@ pub fn despawn_dropped_oob(
 ) {
     let entity = event.listener();
     if oob_query.contains(entity) {
-        commands.add(DespawnRecursive { entity })
+        commands.entity(entity).despawn_recursive()
     }
 }
 
@@ -163,7 +162,7 @@ fn apply_oob_alpha(
                 color.set_a(color.a() * OOB_ALPHA_FACTOR);
             }
         }
-        commands.get_entity(entity).unwrap().insert(OobScaled);
+        commands.entity(entity).insert(OobScaled);
     }
 }
 
@@ -188,7 +187,7 @@ fn remove_oob_alpha(
                 color.set_a(color.a() / OOB_ALPHA_FACTOR);
             }
         }
-        commands.get_entity(entity).unwrap().remove::<OobScaled>();
+        commands.entity(entity).remove::<OobScaled>();
     }
 }
 

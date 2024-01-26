@@ -32,10 +32,10 @@ impl FromWorld for Arena {
 }
 
 #[derive(Clone, Component, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub struct ArenaView {}
+pub struct ArenaView;
 
 #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub struct ArenaPlugin {}
+pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
@@ -56,7 +56,7 @@ impl Plugin for ArenaPlugin {
                 });
                 commands.spawn((
                     Name::new("Arena"),
-                    ArenaView {},
+                    ArenaView,
                     DragSurface,
                     SpriteBundle {
                         sprite: Sprite {
@@ -74,5 +74,5 @@ impl Plugin for ArenaPlugin {
 }
 
 pub fn plugin() -> ArenaPlugin {
-    ArenaPlugin {}
+    ArenaPlugin
 }

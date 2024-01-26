@@ -3,10 +3,12 @@
 //! This module implements support for FFXIV waymarks.
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
-use bevy::ecs::system::EntityCommands;
+use bevy::ecs::system::{Command, CommandQueue, EntityCommands};
 use bevy::prelude::*;
+use bevy_egui::{egui, EguiClipboard, EguiContexts};
 use bevy_mod_picking::prelude::*;
 use bevy_vector_shapes::prelude::*;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -144,20 +146,25 @@ impl Waymark {
             Name::new(self.name()),
             PickableBundle::default(),
             DraggableBundle::default(),
-            SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(Vec2::new(
-                        WAYMARK_SIZE * IMAGE_SCALE,
-                        WAYMARK_SIZE * IMAGE_SCALE,
-                    )),
-                    ..default()
-                },
-                texture: asset_server.load(self.asset_path()),
-                ..default()
-            },
+            SpatialBundle::default(),
         ));
 
         entity_commands.with_children(|parent| {
+            parent.spawn((
+                Name::new("Waymark Image"),
+                SpriteBundle {
+                    sprite: Sprite {
+                        custom_size: Some(Vec2::new(
+                            WAYMARK_SIZE * IMAGE_SCALE,
+                            WAYMARK_SIZE * IMAGE_SCALE,
+                        )),
+                        ..default()
+                    },
+                    texture: asset_server.load(self.asset_path()),
+                    ..default()
+                },
+            ));
+
             self.spawn_shape(
                 parent,
                 &ShapeConfig {
@@ -185,26 +192,39 @@ impl Waymark {
         });
         WaymarkEntityCommands { entity_commands }
     }
+}
 
-    /// Spawns all of the waymarks specified in the given `preset`.
-    ///
-    /// An `offset` must be provided representing the X and Y (or, rather, Z) coordinates
-    /// of the center of the boss arena, in yalms. This is frequently taken from the `offset`
-    /// field of an [Arena](crate::arena::Arena). The offset is required because Stratmap
-    /// treats the center of the boss arena as the origin, but waymark presets use the
-    /// in-game coordinates.
-    pub fn spawn_from_preset(
-        commands: &mut Commands,
-        asset_server: &AssetServer,
-        offset: Vec2,
-        preset: &Preset,
-    ) {
-        for (waymark, entry) in &preset.waymarks {
+/// [Command] to spawn all of the waymarks specified in the given `preset`.
+pub struct SpawnFromPreset {
+    pub preset: Preset,
+}
+
+impl Command for SpawnFromPreset {
+    fn apply(self, world: &mut World) {
+        let asset_server = world.get_resource::<AssetServer>().unwrap();
+        let arena = world.get_resource::<crate::arena::Arena>().unwrap();
+        let mut queue = CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, world);
+        for (waymark, entry) in &self.preset.waymarks {
             if entry.active {
                 waymark
-                    .spawn(commands, asset_server)
-                    .with_entry(entry, offset);
+                    .spawn(&mut commands, asset_server)
+                    .with_entry(entry, arena.offset);
             }
+        }
+        queue.apply(world);
+    }
+}
+
+/// Despawn all active waymarks.
+pub struct DespawnAll;
+
+impl Command for DespawnAll {
+    fn apply(self, world: &mut World) {
+        let mut query = world.query_filtered::<Entity, &Waymark>();
+        let entities = query.iter(world).collect_vec();
+        for entity in entities {
+            DespawnChildrenRecursive { entity }.apply(world);
         }
     }
 }
@@ -236,4 +256,42 @@ impl<'w, 's, 'a> WaymarkEntityCommands<'w, 's, 'a> {
         self.entity_commands.insert(transform);
         self
     }
+}
+
+/// This entity is a window for manipulating waymarks.
+#[derive(Debug, Component)]
+pub struct WaymarkWindow;
+
+impl WaymarkWindow {
+    pub fn draw(mut commands: Commands, mut contexts: EguiContexts, clipboard: Res<EguiClipboard>) {
+        egui::Window::new("Waymarks").show(contexts.ctx_mut(), |ui| {
+            if ui.button("Import").clicked() {
+                if let Some(contents) = clipboard.get_contents() {
+                    if let Ok(preset) = serde_json::from_str(&contents) {
+                        commands.add(DespawnAll);
+                        commands.add(SpawnFromPreset { preset });
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// Plugin for the waymark window.
+pub struct WaymarkPlugin;
+
+impl Plugin for WaymarkPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, WaymarkWindow::draw).add_systems(
+            Startup,
+            |mut commands: Commands| {
+                commands.spawn(WaymarkWindow);
+            },
+        );
+    }
+}
+
+/// Produces a plugin.
+pub fn plugin() -> WaymarkPlugin {
+    WaymarkPlugin
 }

@@ -30,6 +30,7 @@ fn main() {
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
     .add_plugins(cursor::plugin())
+    .add_plugins(waymark::plugin())
     .add_systems(Startup, spawn_waymarks);
     if cfg!(debug_assertions) {
         app.add_plugins(WorldInspectorPlugin::new());
@@ -50,11 +51,8 @@ const P9S_PRESET: &'static str = r#"{
   "Four":{"X":90.1,"Y":0.0,"Z":90.1,"ID":7,"Active":true}
 }"#;
 
-pub fn spawn_waymarks(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    arena: Res<arena::Arena>,
-) {
-    let preset: waymark::Preset = serde_json::from_str(P9S_PRESET).unwrap();
-    waymark::Waymark::spawn_from_preset(&mut commands, &*asset_server, arena.offset, &preset);
+pub fn spawn_waymarks(mut commands: Commands) {
+    commands.add(waymark::SpawnFromPreset {
+        preset: serde_json::from_str(P9S_PRESET).unwrap(),
+    });
 }
