@@ -3,8 +3,11 @@
 //! Callbacks in this module are intended to be used in conjunction with [bevy_mod_picking::prelude::On::run]
 //! in conjunction with various events.
 
-use bevy::{prelude::*, render::primitives::Aabb};
-use bevy_mod_picking::prelude::*;
+use bevy::{ecs::system::EntityCommand, prelude::*, render::primitives::Aabb};
+use bevy_mod_picking::{
+    events::{DragEntry, DragMap},
+    prelude::*,
+};
 
 use crate::color::HasColor;
 
@@ -163,6 +166,34 @@ fn apply_oob_alpha(
             }
         }
         commands.entity(entity).insert(OobScaled);
+    }
+}
+
+/// [EntityCommand] to smuggle an entity manually into a dragged state.
+///
+/// A [DragStart] event will not be triggered for the entity.
+///
+/// TODO: Make more ergonomic?
+#[derive(Debug)]
+pub struct SmuggleDrag {
+    pub pointer: PointerId,
+    pub button: PointerButton,
+    pub pos: Vec2,
+}
+
+impl EntityCommand for SmuggleDrag {
+    fn apply(self, id: Entity, world: &mut World) {
+        let mut drag_map = world
+            .get_resource_mut::<DragMap>()
+            .expect("no DragMap found");
+        let dragged_entities = drag_map.entry((self.pointer, self.button)).or_default();
+        let _ = dragged_entities.try_insert(
+            id,
+            DragEntry {
+                start_pos: self.pos,
+                latest_pos: self.pos,
+            },
+        );
     }
 }
 

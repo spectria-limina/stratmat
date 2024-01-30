@@ -14,7 +14,7 @@ bevy = { version = "0.12.0", default-features = false, features = [
 bevy-inspector-egui = "0.22.1" 
 bevy-trait-query = "0.4.0"
 bevy_egui = "0.24.0"
-bevy_mod_picking = "0.17.0"
+bevy_mod_picking = { version = "0.17.0", features = ["backend_egui"] }
 bevy_vector_shapes = "0.6.0"
 chrono = "0.4.31"
 int-enum = "1.0.0"

@@ -29,6 +29,13 @@ const STROKE_OPACITY: f32 = 0.75;
 /// The stroke width of the outer line of a waymark.
 const STROKE_WIDTH: f32 = 0.05;
 
+/// The size of waymark spawner, in pixels.
+const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
+/// The alpha (out of 255) of an enabled waymark spawner widget.
+const WAYMARK_SPAWNER_ALPHA: u8 = 230;
+/// The alpha (out of 255) of a disabled waymark spawner widget.
+const WAYMARK_SPAWNER_DISABLED_ALPHA: u8 = 25;
+
 /// A waymark preset in the JSON format of the Waymark Preset plugin.
 ///
 /// This type can be directly serialized from/to the Waymark Preset format.
@@ -107,6 +114,12 @@ impl Waymark {
         }
     }
 
+    /// Retrieves a [Handle] to this image asset with the letter or number of the waymark.
+    pub fn asset_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
+        asset_server.load(self.asset_path())
+    }
+
+    /// Produces the fill/stroke colour for this waymark.
     pub fn color(&self) -> Color {
         match self {
             Waymark::One | Waymark::A => Color::RED,
@@ -258,7 +271,7 @@ impl EntityCommand for SpawnChildren {
         let waymark = parent.get::<Waymark>().copied().unwrap();
 
         let asset_server = parent.world().get_resource::<AssetServer>().unwrap();
-        let image = asset_server.load(waymark.asset_path());
+        let image = waymark.asset_handle(asset_server);
 
         parent.with_children(|parent| {
             parent.spawn((
@@ -364,41 +377,103 @@ pub struct WaymarkWindow {
 
 impl WaymarkWindow {
     /// [System] that draws the waymark window and handles events.
+    ///
+    /// Will panic if there is more than one camera.
     pub fn draw(
-        mut q: Query<&mut WaymarkWindow>,
+        mut win_q: Query<&mut WaymarkWindow>,
+        waymark_q: Query<&Waymark>,
+        camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
         mut contexts: EguiContexts,
+        asset_server: Res<AssetServer>,
         clipboard: Res<EguiClipboard>,
         export_to_clipboard: Res<ExportToClipboard>,
     ) {
-        let mut win = q.single_mut();
-        egui::Window::new("Waymarks").show(contexts.ctx_mut(), |ui| {
-            if ui.button("Import").clicked() {
-                if let Some(contents) = clipboard.get_contents() {
-                    match serde_json::from_str::<Preset>(&contents) {
-                        Ok(preset) => {
-                            win.preset_name = preset.name.clone();
-                            commands.add(DespawnAll);
-                            commands.add(SpawnFromPreset { preset });
-                            log::info!(
-                                "Imported waymark preset '{}' from the clipboard",
-                                win.preset_name
-                            );
-                        }
-                        Err(e) => {
-                            log::info!("Unable to import waymark preset: {}", e);
-                        }
-                    }
-                } else {
-                    log::info!("Unable to import waymark preset: clipboard is empty")
-                }
-            }
+        let mut win = win_q.single_mut();
+        // TODO: Make this not suck.
+        let a_img = contexts.add_image(Waymark::A.asset_handle(&asset_server));
+        let b_img = contexts.add_image(Waymark::B.asset_handle(&asset_server));
+        let c_img = contexts.add_image(Waymark::C.asset_handle(&asset_server));
+        let d_img = contexts.add_image(Waymark::D.asset_handle(&asset_server));
+        let one_img = contexts.add_image(Waymark::One.asset_handle(&asset_server));
+        let two_img = contexts.add_image(Waymark::Two.asset_handle(&asset_server));
+        let three_img = contexts.add_image(Waymark::Three.asset_handle(&asset_server));
+        let four_img = contexts.add_image(Waymark::Four.asset_handle(&asset_server));
+
+        let ewin = egui::Window::new("Waymarks").default_width(4.0 * WAYMARK_SPAWNER_SIZE);
+        ewin.show(contexts.ctx_mut(), |ui| {
             ui.horizontal(|ui| {
+                ui.label("Preset: ");
+                ui.add(TextEdit::singleline(&mut win.preset_name).desired_width(100.0));
+            });
+            ui.horizontal(|ui| {
+                if ui.button("Import").clicked() {
+                    if let Some(contents) = clipboard.get_contents() {
+                        match serde_json::from_str::<Preset>(&contents) {
+                            Ok(preset) => {
+                                win.preset_name = preset.name.clone();
+                                commands.add(DespawnAll);
+                                commands.add(SpawnFromPreset { preset });
+                                log::info!(
+                                    "Imported waymark preset '{}' from the clipboard",
+                                    win.preset_name
+                                );
+                            }
+                            Err(e) => {
+                                log::info!("Unable to import waymark preset: {}", e);
+                            }
+                        }
+                    } else {
+                        log::info!("Unable to import waymark preset: clipboard is empty")
+                    }
+                }
                 if ui.button("Export").clicked() {
                     commands.run_system(export_to_clipboard.id())
                 }
-                let textbox = TextEdit::singleline(&mut win.preset_name).desired_width(100.0);
-                ui.add(textbox);
+            });
+            ui.separator();
+            // TODO: Also make this not suck.
+            let dims = egui::Vec2::new(WAYMARK_SPAWNER_SIZE, WAYMARK_SPAWNER_SIZE);
+            let mut spawner = |ui: &mut egui::Ui, img: egui::TextureId, w: Waymark| {
+                let enabled = !waymark_q.iter().contains(&w);
+                let resp = ui.add(
+                    egui::Image::new((img, dims))
+                        .tint(egui::Color32::from_white_alpha(if enabled { WAYMARK_SPAWNER_ALPHA } else { WAYMARK_SPAWNER_DISABLED_ALPHA }))
+                        .sense(egui::Sense{
+                            click: false,
+                            focusable: true,
+                            drag: enabled,
+                        })
+                );
+                if resp.drag_started_by(egui::PointerButton::Primary)     {
+                    let (camera, camera_transform) = camera_q.single();
+                    let egui::Pos2{x, y} = resp.rect.center();
+                    let vp_center = Vec2::new(x, y);
+                    if let Some(center) = camera.viewport_to_world_2d(camera_transform, vp_center) {
+                        let egui::Pos2{x, y} = resp.interact_pointer_pos().unwrap();
+                        commands.spawn_waymark(w)
+                        .insert(Transform::from_translation((center, 0.0).into()))
+                        .add(crate::cursor::SmuggleDrag{
+                            pointer: PointerId::Mouse,
+                            button: PointerButton::Primary,
+                            pos: Vec2::new(x, y),
+                        });
+                    } else {
+                        log::error!("spawner click at viewport {:?} could not be converted to world coordinates", vp_center);
+                    }
+                };
+            };
+            ui.horizontal(|ui| {
+                spawner(ui, one_img, Waymark::One);
+                spawner(ui, two_img, Waymark::Two);
+                spawner(ui, three_img, Waymark::Three);
+                spawner(ui, four_img, Waymark::Four);
+            });
+            ui.horizontal(|ui| {
+                spawner(ui, a_img, Waymark::A);
+                spawner(ui, b_img, Waymark::B);
+                spawner(ui, c_img, Waymark::C);
+                spawner(ui, d_img, Waymark::D);
             });
         });
     }
