@@ -5,10 +5,13 @@
 
 use bevy::ecs::system::{Command, CommandQueue, EntityCommand, EntityCommands, SystemId};
 use bevy::prelude::*;
-use bevy_egui::egui::TextEdit;
+use bevy::window::RequestRedraw;
+use bevy_egui::egui::{TextEdit, Ui};
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
+use bevy_mod_picking::backend::{HitData, PointerHits};
 use bevy_mod_picking::prelude::*;
 use bevy_vector_shapes::prelude::*;
+use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -87,6 +90,7 @@ pub struct PresetEntry {
     PartialEq,
     Eq,
     IntEnum,
+    Sequence,
 )]
 pub enum Waymark {
     A = 0,
@@ -166,15 +170,23 @@ impl Waymark {
         self,
         commands: &'a mut Commands<'w, 's>,
     ) -> WaymarkEntityCommands<'w, 's, 'a> {
-        let mut entity_commands = commands.spawn((
+        self.spawn_inplace(commands.spawn_empty())
+    }
+
+    /// Spawns the entities for this waymark with an existing entity ID.
+    fn spawn_inplace<'w, 's, 'a>(
+        self,
+        mut commands: EntityCommands<'w, 's, 'a>,
+    ) -> WaymarkEntityCommands<'w, 's, 'a> {
+        commands.insert((
             self,
             Name::new(self.name()),
             PickableBundle::default(),
             DraggableBundle::default(),
             SpatialBundle::default(),
         ));
-        entity_commands.add(SpawnChildren);
-        WaymarkEntityCommands(entity_commands)
+        commands.add(SpawnChildren);
+        WaymarkEntityCommands(commands)
     }
 
     pub fn spawn_from_preset(commands: &mut Commands, preset: Preset) {
@@ -235,8 +247,9 @@ impl Command for DespawnAll {
         let mut query = world.query_filtered::<Entity, &Waymark>();
         let entities = query.iter(world).collect_vec();
         for entity in entities {
-            DespawnChildrenRecursive { entity }.apply(world);
+            DespawnRecursive { entity }.apply(world);
         }
+        world.send_event(RequestRedraw);
     }
 }
 
@@ -369,6 +382,94 @@ impl ExportToClipboard {
     }
 }
 
+/// An entity that can be clicked & dragged to spawn a waymark.
+///
+/// Rendered using egui, not the normal logic.
+#[derive(Debug, Clone, Component)]
+pub struct Spawner {
+    waymark: Waymark,
+    texture_id: egui::TextureId,
+}
+
+impl Spawner {
+    fn show(
+        &self,
+        id: Entity,
+        ui: &mut Ui,
+        waymark_q: &Query<&Waymark>,
+        camera_q: &Query<(&Camera, &GlobalTransform)>,
+        commands: &mut Commands,
+        pointer_ev: &mut EventWriter<PointerHits>,
+    ) {
+        let enabled = !waymark_q.iter().contains(&self.waymark);
+        let resp = ui.add(
+            egui::Image::new((
+                self.texture_id,
+                egui::Vec2::new(WAYMARK_SPAWNER_SIZE, WAYMARK_SPAWNER_SIZE),
+            ))
+            .tint(egui::Color32::from_white_alpha(if enabled {
+                WAYMARK_SPAWNER_ALPHA
+            } else {
+                WAYMARK_SPAWNER_DISABLED_ALPHA
+            }))
+            .sense(egui::Sense::drag()),
+        );
+        if resp.hovered() {
+            let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
+            pointer_ev.send(PointerHits::new(
+                PointerId::Mouse,
+                vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
+                // egui is at depth 1_000_000, we need to be in front of that.
+                1_000_001.0,
+            ))
+        }
+        if enabled && resp.drag_started_by(egui::PointerButton::Primary) {
+            let (camera, camera_transform) = camera_q.single();
+            let egui::Pos2 { x, y } = resp.rect.center();
+            let vp_center = Vec2::new(x, y);
+            let center = camera
+                .viewport_to_world_2d(camera_transform, vp_center)
+                .unwrap();
+
+            // Rather than spawning a new waymark, turn this entity into the waymark and replace it with a new spawner.
+            // This allows drag events to apply to the new waymark.
+            commands.spawn(SpawnerBundle {
+                name: Name::new(format!("Spawner for {}", self.waymark.name())),
+                spawner: self.clone(),
+                pickable: default(),
+            });
+
+            let mut entity_commands = commands.entity(id);
+            entity_commands.remove::<SpawnerBundle>();
+
+            self.waymark
+                .spawn_inplace(entity_commands)
+                .insert(Transform::from_translation((center, 0.0).into()));
+        };
+    }
+}
+
+/// Bundle of components for a [Spawner].
+#[derive(Bundle)]
+pub struct SpawnerBundle {
+    name: Name,
+    spawner: Spawner,
+    pickable: PickableBundle,
+}
+
+impl SpawnerBundle {
+    pub fn new(waymark: Waymark, asset_server: &AssetServer, contexts: &mut EguiContexts) -> Self {
+        Self {
+            name: Name::new(format!("Spawner for {}", waymark.name())),
+            spawner: Spawner {
+                waymark,
+                texture_id: contexts.add_image(waymark.asset_handle(&asset_server)),
+            },
+            pickable: default(),
+        }
+    }
+}
+
 /// A window with controls to manipulate the waymarks.
 #[derive(Debug, Default, Component)]
 pub struct WaymarkWindow {
@@ -381,24 +482,16 @@ impl WaymarkWindow {
     /// Will panic if there is more than one camera.
     pub fn draw(
         mut win_q: Query<&mut WaymarkWindow>,
+        spawner_q: Query<(Entity, &Spawner)>,
         waymark_q: Query<&Waymark>,
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
         mut contexts: EguiContexts,
-        asset_server: Res<AssetServer>,
         clipboard: Res<EguiClipboard>,
         export_to_clipboard: Res<ExportToClipboard>,
+        mut pointer_ev: EventWriter<PointerHits>,
     ) {
         let mut win = win_q.single_mut();
-        // TODO: Make this not suck.
-        let a_img = contexts.add_image(Waymark::A.asset_handle(&asset_server));
-        let b_img = contexts.add_image(Waymark::B.asset_handle(&asset_server));
-        let c_img = contexts.add_image(Waymark::C.asset_handle(&asset_server));
-        let d_img = contexts.add_image(Waymark::D.asset_handle(&asset_server));
-        let one_img = contexts.add_image(Waymark::One.asset_handle(&asset_server));
-        let two_img = contexts.add_image(Waymark::Two.asset_handle(&asset_server));
-        let three_img = contexts.add_image(Waymark::Three.asset_handle(&asset_server));
-        let four_img = contexts.add_image(Waymark::Four.asset_handle(&asset_server));
 
         let ewin = egui::Window::new("Waymarks").default_width(4.0 * WAYMARK_SPAWNER_SIZE);
         ewin.show(contexts.ctx_mut(), |ui| {
@@ -430,50 +523,91 @@ impl WaymarkWindow {
                 if ui.button("Export").clicked() {
                     commands.run_system(export_to_clipboard.id())
                 }
+                if ui.button("Clear").clicked() {
+                    commands.despawn_all_waymarks()
+                }
             });
             ui.separator();
-            // TODO: Also make this not suck.
-            let dims = egui::Vec2::new(WAYMARK_SPAWNER_SIZE, WAYMARK_SPAWNER_SIZE);
-            let mut spawner = |ui: &mut egui::Ui, img: egui::TextureId, w: Waymark| {
-                let enabled = !waymark_q.iter().contains(&w);
-                let resp = ui.add(
-                    egui::Image::new((img, dims))
-                        .tint(egui::Color32::from_white_alpha(if enabled { WAYMARK_SPAWNER_ALPHA } else { WAYMARK_SPAWNER_DISABLED_ALPHA }))
-                        .sense(egui::Sense{
-                            click: false,
-                            focusable: true,
-                            drag: enabled,
-                        })
-                );
-                if resp.drag_started_by(egui::PointerButton::Primary)     {
-                    let (camera, camera_transform) = camera_q.single();
-                    let egui::Pos2{x, y} = resp.rect.center();
-                    let vp_center = Vec2::new(x, y);
-                    if let Some(center) = camera.viewport_to_world_2d(camera_transform, vp_center) {
-                        let egui::Pos2{x, y} = resp.interact_pointer_pos().unwrap();
-                        commands.spawn_waymark(w)
-                        .insert(Transform::from_translation((center, 0.0).into()))
-                        .add(crate::cursor::SmuggleDrag{
-                            pointer: PointerId::Mouse,
-                            button: PointerButton::Primary,
-                            pos: Vec2::new(x, y),
-                        });
-                    } else {
-                        log::error!("spawner click at viewport {:?} could not be converted to world coordinates", vp_center);
-                    }
-                };
-            };
+            // TODO: Figure out how to make this not suck.
+            let spawners: HashMap<_, _> = spawner_q
+                .iter()
+                .map(|(id, spawner @ &Spawner { waymark, .. })| (waymark, (id, spawner)))
+                .collect();
             ui.horizontal(|ui| {
-                spawner(ui, one_img, Waymark::One);
-                spawner(ui, two_img, Waymark::Two);
-                spawner(ui, three_img, Waymark::Three);
-                spawner(ui, four_img, Waymark::Four);
+                let (id, spawner) = spawners[&Waymark::One];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
+                let (id, spawner) = spawners[&Waymark::Two];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
+                let (id, spawner) = spawners[&Waymark::Three];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
+                let (id, spawner) = spawners[&Waymark::Four];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
             });
             ui.horizontal(|ui| {
-                spawner(ui, a_img, Waymark::A);
-                spawner(ui, b_img, Waymark::B);
-                spawner(ui, c_img, Waymark::C);
-                spawner(ui, d_img, Waymark::D);
+                let (id, spawner) = spawners[&Waymark::A];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
+                let (id, spawner) = spawners[&Waymark::B];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
+                let (id, spawner) = spawners[&Waymark::C];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
+                let (id, spawner) = spawners[&Waymark::D];
+                spawner.show(
+                    id,
+                    ui,
+                    &waymark_q,
+                    &camera_q,
+                    &mut commands,
+                    &mut pointer_ev,
+                );
             });
         });
     }
@@ -509,9 +643,17 @@ pub struct WaymarkPlugin;
 impl Plugin for WaymarkPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, WaymarkWindow::draw)
-            .add_systems(Startup, |mut commands: Commands| {
-                commands.spawn(WaymarkWindow::default());
-            })
+            .add_systems(
+                Startup,
+                |mut commands: Commands,
+                 asset_server: Res<AssetServer>,
+                 mut contexts: EguiContexts| {
+                    commands.spawn(WaymarkWindow::default());
+                    for waymark in enum_iterator::all::<Waymark>() {
+                        commands.spawn(SpawnerBundle::new(waymark, &asset_server, &mut contexts));
+                    }
+                },
+            )
             .init_resource::<ExportToClipboard>();
     }
 }

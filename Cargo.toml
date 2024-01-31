@@ -17,6 +17,7 @@ bevy_egui = "0.24.0"
 bevy_mod_picking = { version = "0.17.0", features = ["backend_egui"] }
 bevy_vector_shapes = "0.6.0"
 chrono = "0.4.31"
+enum-iterator = "1.5.0"
 int-enum = "1.0.0"
 itertools = "0.12.0"
 log = "0.4.20"
