@@ -347,12 +347,13 @@ mod test {
     use bevy::render::RenderPlugin;
     use bevy::window::PrimaryWindow;
     use bevy::winit::WinitPlugin;
+    use bevy_egui::egui::Pos2;
     use bevy_egui::EguiPlugin;
     use bevy_egui::{egui, EguiContexts};
     use bevy_mod_picking::DefaultPickingPlugins;
     use float_eq::assert_float_eq;
 
-    #[derive(Default)]
+    #[derive(Default, Resource)]
     struct TestWinPos(egui::Pos2);
 
     fn draw_test_win(
@@ -410,14 +411,22 @@ mod test {
 
         let mut ui_q = app.world.query::<&SpawnerUi>();
         let ui = ui_q.single(&app.world);
+        assert_float_eq!(ui.center.x, WAYMARK_SPAWNER_SIZE / 2.0, abs <= 0.0001,);
+        assert_float_eq!(ui.center.y, WAYMARK_SPAWNER_SIZE / 2.0, abs <= 0.0001,);
+
+        let pos = Pos2::new(250.0, -500.0);
+        app.world.resource_mut::<TestWinPos>().0 = pos;
+        app.update();
+
+        let ui = ui_q.single(&app.world);
         assert_float_eq!(
             ui.center.x,
-            ui.center.x + WAYMARK_SPAWNER_SIZE / 2,
+            pos.x + WAYMARK_SPAWNER_SIZE / 2.0,
             abs <= 0.0001,
         );
         assert_float_eq!(
             ui.center.y,
-            ui.center.y + WAYMARK_SPAWNER_SIZE / 2,
+            pos.y + WAYMARK_SPAWNER_SIZE / 2.0,
             abs <= 0.0001,
         );
     }
