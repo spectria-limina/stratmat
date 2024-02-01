@@ -55,7 +55,7 @@ fn drag_update_transform(
         .viewport_to_world_2d(camera_transform, old_pos_viewport)
         .expect("unable to map cursor position to world coordinates");
     let delta_world = new_pos_world - old_pos_world;
-    transform.translation += Vec3::from((delta_world, 0.0));
+    transform.translation += delta_world.extend(0.0);
 }
 
 fn drag_update_oob(

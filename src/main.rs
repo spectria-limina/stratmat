@@ -33,7 +33,7 @@ fn main() {
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
     .add_plugins(cursor::plugin())
-    .add_plugins(waymark::plugin())
+    .add_plugins(waymark::window::plugin())
     .add_systems(Startup, configure_picker_debug);
 
     #[cfg(debug_assertions)]
