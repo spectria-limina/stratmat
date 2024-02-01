@@ -140,7 +140,7 @@ impl Waymark {
     }
 
     /// Produces a [PresetEntry] corresponding to this waymark,
-    /// using the provided [Arena]'s center `offset` and the provided [Transform].
+    /// using the provided [Arena](crate::arena::Arena) center `offset` and the provided [Transform].
     pub fn to_entry(&self, transform: &Transform, offset: Vec2) -> PresetEntry {
         PresetEntry {
             x: offset.x + transform.translation.x,
