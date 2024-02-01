@@ -4,9 +4,7 @@
 //! in conjunction with various events.
 
 use bevy::{prelude::*, render::primitives::Aabb};
-use bevy_mod_picking::{
-    prelude::*,
-};
+use bevy_mod_picking::prelude::*;
 
 use crate::color::HasColor;
 

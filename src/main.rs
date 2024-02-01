@@ -3,11 +3,12 @@
 use bevy::prelude::*;
 use bevy::winit::WinitSettings;
 use bevy_egui::EguiPlugin;
-#[cfg(debug_assertions)]
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_picking::debug::DebugPickingMode;
 use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_vector_shapes::prelude::*;
+
+#[cfg(debug_assertions)]
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 mod arena;
 mod color;
@@ -28,7 +29,7 @@ fn main() {
     .add_plugins(EguiPlugin)
     .add_plugins(Shape2dPlugin::default())
     .add_plugins(DefaultPickingPlugins)
-    .insert_resource(WinitSettings::game())
+    .insert_resource(WinitSettings::desktop_app())
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
     .add_plugins(cursor::plugin())
