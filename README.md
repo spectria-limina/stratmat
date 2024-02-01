@@ -16,7 +16,7 @@ A full list of planned features:
 1. **Margin of Error**: Automatically compute how much space or time someone has to work with for a particular strat.
 1. **Customizability**: Replace icons to match your team comp, include enemry signs if desired.
 1. **Variations**: Support for variations on a strat based on party comp or minor variations (e.g. invuln/no-invuln).
-1. **Waymark Export**: Compatibility with the Waymark Preset Plugin.
+1. :white_check_mark: **Waymark Export**: Compatibility with the Waymark Preset Plugin.
 
 Stratmat is written in [Rust](https://rust-lang.org/) using the [Bevy](https://bevyengine.org/) game engine.
 
