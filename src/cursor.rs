@@ -27,16 +27,17 @@ const OOB_ALPHA_FACTOR: f32 = 0.1;
 pub fn drag_listener(
     event: Listener<Pointer<Drag>>,
     commands: Commands,
-    mut transform_query: Query<(Entity, &mut Transform), Without<DragSurface>>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    surface_query: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
+    mut transform_q: Query<(Entity, &mut Transform), Without<DragSurface>>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
+    surface_q: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
 ) {
-    let Ok((entity, mut transform)) = transform_query.get_mut(event.listener()) else {
+    log::trace!("drag_listener");
+    let Ok((entity, mut transform)) = transform_q.get_mut(event.listener()) else {
         return;
     };
-    let (camera, camera_transform) = camera_query.single();
+    let (camera, camera_transform) = camera_q.single();
     drag_update_transform(&event, &mut transform, camera, camera_transform);
-    drag_update_oob(commands, entity, &transform, surface_query);
+    drag_update_oob(commands, entity, &transform, surface_q);
 }
 
 /// Update the given transform based on a [[Drag]] event.

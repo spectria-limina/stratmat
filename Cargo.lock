@@ -3293,6 +3293,7 @@ dependencies = [
  "bevy-inspector-egui",
  "bevy-trait-query",
  "bevy_egui 0.24.0",
+ "bevy_eventlistener_core",
  "bevy_mod_picking",
  "bevy_vector_shapes",
  "chrono",
@@ -3303,6 +3304,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]

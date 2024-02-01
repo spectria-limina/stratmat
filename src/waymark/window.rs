@@ -77,11 +77,17 @@ impl Spawner {
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
+        log::trace!("{}::Spawner::drag_start", module_path!());
         let id = ev.listener();
         let Ok((spawner, ui)) = spawner_q.get(id) else {
+            log::debug!("skipping spawner drag because entity no longer exists");
             return;
         };
         if !ui.enabled {
+            log::debug!(
+                "skipping spawner drag for waymark {:?} because the spawner is disabled",
+                spawner.waymark
+            );
             return;
         }
         commands.spawn(SpawnerBundle {
@@ -96,14 +102,14 @@ impl Spawner {
         entity_commands.remove::<SpawnerBundle>();
 
         let (camera, camera_transform) = camera_q.single();
+        let hit_position = ev.hit.position.unwrap().truncate();
         let translation = camera
-            .viewport_to_world_2d(camera_transform, ui.center)
+            .viewport_to_world_2d(camera_transform, hit_position)
             .unwrap()
             .extend(0.0);
         log::debug!(
-            "spawning new waymark {:?} at {translation} (from ui: {})",
+            "spawner spawning waymark {:?} at {translation} (from hit position: {hit_position})",
             spawner.waymark,
-            ui.center
         );
 
         spawner
@@ -325,7 +331,15 @@ impl Plugin for WaymarkPlugin {
             .add_systems(PostUpdate, Spawner::generate_hits)
             .init_resource::<ExportToClipboard>()
             .register_type::<Spawner>()
-            .register_type::<SpawnerUi>();
+            .register_type::<SpawnerUi>()
+            // Ensure that deferred commands are run after [DragStart] events but before [Drag] events.
+            // This is required to allow entities to transform themselves in response to [DragStart] and still pick up [Drag] the same frame.
+            .add_systems(
+                PreUpdate,
+                apply_deferred
+                    .after(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<DragStart>>::cleanup)
+                    .before(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<Drag>>::build)
+            );
 
         #[allow(unused_mut, unused_assignments)]
         let mut for_test = false;
@@ -356,7 +370,7 @@ mod test {
     use bevy_egui::egui::Pos2;
     use bevy_egui::EguiPlugin;
     use bevy_egui::{egui, EguiContexts};
-    
+
     use bevy_mod_picking::DefaultPickingPlugins;
     use float_eq::assert_float_eq;
 
@@ -502,7 +516,7 @@ mod test {
     }
 
     #[test]
-    #[ignore = "broken due to Drag imprecision"]
+    //#[ignore = "broken due to Drag imprecision"]
     fn spawner_drag() {
         let (mut app, _) = test_app();
 
@@ -515,7 +529,15 @@ mod test {
             button: MouseButton::Left,
             duration: 10.0,
         });
-        app.add_systems(Update, MockDrag::update);
+        app.add_systems(Update, MockDrag::update)
+            .add_systems(Update, log_debug::<Pointer<DragStart>>)
+            .add_systems(Update, log_debug::<Pointer<Drag>>)
+            .add_systems(Update, log_debug::<Pointer<DragEnd>>)
+            .add_systems(Update, log_debug::<CursorMoved>)
+            .add_systems(Update, log_debug::<bevy::input::mouse::MouseButtonInput>)
+            .add_systems(First, || {
+                log::debug!("new tick");
+            });
         for _ in 0..20 {
             app.update();
         }
@@ -525,7 +547,6 @@ mod test {
 
         let mut waymark_q = app.world.query_filtered::<&Transform, With<Waymark>>();
         let transform = waymark_q.single(&mut app.world);
-        log::debug!("{transform:?}");
         assert_float_eq!(transform.translation.x, end_pos.x, abs <= 0.0001,);
         assert_float_eq!(transform.translation.y, end_pos.y, abs <= 0.0001,);
     }

@@ -170,6 +170,7 @@ impl Waymark {
         self,
         mut commands: EntityCommands<'w, 's, 'a>,
     ) -> WaymarkEntityCommands<'w, 's, 'a> {
+        log::debug!("spawning waymark {:?} inplace", self);
         commands.insert((
             self,
             Name::new(self.name()),

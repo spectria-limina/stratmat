@@ -6,6 +6,7 @@ use bevy::{
     window::PrimaryWindow,
 };
 
+use bevy_mod_picking::picking_core::Pickable;
 use itertools::Itertools;
 
 /// Adds a new test camera to the world, configured such that world and viewport coordinate systems are identical.
@@ -36,6 +37,7 @@ pub fn add_test_camera(mut commands: Commands, win_q: Query<&Window, With<Primar
 pub struct DragSurfaceBundle {
     sprite: SpriteBundle,
     drag_surface: crate::cursor::DragSurface,
+    pickable: Pickable,
 }
 
 impl DragSurfaceBundle {
@@ -49,6 +51,7 @@ impl DragSurfaceBundle {
                 transform: Transform::from_translation(rect.center().extend(0.0)),
                 ..default()
             },
+            pickable: Pickable::IGNORE,
             ..default()
         }
     }
@@ -75,7 +78,7 @@ pub struct MockDragState {
 }
 
 impl MockDrag {
-    /// Fire mouse events and update state.
+    /// Fire mouse events and update state. Despawns the [MockDrag] entity once it's complete.
     ///
     /// Panics if multiple [MockDrag]s exist, or if there is not exactly one primary window.
     pub fn update(
@@ -97,33 +100,34 @@ impl MockDrag {
                 });
                 log::debug!("beginning mock drag at {}", drag.start_pos);
             }
-            Ok((_, drag, Some(ref mut state))) => {
-                if state.tick / drag.duration >= 1.0 {
-                    return;
-                }
+            Ok((id, drag, Some(ref mut state))) => {
                 if state.tick == 0.0 {
                     button_ev.send(MouseButtonInput {
                         window: win,
                         button: drag.button,
                         state: ButtonState::Pressed,
                     });
+                    state.tick += 1.0;
+                    return;
                 }
-                state.tick += 1.0;
-                let progress = f32::min(state.tick / drag.duration, 1.0);
-                let position = drag.start_pos.lerp(drag.end_pos, progress);
-                cursor_ev.send(CursorMoved {
-                    window: win,
-                    position,
-                });
-                log::debug!("continuing mock drag to {}", position);
-                if progress >= 1.0 {
+                if state.tick / drag.duration >= 1.0 + 0.0001 {
                     button_ev.send(MouseButtonInput {
                         window: win,
                         button: drag.button,
                         state: ButtonState::Released,
                     });
                     log::debug!("ending mock drag");
+                    commands.entity(id).despawn();
+                    return;
                 }
+                let progress = f32::min(state.tick / drag.duration, 1.0);
+                let position = drag.start_pos.lerp(drag.end_pos, progress);
+                cursor_ev.send(CursorMoved {
+                    window: win,
+                    position,
+                });
+                state.tick += 1.0;
+                log::debug!("continuing mock drag to {}", position);
             }
             Err(QuerySingleError::MultipleEntities(s)) => {
                 panic!("can only process one MockDrag at a time: {s}")
