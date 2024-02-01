@@ -100,6 +100,11 @@ impl Spawner {
             .viewport_to_world_2d(camera_transform, ui.center)
             .unwrap()
             .extend(0.0);
+        log::debug!(
+            "spawning new waymark {:?} at {translation} (from ui: {})",
+            spawner.waymark,
+            ui.center
+        );
 
         spawner
             .waymark
@@ -343,6 +348,7 @@ mod test {
     use super::*;
     use crate::testing::*;
 
+    use bevy::app::ScheduleRunnerPlugin;
     use bevy::render::settings::{RenderCreation, WgpuSettings};
     use bevy::render::RenderPlugin;
     use bevy::window::PrimaryWindow;
@@ -350,6 +356,7 @@ mod test {
     use bevy_egui::egui::Pos2;
     use bevy_egui::EguiPlugin;
     use bevy_egui::{egui, EguiContexts};
+    
     use bevy_mod_picking::DefaultPickingPlugins;
     use float_eq::assert_float_eq;
 
@@ -369,12 +376,16 @@ mod test {
             });
     }
 
-    fn one_spawner(
+    fn spawn_test_entities(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         mut contexts: EguiContexts,
     ) {
         commands.spawn(SpawnerBundle::new(Waymark::A, &asset_server, &mut contexts));
+        commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
+            Vec2::ZERO,
+            Vec2::splat(100.0),
+        )));
     }
 
     // returns the primary window ID and the app itself
@@ -390,14 +401,21 @@ mod test {
                 })
                 .disable::<WinitPlugin>(),
         )
+        // Allow for controlled looping & exit.
+        .add_plugins(ScheduleRunnerPlugin {
+            run_mode: bevy::app::RunMode::Loop { wait: None },
+        })
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultPickingPlugins)
         .add_plugins(WaymarkPlugin::new_for_test())
         .add_systems(Startup, add_test_camera)
-        .add_systems(Startup, one_spawner)
+        .add_systems(Startup, spawn_test_entities)
         .add_systems(Update, draw_test_win)
         .init_resource::<TestWinPos>();
-        // Make sure to update once to initialize the UI.
+        // Make sure to finalize and to update once to initialize the UI.
+        // Don't use app.run() since it'll loop.
+        app.finish();
+        app.cleanup();
         app.update();
 
         let mut win_q = app.world.query_filtered::<Entity, With<PrimaryWindow>>();
@@ -469,7 +487,6 @@ mod test {
             x: hover_x,
             y: hover_y,
         } = ui.hover_pos.unwrap();
-        log::info!("{:?}", (hover_x, hover_y));
         assert_float_eq!(
             hover_x,
             target.x,
@@ -482,5 +499,40 @@ mod test {
             abs <= 0.0001,
             "with {desc}: check ui.hover_pos.y",
         );
+    }
+
+    #[test]
+    #[ignore = "broken due to Drag imprecision"]
+    fn spawner_drag() {
+        let (mut app, _) = test_app();
+
+        let drag = Vec2::splat(50.0);
+        let start_pos = Vec2::splat(WAYMARK_SPAWNER_SIZE / 2.0);
+        let end_pos = start_pos + drag;
+        app.world.spawn(MockDrag {
+            start_pos,
+            end_pos,
+            button: MouseButton::Left,
+            duration: 10.0,
+        });
+        app.add_systems(Update, MockDrag::update);
+        for _ in 0..20 {
+            app.update();
+        }
+
+        let mut spawner_q = app.world.query_filtered::<(), With<Spawner>>();
+        spawner_q.single(&mut app.world);
+
+        let mut waymark_q = app.world.query_filtered::<&Transform, With<Waymark>>();
+        let transform = waymark_q.single(&mut app.world);
+        log::debug!("{transform:?}");
+        assert_float_eq!(transform.translation.x, end_pos.x, abs <= 0.0001,);
+        assert_float_eq!(transform.translation.y, end_pos.y, abs <= 0.0001,);
+    }
+
+    fn log_debug<E: std::fmt::Debug + Event>(mut events: EventReader<E>) {
+        for ev in events.read() {
+            debug!("{ev:?}");
+        }
     }
 }

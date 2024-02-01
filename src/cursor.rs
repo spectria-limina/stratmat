@@ -55,6 +55,7 @@ fn drag_update_transform(
         .viewport_to_world_2d(camera_transform, old_pos_viewport)
         .expect("unable to map cursor position to world coordinates");
     let delta_world = new_pos_world - old_pos_world;
+    log::debug!("updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: {new_pos_viewport}, old_world: {}, delta_world: {delta_world}", transform.translation);
     transform.translation += delta_world.extend(0.0);
 }
 
@@ -91,12 +92,13 @@ pub fn despawn_dropped_oob(
 ) {
     let entity = event.listener();
     if oob_query.contains(entity) {
+        log::debug!("{:?} dropped out of bounds, despawning", entity);
         commands.entity(entity).despawn_recursive()
     }
 }
 
 /// Marker component for entities that can have entities placed on them via dragging.
-#[derive(Debug, Component)]
+#[derive(Debug, Default, Component)]
 pub struct DragSurface;
 
 /// Marker component for out-of-bounds entities.
