@@ -2,7 +2,7 @@
 
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
-use bevy_egui::egui::{TextEdit, Ui};
+use bevy_egui::egui::{Response, TextEdit, Ui};
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 use bevy_mod_picking::backend::{HitData, PointerHits};
 use bevy_mod_picking::prelude::*;
@@ -123,11 +123,21 @@ impl Spawner {
             }
         }
     }
+
+    pub fn setup(
+        mut commands: Commands,
+        asset_server: Res<AssetServer>,
+        mut contexts: EguiContexts,
+    ) {
+        for waymark in enum_iterator::all::<Waymark>() {
+            commands.spawn(SpawnerBundle::new(waymark, &asset_server, &mut contexts));
+        }
+    }
 }
 
 impl SpawnerUi {
     /// Render this entity on the [Ui], updating the [SpawnerUi] component based on egui state.
-    pub fn show(&mut self, ui: &mut egui::Ui, spawner: &Spawner) {
+    pub fn show(&mut self, ui: &mut egui::Ui, spawner: &Spawner) -> Response {
         let resp = ui.add(
             egui::Image::new((
                 spawner.texture_id,
@@ -149,7 +159,8 @@ impl SpawnerUi {
             Some(Vec2::new(x, y))
         } else {
             None
-        }
+        };
+        resp
     }
 }
 
@@ -284,34 +295,183 @@ impl WaymarkWindow {
     }
 
     /// Setup the window.
-    pub fn setup(
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        mut contexts: EguiContexts,
-    ) {
+    pub fn setup(mut commands: Commands) {
         commands.spawn(WaymarkWindow::default());
-        for waymark in enum_iterator::all::<Waymark>() {
-            commands.spawn(SpawnerBundle::new(waymark, &asset_server, &mut contexts));
-        }
     }
 }
 
 /// Plugin for the waymark window.
-pub struct WaymarkPlugin;
+#[derive(Debug, Default, Copy, Clone)]
+pub struct WaymarkPlugin {
+    #[cfg(test)]
+    for_test: bool,
+}
+
+impl WaymarkPlugin {
+    #[cfg(test)]
+    fn new_for_test() -> Self {
+        Self { for_test: true }
+    }
+}
 
 impl Plugin for WaymarkPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, Spawner::extract_ui)
-            .add_systems(Update, WaymarkWindow::draw)
             .add_systems(PostUpdate, Spawner::generate_hits)
-            .add_systems(Startup, WaymarkWindow::setup)
             .init_resource::<ExportToClipboard>()
             .register_type::<Spawner>()
             .register_type::<SpawnerUi>();
+
+        #[allow(unused_mut, unused_assignments)]
+        let mut for_test = false;
+
+        #[cfg(test)]
+        {
+            for_test = self.for_test;
+        }
+
+        if !for_test {
+            app.add_systems(Update, WaymarkWindow::draw)
+                .add_systems(Startup, Spawner::setup)
+                .add_systems(Startup, WaymarkWindow::setup);
+        }
     }
 }
 
-/// Produces a plugin.
-pub fn plugin() -> WaymarkPlugin {
-    WaymarkPlugin
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::*;
+
+    use bevy::render::settings::{RenderCreation, WgpuSettings};
+    use bevy::render::RenderPlugin;
+    use bevy::window::PrimaryWindow;
+    use bevy::winit::WinitPlugin;
+    use bevy_egui::EguiPlugin;
+    use bevy_egui::{egui, EguiContexts};
+    use bevy_mod_picking::DefaultPickingPlugins;
+    use float_eq::assert_float_eq;
+
+    #[derive(Default)]
+    struct TestWinPos(egui::Pos2);
+
+    fn draw_test_win(
+        mut contexts: EguiContexts,
+        mut spawner_q: Query<(&Spawner, &mut SpawnerUi)>,
+        pos: Res<TestWinPos>,
+    ) {
+        let (spawner, ref mut spawner_ui) = spawner_q.iter_mut().next().unwrap();
+        egui::Area::new("test")
+            .fixed_pos(pos.0)
+            .show(contexts.ctx_mut(), |ui| {
+                spawner_ui.show(ui, spawner);
+            });
+    }
+
+    fn one_spawner(
+        mut commands: Commands,
+        asset_server: Res<AssetServer>,
+        mut contexts: EguiContexts,
+    ) {
+        commands.spawn(SpawnerBundle::new(Waymark::A, &asset_server, &mut contexts));
+    }
+
+    // returns the primary window ID and the app itself
+    fn test_app() -> (App, Entity) {
+        let mut app = App::new();
+        app.add_plugins(
+            DefaultPlugins
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        backends: None,
+                        ..default()
+                    }),
+                })
+                .disable::<WinitPlugin>(),
+        )
+        .add_plugins(EguiPlugin)
+        .add_plugins(DefaultPickingPlugins)
+        .add_plugins(WaymarkPlugin::new_for_test())
+        .add_systems(Startup, add_test_camera)
+        .add_systems(Startup, one_spawner)
+        .add_systems(Update, draw_test_win)
+        .init_resource::<TestWinPos>();
+        // Make sure to update once to initialize the UI.
+        app.update();
+
+        let mut win_q = app.world.query_filtered::<Entity, With<PrimaryWindow>>();
+        let primary_window = win_q.single(&app.world);
+        (app, primary_window)
+    }
+
+    #[test]
+    pub fn spawner_center() {
+        let (mut app, _) = test_app();
+
+        let mut ui_q = app.world.query::<&SpawnerUi>();
+        let ui = ui_q.single(&app.world);
+        assert_float_eq!(
+            ui.center.x,
+            ui.center.x + WAYMARK_SPAWNER_SIZE / 2,
+            abs <= 0.0001,
+        );
+        assert_float_eq!(
+            ui.center.y,
+            ui.center.y + WAYMARK_SPAWNER_SIZE / 2,
+            abs <= 0.0001,
+        );
+    }
+
+    #[test]
+    pub fn spawner_hover_pos() {
+        let (mut app, primary_window) = test_app();
+
+        app.world.send_event(CursorMoved {
+            window: primary_window,
+            position: Vec2::new(-100.0, -100.0),
+        });
+        app.update();
+
+        let desc = "cursor at (-100, -100), spawner with top left at (0, 0)";
+
+        let mut ui_q = app.world.query::<&SpawnerUi>();
+        let ui = ui_q.single(&app.world);
+        assert_eq!(
+            ui.hover_pos, None,
+            "with {desc}: ui.hover_pos = {:?}; want None",
+            ui.hover_pos,
+        );
+
+        let target = Vec2::new(20.0, 20.0);
+        app.world.send_event(CursorMoved {
+            window: primary_window,
+            position: target,
+        });
+        app.update();
+
+        let ui = ui_q.single(&app.world);
+        assert!(
+            ui.hover_pos.is_some(),
+            "with {desc}: ui.hover_pos = None; want {:?}",
+            Some(target)
+        );
+
+        let Vec2 {
+            x: hover_x,
+            y: hover_y,
+        } = ui.hover_pos.unwrap();
+        log::info!("{:?}", (hover_x, hover_y));
+        assert_float_eq!(
+            hover_x,
+            target.x,
+            abs <= 0.0001,
+            "with {desc}: check ui.hover_pos.x",
+        );
+        assert_float_eq!(
+            hover_y,
+            target.y,
+            abs <= 0.0001,
+            "with {desc}: check ui.hover_pos.y",
+        );
+    }
 }

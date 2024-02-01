@@ -1968,6 +1968,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "float_eq"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28a80e3145d8ad11ba0995949bbcf48b9df2be62772b3d351ef017dff6ecb853"
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3291,6 +3297,7 @@ dependencies = [
  "bevy_vector_shapes",
  "chrono",
  "enum-iterator",
+ "float_eq",
  "int-enum",
  "itertools",
  "log",

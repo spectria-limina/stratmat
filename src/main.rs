@@ -15,6 +15,9 @@ mod color;
 mod cursor;
 mod waymark;
 
+#[cfg(test)]
+mod testing;
+
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -33,7 +36,7 @@ fn main() {
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
     .add_plugins(cursor::plugin())
-    .add_plugins(waymark::window::plugin())
+    .add_plugins(waymark::window::WaymarkPlugin::default())
     .add_systems(Startup, configure_picker_debug);
 
     #[cfg(debug_assertions)]
