@@ -191,7 +191,7 @@ impl SpawnerBundle {
             name: Name::new(format!("Spawner for {}", waymark.name())),
             spawner: Spawner {
                 waymark,
-                texture_id: contexts.add_image(waymark.asset_handle(&asset_server)),
+                texture_id: contexts.add_image(waymark.asset_handle(asset_server)),
             },
             ui: default(),
             pickable: default(),
@@ -213,13 +213,10 @@ impl WaymarkWindow {
     pub fn draw(
         mut win_q: Query<&mut WaymarkWindow>,
         mut spawner_q: Query<(&mut SpawnerUi, &Spawner)>,
-        _waymark_q: Query<&Waymark>,
-        _camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
         mut contexts: EguiContexts,
         clipboard: Res<EguiClipboard>,
         export_to_clipboard: Res<ExportToClipboard>,
-        _pointer_ev: EventWriter<PointerHits>,
     ) {
         let mut win = win_q.single_mut();
 
@@ -543,10 +540,10 @@ mod test {
         }
 
         let mut spawner_q = app.world.query_filtered::<(), With<Spawner>>();
-        spawner_q.single(&mut app.world);
+        spawner_q.single(&app.world);
 
         let mut waymark_q = app.world.query_filtered::<&Transform, With<Waymark>>();
-        let transform = waymark_q.single(&mut app.world);
+        let transform = waymark_q.single(&app.world);
         assert_float_eq!(transform.translation.x, end_pos.x, abs <= 0.0001,);
         assert_float_eq!(transform.translation.y, end_pos.y, abs <= 0.0001,);
     }

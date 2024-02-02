@@ -68,22 +68,9 @@ pub struct PresetEntry {
 
 /// A placeable marker for players to reference movements during a fight.
 #[repr(u8)]
-#[derive(
-    Copy,
-    Clone,
-    Component,
-    Serialize,
-    Deserialize,
-    Debug,
-    Hash,
-    PartialOrd,
-    Ord,
-    PartialEq,
-    Eq,
-    IntEnum,
-    Sequence,
-    Reflect,
-)]
+#[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Component, Reflect, Serialize, Deserialize)]
+#[derive(IntEnum, Sequence)]
 pub enum Waymark {
     A = 0,
     B = 1,
@@ -97,7 +84,7 @@ pub enum Waymark {
 
 impl Waymark {
     /// Produces the asset path for the image with the letter or number of the waymark.
-    pub fn asset_path(&self) -> &'static str {
+    pub fn asset_path(self) -> &'static str {
         match self {
             Waymark::One => "waymarks/way_1.png",
             Waymark::Two => "waymarks/way_2.png",
@@ -111,12 +98,12 @@ impl Waymark {
     }
 
     /// Retrieves a [Handle] to this image asset with the letter or number of the waymark.
-    pub fn asset_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
+    pub fn asset_handle(self, asset_server: &AssetServer) -> Handle<Image> {
         asset_server.load(self.asset_path())
     }
 
     /// Produces the fill/stroke colour for this waymark.
-    pub fn color(&self) -> Color {
+    pub fn color(self) -> Color {
         match self {
             Waymark::One | Waymark::A => Color::RED,
             Waymark::Two | Waymark::B => Color::YELLOW,
@@ -141,13 +128,13 @@ impl Waymark {
 
     /// Produces a [PresetEntry] corresponding to this waymark,
     /// using the provided [Arena](crate::arena::Arena) center `offset` and the provided [Transform].
-    pub fn to_entry(&self, transform: &Transform, offset: Vec2) -> PresetEntry {
+    pub fn to_entry(self, transform: &Transform, offset: Vec2) -> PresetEntry {
         PresetEntry {
             x: offset.x + transform.translation.x,
             y: 0.0,
             // The entry's Z axis is our negative Y axis.
             z: offset.y - transform.translation.y,
-            id: u8::from(*self),
+            id: u8::from(self),
             active: true,
         }
     }
