@@ -92,8 +92,9 @@ pub fn despawn_dropped_oob(
     oob_query: Query<Entity, With<OutOfBounds>>,
 ) {
     let entity = event.listener();
+    log::trace!("dropping entity {entity:?}");
     if oob_query.contains(entity) {
-        log::debug!("{:?} dropped out of bounds, despawning", entity);
+        log::debug!("{entity:?} dropped out of bounds, despawning");
         commands.entity(entity).despawn_recursive()
     }
 }
@@ -199,10 +200,26 @@ pub struct CursorPlugin;
 
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, apply_oob_alpha);
-        app.add_systems(PostUpdate, remove_oob_alpha);
+        app.add_systems(PostUpdate, apply_oob_alpha)
+            .add_systems(PostUpdate, remove_oob_alpha)
+            // Prevent crashes due to despawned entities
+            .add_systems(
+                PreUpdate,
+                apply_deferred
+                    .after(bevy_picking_core::PickSet::PostFocus)
+                    .before(bevy_eventlistener_core::EventListenerSet),
+            )
+            // Ensure that drag_update_oob is applied before despawn_dropped_oob
+            .add_systems(
+                PreUpdate,
+                noop
+                    .after(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<Drag>>::cleanup)
+                    .before(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<DragEnd>>::build)
+            );
     }
 }
+
+fn noop() {}
 
 pub fn plugin() -> CursorPlugin {
     CursorPlugin

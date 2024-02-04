@@ -20,7 +20,18 @@ mod waymark;
 mod testing;
 
 /// Reimplementation of [DebugPickingMode] for use as a program argument
-#[derive(clap::ValueEnum, Default, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(
+    clap::ValueEnum,
+    Default,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash
+)]
 enum ArgDebugPickingMode {
     /// Debugging disabled
     #[default]
@@ -66,16 +77,18 @@ fn main() -> eyre::Result<()> {
     .add_plugins(EguiPlugin)
     .add_plugins(Shape2dPlugin::default())
     .add_plugins(DefaultPickingPlugins)
-    .insert_resource(args)
-    .insert_resource(WinitSettings::desktop_app())
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
     .add_plugins(cursor::plugin())
     .add_plugins(waymark::window::WaymarkPlugin::default())
+    .insert_resource(WinitSettings::desktop_app())
+    .insert_resource(args)
     .add_systems(Startup, configure_picker_debug);
 
     #[cfg(debug_assertions)]
     app.add_plugins(WorldInspectorPlugin::new());
+
+    //bevy_mod_debugdump::print_schedule_graph(&mut app, PreUpdate);
 
     app.run();
     Ok(())

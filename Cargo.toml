@@ -11,7 +11,9 @@ bevy-inspector-egui = "0.22.1"
 bevy-trait-query = "0.4.0"
 bevy_egui = "0.24.0"
 bevy_eventlistener_core = "0.6.1"
+bevy_mod_debugdump = "0.9.0"
 bevy_mod_picking = { version = "0.17.0", features = ["backend_egui"] }
+bevy_picking_core = "0.17.0"
 bevy_vector_shapes = "0.6.0"
 chrono = "0.4.31"
 clap = { version = "4.4.18", features = ["derive", "env"] }

@@ -885,6 +885,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_debugdump"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4db8601f41ea570b7d32f3177292a608196c59bdf3298001a9e202d5e7439438"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_render",
+ "bevy_utils",
+ "once_cell",
+ "petgraph",
+ "pretty-type-name",
+]
+
+[[package]]
 name = "bevy_mod_picking"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3410,7 +3425,9 @@ dependencies = [
  "bevy-trait-query",
  "bevy_egui 0.24.0",
  "bevy_eventlistener_core",
+ "bevy_mod_debugdump",
  "bevy_mod_picking",
+ "bevy_picking_core",
  "bevy_vector_shapes",
  "chrono",
  "clap",
