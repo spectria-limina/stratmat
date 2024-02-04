@@ -6,6 +6,7 @@ use bevy_egui::EguiPlugin;
 use bevy_mod_picking::debug::DebugPickingMode;
 use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_vector_shapes::prelude::*;
+use clap::Parser as _;
 
 #[cfg(debug_assertions)]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -18,7 +19,40 @@ mod waymark;
 #[cfg(test)]
 mod testing;
 
-fn main() {
+/// Reimplementation of [DebugPickingMode] for use as a program argument
+#[derive(clap::ValueEnum, Default, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+enum ArgDebugPickingMode {
+    /// Debugging disabled
+    #[default]
+    Disabled,
+    /// Pointer debugging enabled
+    Normal,
+    /// Pointer debugging and logspam enabled
+    Noisy,
+}
+
+impl From<ArgDebugPickingMode> for DebugPickingMode {
+    fn from(value: ArgDebugPickingMode) -> Self {
+        match value {
+            ArgDebugPickingMode::Disabled => DebugPickingMode::Disabled,
+            ArgDebugPickingMode::Normal => DebugPickingMode::Normal,
+            ArgDebugPickingMode::Noisy => DebugPickingMode::Noisy,
+        }
+    }
+}
+
+#[derive(clap::Parser, Resource, Clone, Debug)]
+struct Args {
+    #[clap(long, env = "STRATMAT_DEBUG_PICKING")]
+    #[cfg_attr(debug_assertions, clap(default_value = "normal"))]
+    #[cfg_attr(not(debug_assertions), clap(default_value = "disabled"))]
+    /// Debug mode for bevy_mod_picking
+    debug_picking: ArgDebugPickingMode,
+}
+
+fn main() -> eyre::Result<()> {
+    let args = Args::parse();
+
     let mut app = App::new();
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
@@ -32,6 +66,7 @@ fn main() {
     .add_plugins(EguiPlugin)
     .add_plugins(Shape2dPlugin::default())
     .add_plugins(DefaultPickingPlugins)
+    .insert_resource(args)
     .insert_resource(WinitSettings::desktop_app())
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
@@ -43,12 +78,12 @@ fn main() {
     app.add_plugins(WorldInspectorPlugin::new());
 
     app.run();
+    Ok(())
 }
 
-fn configure_picker_debug(mut logging_next_state: ResMut<NextState<DebugPickingMode>>) {
-    logging_next_state.set(if cfg!(debug_assertions) {
-        DebugPickingMode::Normal
-    } else {
-        DebugPickingMode::Disabled
-    })
+fn configure_picker_debug(
+    args: Res<Args>,
+    mut logging_next_state: ResMut<NextState<DebugPickingMode>>,
+) {
+    logging_next_state.set(args.debug_picking.into());
 }
