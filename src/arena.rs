@@ -20,7 +20,7 @@ pub struct Arena {
 impl FromWorld for Arena {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource::<AssetServer>().unwrap();
-        let image_handle = asset_server.load("arenas/p9s.jpg");
+        let image_handle = asset_server.load("arenas/savage/pandaemonium/p9s.webp");
         Self {
             name: "P9S: Anabaseios: The Ninth Circle (Kokytos)",
             image_handle,
