@@ -20,13 +20,23 @@ pub struct Arena {
 impl FromWorld for Arena {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource::<AssetServer>().unwrap();
+        /*
         let image_handle = asset_server.load("arenas/savage/pandaemonium/p9s.webp");
         Self {
-            name: "P9S: Anabaseios: The Ninth Circle (Kokytos)",
+            name: "P9S: Anabaseios: The Ninth Circle — Kokytos",
             image_handle,
-            size: Vec2::new(44.0, 44.0),
+            size: Vec2::splat(44.0),
             map_id: 937,
-            offset: Vec2::new(100.0, 100.0),
+            offset: Vec2::splat(100.0),
+        }
+        */
+        let image_handle = asset_server.load("arenas/ultimate/tea/p1.webp");
+        Self {
+            name: "The Epic of Alexander (Ultimate) — Phase 1: Living Liquid",
+            image_handle,
+            size: Vec2::splat(40.0),
+            map_id: 694,
+            offset: Vec2::splat(100.0),
         }
     }
 }

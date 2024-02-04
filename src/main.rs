@@ -20,18 +20,8 @@ mod waymark;
 mod testing;
 
 /// Reimplementation of [DebugPickingMode] for use as a program argument
-#[derive(
-    clap::ValueEnum,
-    Default,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash
-)]
+#[derive(clap::ValueEnum)]
+#[derive(Default, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 enum ArgDebugPickingMode {
     /// Debugging disabled
     #[default]
