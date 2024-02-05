@@ -30,7 +30,7 @@ impl FromWorld for Arena {
             offset: Vec2::splat(100.0),
         }
         */
-        let image_handle = asset_server.load("arenas/ultimate/tea/p1.webp");
+        let image_handle = asset_server.load("arenas/ultimate/tea/p1.png");
         Self {
             name: "The Epic of Alexander (Ultimate) — Phase 1: Living Liquid",
             image_handle,
