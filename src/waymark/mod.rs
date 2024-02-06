@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
+use crate::arena::ArenaData;
 use crate::cursor::DraggableBundle;
 
 pub mod window;
@@ -207,7 +208,9 @@ pub struct SpawnFromPreset {
 
 impl Command for SpawnFromPreset {
     fn apply(self, world: &mut World) {
-        let arena = world.get_resource::<crate::arena::Arena>().unwrap();
+        let mut arena_q = world.query::<&ArenaData>();
+        // TODO: This will crash if the arena isn't loaded yet.
+        let arena = arena_q.get_single(world).unwrap();
         let mut queue = CommandQueue::default();
         let mut commands = Commands::new(&mut queue, world);
         for (waymark, entry) in &self.preset.waymarks {

@@ -9,8 +9,9 @@ use bevy_mod_picking::prelude::*;
 use itertools::Itertools;
 use std::collections::HashMap;
 
+use crate::arena::ArenaData;
+
 use super::{CommandExts, DespawnAll, Preset, SpawnFromPreset, Waymark};
-use crate::arena::Arena;
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
@@ -282,9 +283,10 @@ impl WaymarkWindow {
     pub fn export_to_clipboard(
         win_q: Query<&WaymarkWindow>,
         waymarks_q: Query<(&Waymark, &Transform)>,
-        arena: Res<Arena>,
+        arena_q: Query<&ArenaData>,
         mut clipboard: ResMut<EguiClipboard>,
     ) {
+        let arena = arena_q.single();
         let preset = Preset {
             name: win_q.single().preset_name.clone(),
             map_id: arena.map_id,

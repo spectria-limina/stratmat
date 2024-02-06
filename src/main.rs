@@ -11,13 +11,13 @@ use clap::Parser as _;
 #[cfg(debug_assertions)]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
+#[cfg(test)]
+mod testing;
+
 mod arena;
 mod color;
 mod cursor;
 mod waymark;
-
-#[cfg(test)]
-mod testing;
 
 /// Reimplementation of [DebugPickingMode] for use as a program argument
 #[derive(clap::ValueEnum)]
@@ -73,6 +73,7 @@ fn main() -> eyre::Result<()> {
     .add_plugins(waymark::window::WaymarkPlugin::default())
     .insert_resource(WinitSettings::desktop_app())
     .insert_resource(args)
+    .add_systems(Startup, spawn_camera)
     .add_systems(Startup, configure_picker_debug);
 
     #[cfg(debug_assertions)]
@@ -82,6 +83,17 @@ fn main() -> eyre::Result<()> {
 
     app.run();
     Ok(())
+}
+
+fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle {
+        projection: OrthographicProjection {
+            near: -1000.0,
+            far: 1000.0,
+            ..default()
+        },
+        ..default()
+    });
 }
 
 fn configure_picker_debug(

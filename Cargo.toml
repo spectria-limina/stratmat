@@ -17,14 +17,17 @@ bevy_picking_core = "0.17.0"
 bevy_vector_shapes = "0.6.0"
 chrono = "0.4.31"
 clap = { version = "4.4.18", features = ["derive", "env"] }
+derive_more = { version = "0.99.17", features = ["from"], default-features = false }
 enum-iterator = "1.5.0"
 eyre = "0.6.12"
 float_eq = "1.0.1"
 int-enum = "1.0.0"
 itertools = "0.12.0"
 log = "0.4.20"
+ron = "0.8.1"
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
+thiserror = "1.0.56"
 tracing = "0.1.40"
 
 # Enable a small amount of optimization in debug mode
