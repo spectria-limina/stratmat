@@ -3,9 +3,9 @@
 //! This module implements support for FFXIV waymarks.
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
-use bevy::ecs::system::{Command, CommandQueue, EntityCommand, EntityCommands};
 use bevy::prelude::*;
 use bevy::window::RequestRedraw;
+use bevy_commandify::{command, entity_command};
 use bevy_mod_picking::prelude::*;
 use bevy_vector_shapes::prelude::*;
 use enum_iterator::Sequence;
@@ -13,7 +13,6 @@ use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
 
 use crate::arena::ArenaData;
 use crate::cursor::DraggableBundle;
@@ -144,207 +143,114 @@ impl Waymark {
     ///
     /// The entities include the `Waymark` entity itself as well as the necessary sprite entities
     /// to render it correctly.
-    ///
-    /// The returned [WaymarkEntityCommands] can be used to configure the resulting waymark.
-    pub fn spawn<'w, 's, 'a>(
-        self,
-        commands: &'a mut Commands<'w, 's>,
-    ) -> WaymarkEntityCommands<'w, 's, 'a> {
-        self.spawn_inplace(commands.spawn_empty())
-    }
-
-    /// Spawns the entities for this waymark with an existing entity ID.
-    fn spawn_inplace<'w, 's, 'a>(
-        self,
-        mut commands: EntityCommands<'w, 's, 'a>,
-    ) -> WaymarkEntityCommands<'w, 's, 'a> {
-        log::debug!("spawning waymark {:?} inplace", self);
-        commands.insert((
-            self,
-            Name::new(self.name()),
-            PickableBundle::default(),
-            DraggableBundle::default(),
-            SpatialBundle::default(),
-        ));
-        commands.add(SpawnChildren);
-        WaymarkEntityCommands(commands)
-    }
-
-    pub fn spawn_from_preset(commands: &mut Commands, preset: Preset) {
-        commands.add(SpawnFromPreset { preset })
-    }
-
-    pub fn despawn_all(commands: &mut Commands) {
-        commands.add(DespawnAll)
+    pub fn spawn<'w, 's, 'a>(self, commands: &'a mut Commands<'w, 's>) {
+        commands.spawn_empty().insert_waymark(self, None);
     }
 }
 
-/// Extension trait for [Commands] to add waymark command functionality.
-trait CommandExts<'w, 's> {
-    /// Spawn a given waymark as by sp
-    fn spawn_waymark<'a>(&'a mut self, waymark: Waymark) -> WaymarkEntityCommands<'w, 's, 'a>;
-    fn spawn_waymarks_from_preset(&mut self, preset: Preset);
-    fn despawn_all_waymarks(&mut self);
-}
-
-impl<'w, 's> CommandExts<'w, 's> for Commands<'w, 's> {
-    fn spawn_waymark<'a>(&'a mut self, waymark: Waymark) -> WaymarkEntityCommands<'w, 's, 'a> {
-        waymark.spawn(self)
-    }
-
-    fn spawn_waymarks_from_preset(&mut self, preset: Preset) {
-        Waymark::spawn_from_preset(self, preset)
-    }
-
-    fn despawn_all_waymarks(&mut self) {
-        Waymark::despawn_all(self)
-    }
-}
-
-/// [Command] to spawn all of the waymarks specified in the given `preset`.
-pub struct SpawnFromPreset {
-    pub preset: Preset,
-}
-
-impl Command for SpawnFromPreset {
-    fn apply(self, world: &mut World) {
-        let mut arena_q = world.query::<&ArenaData>();
-        // TODO: This will crash if the arena isn't loaded yet.
-        let arena = arena_q.get_single(world).unwrap();
-        let mut queue = CommandQueue::default();
-        let mut commands = Commands::new(&mut queue, world);
-        for (waymark, entry) in &self.preset.waymarks {
-            if entry.active {
-                waymark.spawn(&mut commands).with_entry(entry, arena.offset);
-            }
+/// [`Command`](bevy::ecs::system::Command) to spawn all of the waymarks specified in the given `preset`.
+#[command]
+pub fn spawn_waymarks_from_preset(preset: Preset, world: &mut World) {
+    for (waymark, entry) in preset.waymarks {
+        if entry.active {
+            world.spawn_empty().insert_waymark(waymark, Some(entry));
         }
-        queue.apply(world);
     }
 }
 
-/// [Command] to despawn all active waymarks.
-pub struct DespawnAll;
-
-impl Command for DespawnAll {
-    fn apply(self, world: &mut World) {
-        let mut query = world.query_filtered::<Entity, &Waymark>();
-        let entities = query.iter(world).collect_vec();
-        for entity in entities {
-            DespawnRecursive { entity }.apply(world);
-        }
-        world.send_event(RequestRedraw);
+/// [`Command`](bevy::ecs::system::Command) to despawn all active waymarks.
+#[command]
+pub fn despawn_all_waymarks(world: &mut World) {
+    let mut query = world.query_filtered::<Entity, &Waymark>();
+    let entities = query.iter(world).collect_vec();
+    for entity in entities {
+        world.entity_mut(entity).despawn_recursive();
     }
+    world.send_event(RequestRedraw);
 }
 
-/// [Command] to spawn child entities of a `parent` [Waymark] entity.
-struct SpawnChildren;
+/// [`EntityCommand`](bevy::ecs::system::EntityCommand) to insert a waymark's entities.
+///
+/// If a [`PresetEntry`] is provided, it will be used to position the waymark.
+#[entity_command]
+fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Option<PresetEntry>) {
+    log::debug!("inserting waymark {:?} on entity {:?}", waymark, id);
+    let asset_server = world.resource::<AssetServer>();
+    let image = waymark.asset_handle(&asset_server);
 
-impl SpawnChildren {
-    /// Spawns a single shape, circle or rectangle, for this waymark according to the provided
-    /// [ShapeConfig] and bearing the specified `name`.
-    fn spawn_shape(
-        waymark: Waymark,
-        builder: &mut WorldChildBuilder,
-        config: &ShapeConfig,
-        name: &'static str,
-    ) {
-        match waymark {
-            Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => builder.spawn((
-                Name::new(name),
-                ShapeBundle::rect(config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
-            )),
-            Waymark::A | Waymark::B | Waymark::C | Waymark::D => builder.spawn((
-                Name::new(name),
-                ShapeBundle::circle(config, WAYMARK_SIZE / 2.0),
-            )),
-        };
-    }
-}
+    let mut entity = world.entity_mut(id);
+    entity.insert((
+        Name::new(waymark.name()),
+        waymark,
+        PickableBundle::default(),
+        DraggableBundle::default(),
+        SpatialBundle::default(),
+    ));
 
-impl EntityCommand for SpawnChildren {
-    fn apply(self, id: Entity, world: &mut World) {
-        let mut parent = world.entity_mut(id);
-        let waymark = parent.get::<Waymark>().copied().unwrap();
-
-        let asset_server = parent.world().get_resource::<AssetServer>().unwrap();
-        let image = waymark.asset_handle(asset_server);
-
-        parent.with_children(|parent| {
-            parent.spawn((
-                Name::new("Waymark Image"),
-                SpriteBundle {
-                    sprite: Sprite {
-                        custom_size: Some(Vec2::new(
-                            WAYMARK_SIZE * IMAGE_SCALE,
-                            WAYMARK_SIZE * IMAGE_SCALE,
-                        )),
-                        ..default()
-                    },
-                    texture: image,
-                    ..default()
-                },
-            ));
-
-            Self::spawn_shape(
-                waymark,
-                parent,
-                &ShapeConfig {
-                    color: waymark.color().with_a(STROKE_OPACITY),
-                    thickness: STROKE_WIDTH,
-                    hollow: true,
-                    alpha_mode: AlphaMode::Blend,
-                    transform: Transform::from_xyz(0.0, 0.0, -0.1),
-                    ..ShapeConfig::default_2d()
-                },
-                "Waymark Stroke",
-            );
-
-            Self::spawn_shape(
-                waymark,
-                parent,
-                &ShapeConfig {
-                    color: waymark.color().with_a(FILL_OPACITY),
-                    hollow: false,
-                    alpha_mode: AlphaMode::Blend,
-                    transform: Transform::from_xyz(0.0, 0.0, -0.2),
-                    ..ShapeConfig::default_2d()
-                },
-                "Waymark Fill",
-            );
+    if let Some(entry) = entry {
+        let offset = entity.world_scope(|world| {
+            let mut arena_q = world.query::<&ArenaData>();
+            // TODO: This will crash if the arena isn't loaded. Figure out what should actually happen.
+            arena_q.get_single(world).unwrap().offset
         });
-    }
-}
-
-/// A list of commands that will be run to modify a [Waymark] entity.
-/// It supports all methods of a regular [EntityCommands].
-/// All methods apply to the top-level [Waymark] entity, and not to sub-entities.
-pub struct WaymarkEntityCommands<'w, 's, 'a>(pub EntityCommands<'w, 's, 'a>);
-
-impl<'w, 's, 'a> WaymarkEntityCommands<'w, 's, 'a> {
-    /// Apply the position from a [PresetEntry] to this waymark.
-    ///
-    /// Overwrites any previous [Transform].
-    pub fn with_entry(&mut self, entry: &PresetEntry, offset: Vec2) -> &mut Self {
-        self.0.insert(Transform::from_xyz(
+        entity.insert(Transform::from_xyz(
             entry.x - offset.x,
             // The entry's Z axis is our negative Y axis.
             offset.y - entry.z,
             0.0,
         ));
-        self
     }
-}
 
-impl<'w, 's, 'a> Deref for WaymarkEntityCommands<'w, 's, 'a> {
-    type Target = EntityCommands<'w, 's, 'a>;
+    entity.with_children(|parent| {
+        parent.spawn((
+            Name::new("Waymark Image"),
+            SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(
+                        WAYMARK_SIZE * IMAGE_SCALE,
+                        WAYMARK_SIZE * IMAGE_SCALE,
+                    )),
+                    ..default()
+                },
+                texture: image,
+                ..default()
+            },
+        ));
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+        let mut spawn_shape = |name, config| {
+            match waymark {
+                Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => parent.spawn((
+                    Name::new(name),
+                    ShapeBundle::rect(&config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
+                )),
+                Waymark::A | Waymark::B | Waymark::C | Waymark::D => parent.spawn((
+                    Name::new(name),
+                    ShapeBundle::circle(&config, WAYMARK_SIZE / 2.0),
+                )),
+            };
+        };
 
-impl<'w, 's, 'a> DerefMut for WaymarkEntityCommands<'w, 's, 'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
+        spawn_shape(
+            "Waymark Stroke",
+            ShapeConfig {
+                color: waymark.color().with_a(STROKE_OPACITY),
+                thickness: STROKE_WIDTH,
+                hollow: true,
+                alpha_mode: AlphaMode::Blend,
+                transform: Transform::from_xyz(0.0, 0.0, -0.1),
+                ..ShapeConfig::default_2d()
+            },
+        );
+
+        spawn_shape(
+            "Waymark Fill",
+            ShapeConfig {
+                color: waymark.color().with_a(FILL_OPACITY),
+                hollow: false,
+                alpha_mode: AlphaMode::Blend,
+                transform: Transform::from_xyz(0.0, 0.0, -0.2),
+                ..ShapeConfig::default_2d()
+            },
+        );
+    });
 }

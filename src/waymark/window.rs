@@ -11,7 +11,8 @@ use std::collections::HashMap;
 
 use crate::arena::ArenaData;
 
-use super::{CommandExts, DespawnAll, Preset, SpawnFromPreset, Waymark};
+use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
+use crate::waymark::EntityCommandsInsertWaymarkExt;
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
@@ -99,8 +100,8 @@ impl Spawner {
             drag_start: On::<Pointer<DragStart>>::run(Self::drag_start),
         });
 
-        let mut entity_commands = commands.entity(id);
-        entity_commands.remove::<SpawnerBundle>();
+        let mut entity = commands.entity(id);
+        entity.remove::<SpawnerBundle>();
 
         let (camera, camera_transform) = camera_q.single();
         let hit_position = ev.hit.position.unwrap().truncate();
@@ -113,10 +114,8 @@ impl Spawner {
             spawner.waymark,
         );
 
-        spawner
-            .waymark
-            .spawn_inplace(entity_commands)
-            .insert(Transform::from_translation(translation));
+        entity.insert_waymark(spawner.waymark, None);
+        entity.insert(Transform::from_translation(translation));
     }
 
     /// System that takes hover data from the UI and uses it to generate pointer events.
@@ -233,8 +232,8 @@ impl WaymarkWindow {
                         match serde_json::from_str::<Preset>(&contents) {
                             Ok(preset) => {
                                 win.preset_name = preset.name.clone();
-                                commands.add(DespawnAll);
-                                commands.add(SpawnFromPreset { preset });
+                                commands.despawn_all_waymarks();
+                                commands.spawn_waymarks_from_preset(preset);
                                 log::info!(
                                     "Imported waymark preset '{}' from the clipboard",
                                     win.preset_name
