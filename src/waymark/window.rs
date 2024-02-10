@@ -1,17 +1,16 @@
 //! Waymark tray and associated code.
 
-use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 use bevy_egui::egui::{Response, TextEdit, Ui};
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 use bevy_mod_picking::backend::{HitData, PointerHits};
 use bevy_mod_picking::prelude::*;
 use itertools::Itertools;
-use std::collections::HashMap;
-
-use crate::arena::ArenaData;
 
 use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
+use crate::arena::ArenaData;
+use crate::systems::RegistryExt;
 use crate::waymark::EntityCommandsInsertWaymarkExt;
 
 /// The size of waymark spawner, in pixels.
@@ -20,22 +19,6 @@ const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
 const WAYMARK_SPAWNER_ALPHA: u8 = 230;
 /// The alpha (out of 255) of a disabled waymark spawner widget.
 const WAYMARK_SPAWNER_DISABLED_ALPHA: u8 = 25;
-
-#[derive(Debug, Resource)]
-/// Resource storing the ID of [WaymarkWindow::export_to_clipboard].
-pub struct ExportToClipboard(SystemId);
-
-impl FromWorld for ExportToClipboard {
-    fn from_world(world: &mut World) -> Self {
-        Self(world.register_system(WaymarkWindow::export_to_clipboard))
-    }
-}
-
-impl ExportToClipboard {
-    fn id(&self) -> SystemId {
-        self.0
-    }
-}
 
 /// An entity that can be clicked & dragged to spawn a waymark.
 ///
@@ -216,7 +199,6 @@ impl WaymarkWindow {
         mut commands: Commands,
         mut contexts: EguiContexts,
         clipboard: Res<EguiClipboard>,
-        export_to_clipboard: Res<ExportToClipboard>,
     ) {
         let mut win = win_q.single_mut();
 
@@ -248,7 +230,7 @@ impl WaymarkWindow {
                     }
                 }
                 if ui.button("Export").clicked() {
-                    commands.run_system(export_to_clipboard.id())
+                    commands.run(Self::export_to_clipboard)
                 }
                 if ui.button("Clear").clicked() {
                     commands.despawn_all_waymarks()
@@ -327,7 +309,7 @@ impl Plugin for WaymarkPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, Spawner::extract_ui)
             .add_systems(PostUpdate, Spawner::generate_hits)
-            .init_resource::<ExportToClipboard>()
+            .register(WaymarkWindow::export_to_clipboard)
             .register_type::<Spawner>()
             .register_type::<SpawnerUi>()
             // Ensure that deferred commands are run after [DragStart] events but before [Drag] events.

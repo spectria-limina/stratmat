@@ -17,6 +17,7 @@ mod testing;
 mod arena;
 mod color;
 mod cursor;
+mod systems;
 mod waymark;
 
 /// Reimplementation of [DebugPickingMode] for use as a program argument

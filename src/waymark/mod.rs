@@ -4,6 +4,7 @@
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 use bevy::window::RequestRedraw;
 use bevy_commandify::{command, entity_command};
 use bevy_mod_picking::prelude::*;
@@ -12,7 +13,6 @@ use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::arena::ArenaData;
 use crate::cursor::DraggableBundle;
