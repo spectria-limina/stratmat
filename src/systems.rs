@@ -20,7 +20,7 @@ impl RegistryExt for World {
                 .0
                 .try_insert(name.clone(), system_id)
                 .expect(&format!("Duplicate registration of system {name}"));
-            log::info!("Registered system {name}")
+            info!("Registered system {name}")
         });
         self
     }

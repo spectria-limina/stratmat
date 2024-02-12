@@ -12,7 +12,7 @@ use itertools::Itertools;
 /// Adds a new test camera to the world, configured such that world and viewport coordinate systems are identical.
 pub fn add_test_camera(mut commands: Commands, win_q: Query<&Window, With<PrimaryWindow>>) {
     let win_rect = Rect::new(0.0, 0.0, win_q.single().width(), win_q.single().height());
-    log::debug!(
+    debug!(
         "spawning test camera: dimensions: {}, position: {}",
         win_rect.size(),
         win_rect.center(),
@@ -98,7 +98,7 @@ impl MockDrag {
                     window: win,
                     position: drag.start_pos,
                 });
-                log::debug!("beginning mock drag at {}", drag.start_pos);
+                debug!("beginning mock drag at {}", drag.start_pos);
             }
             Ok((id, drag, Some(ref mut state))) => {
                 if state.tick == 0.0 {
@@ -116,7 +116,7 @@ impl MockDrag {
                         button: drag.button,
                         state: ButtonState::Released,
                     });
-                    log::debug!("ending mock drag");
+                    debug!("ending mock drag");
                     commands.entity(id).despawn();
                     return;
                 }
@@ -127,7 +127,7 @@ impl MockDrag {
                     position,
                 });
                 state.tick += 1.0;
-                log::debug!("continuing mock drag to {}", position);
+                debug!("continuing mock drag to {}", position);
             }
             Err(QuerySingleError::MultipleEntities(s)) => {
                 panic!("can only process one MockDrag at a time: {s}")
@@ -140,7 +140,7 @@ impl MockDrag {
 #[track_caller]
 pub fn debug_entities(world: &World) {
     for e in world.iter_entities() {
-        log::debug!(
+        debug!(
             "{:?}: {:?}",
             e.id(),
             world

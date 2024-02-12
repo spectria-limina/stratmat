@@ -31,7 +31,7 @@ pub fn drag_listener(
     camera_q: Query<(&Camera, &GlobalTransform)>,
     surface_q: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
 ) {
-    log::trace!("drag_listener");
+    trace!("drag_listener");
     let Ok((entity, mut transform)) = transform_q.get_mut(event.listener()) else {
         return;
     };
@@ -56,7 +56,7 @@ fn drag_update_transform(
         .viewport_to_world_2d(camera_transform, old_pos_viewport)
         .expect("unable to map cursor position to world coordinates");
     let delta_world = new_pos_world - old_pos_world;
-    log::debug!("updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: {new_pos_viewport}, old_world: {}, delta_world: {delta_world}", transform.translation);
+    debug!("updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: {new_pos_viewport}, old_world: {}, delta_world: {delta_world}", transform.translation);
     transform.translation += delta_world.extend(0.0);
 }
 
@@ -92,9 +92,9 @@ pub fn despawn_dropped_oob(
     oob_query: Query<Entity, With<OutOfBounds>>,
 ) {
     let entity = event.listener();
-    log::trace!("dropping entity {entity:?}");
+    debug!("ending drag on {entity:?}");
     if oob_query.contains(entity) {
-        log::debug!("{entity:?} dropped out of bounds, despawning");
+        debug!("{entity:?} dropped out of bounds, despawning");
         commands.entity(entity).despawn_recursive()
     }
 }

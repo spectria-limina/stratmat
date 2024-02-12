@@ -62,17 +62,14 @@ impl Spawner {
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
-        log::trace!("{}::Spawner::drag_start", module_path!());
         let id = ev.listener();
+        debug!("starting drag on spawner {id:?}");
         let Ok((spawner, ui)) = spawner_q.get(id) else {
-            log::debug!("skipping spawner drag because entity no longer exists");
+            debug!("but it doesn't exist");
             return;
         };
         if !ui.enabled {
-            log::debug!(
-                "skipping spawner drag for waymark {:?} because the spawner is disabled",
-                spawner.waymark
-            );
+            debug!("but it's disabled");
             return;
         }
         commands.spawn(SpawnerBundle {
@@ -92,7 +89,7 @@ impl Spawner {
             .viewport_to_world_2d(camera_transform, hit_position)
             .unwrap()
             .extend(0.0);
-        log::debug!(
+        debug!(
             "spawner spawning waymark {:?} at {translation} (from hit position: {hit_position})",
             spawner.waymark,
         );
@@ -216,17 +213,17 @@ impl WaymarkWindow {
                                 win.preset_name = preset.name.clone();
                                 commands.despawn_all_waymarks();
                                 commands.spawn_waymarks_from_preset(preset);
-                                log::info!(
+                                info!(
                                     "Imported waymark preset '{}' from the clipboard",
                                     win.preset_name
                                 );
                             }
                             Err(e) => {
-                                log::info!("Unable to import waymark preset: {}", e);
+                                info!("Unable to import waymark preset: {}", e);
                             }
                         }
                     } else {
-                        log::info!("Unable to import waymark preset: clipboard is empty")
+                        info!("Unable to import waymark preset: clipboard is empty")
                     }
                 }
                 if ui.button("Export").clicked() {
@@ -279,9 +276,9 @@ impl WaymarkWindow {
         match serde_json::to_string(&preset) {
             Ok(json) => {
                 clipboard.set_contents(&json);
-                log::info!("Exported waymark preset '{}' to the clipboard", preset.name)
+                info!("Exported waymark preset '{}' to the clipboard", preset.name)
             }
-            Err(e) => log::error!("Unable to serialize waymark preset for export: {e}"),
+            Err(e) => error!("Unable to serialize waymark preset for export: {e}"),
         }
     }
 
@@ -516,7 +513,7 @@ mod test {
             .add_systems(Update, log_debug::<CursorMoved>)
             .add_systems(Update, log_debug::<bevy::input::mouse::MouseButtonInput>)
             .add_systems(First, || {
-                log::debug!("new tick");
+                debug!("new tick");
             });
         for _ in 0..20 {
             app.update();

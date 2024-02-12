@@ -74,10 +74,9 @@ impl AssetLoader for ArenaLoader {
                 .parent()
                 .unwrap_or_else(|| "".into())
                 .resolve(&data.background_path)?;
-            log::debug!(
+            debug!(
                 "for arena {}: loading background image: {}",
-                data.name,
-                background_path
+                data.name, background_path
             );
             Ok(Arena {
                 data,
