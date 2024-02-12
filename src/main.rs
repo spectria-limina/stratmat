@@ -3,13 +3,18 @@
 use bevy::prelude::*;
 use bevy::winit::WinitSettings;
 use bevy_egui::EguiPlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_picking::debug::DebugPickingMode;
 use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_vector_shapes::prelude::*;
-use clap::Parser as _;
-
-#[cfg(debug_assertions)]
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_xpbd_2d::{
+    plugins::{
+        collision::narrow_phase::NarrowPhaseConfig, IntegratorPlugin, PhysicsDebugPlugin,
+        PhysicsPlugins, SleepingPlugin, SolverPlugin,
+    },
+    prelude::PhysicsLayer,
+};
+use clap::{ArgAction, Parser as _};
 
 #[cfg(test)]
 mod testing;
@@ -19,6 +24,17 @@ mod color;
 mod cursor;
 mod systems;
 mod waymark;
+
+/// Collision layers.
+#[derive(PhysicsLayer)]
+pub enum Layer {
+    /// Entities on this layer can have entities dragged onto them.
+    ///
+    /// See `mod` [`cursor`].
+    DragSurface,
+    /// Entities on this layer are currently being dragged.
+    Dragged,
+}
 
 /// Reimplementation of [DebugPickingMode] for use as a program argument
 #[derive(clap::ValueEnum)]
@@ -45,42 +61,59 @@ impl From<ArgDebugPickingMode> for DebugPickingMode {
 
 #[derive(clap::Parser, Resource, Clone, Debug)]
 struct Args {
-    #[clap(long, env = "STRATMAT_DEBUG_PICKING")]
-    #[cfg_attr(debug_assertions, clap(default_value = "normal"))]
-    #[cfg_attr(not(debug_assertions), clap(default_value = "disabled"))]
+    #[clap(long, env = "STRATMAT_DEBUG_PICKING", default_value = "disabled")]
     /// Debug mode for bevy_mod_picking
     debug_picking: ArgDebugPickingMode,
+    /// Debug mode for the physics engine
+    #[clap(long, env = "STRATMAT_DEBUG_PHYSICS", action = ArgAction::Set, default_value_t = false)]
+    debug_physics: bool,
+    #[clap(long, env = "STRATMAT_DEBUG_PICKING", action = ArgAction::Set, default_value_t = cfg!(debug_assertions))]
+    /// Control if the egui inspector is enabled or not
+    debug_inspector: bool,
 }
 
 fn main() -> eyre::Result<()> {
     let args = Args::parse();
 
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Stratmat".into(),
-            fit_canvas_to_parent: true,
-            prevent_default_event_handling: false,
+    app.insert_resource(args.clone())
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Stratmat".into(),
+                fit_canvas_to_parent: true,
+                prevent_default_event_handling: false,
+                ..default()
+            }),
             ..default()
-        }),
-        ..default()
-    }))
-    .add_plugins(EguiPlugin)
-    .add_plugins(Shape2dPlugin::default())
-    .add_plugins(DefaultPickingPlugins)
-    .add_plugins(arena::plugin())
-    .add_plugins(color::plugin())
-    .add_plugins(cursor::plugin())
-    .add_plugins(waymark::window::WaymarkUiPlugin::default())
-    .insert_resource(WinitSettings::desktop_app())
-    .insert_resource(args)
-    .add_systems(Startup, spawn_camera)
-    .add_systems(Startup, configure_picker_debug);
+        }))
+        .add_plugins(EguiPlugin)
+        .add_plugins(Shape2dPlugin::default())
+        .add_plugins(DefaultPickingPlugins)
+        .add_plugins(
+            PhysicsPlugins::default()
+                .build()
+                .disable::<IntegratorPlugin>()
+                .disable::<SolverPlugin>()
+                .disable::<SleepingPlugin>(),
+        )
+        // FIXME: Remove this once Jondolf/bevy_xpbd#224 is fixed.
+        .insert_resource(NarrowPhaseConfig {
+            prediction_distance: 0.0,
+        })
+        .add_plugins(arena::plugin())
+        .add_plugins(color::plugin())
+        .add_plugins(cursor::plugin())
+        .add_plugins(waymark::window::WaymarkUiPlugin::default())
+        .insert_resource(WinitSettings::desktop_app())
+        .add_systems(Startup, spawn_camera)
+        .add_systems(Startup, configure_picker_debug);
 
-    #[cfg(debug_assertions)]
-    app.add_plugins(WorldInspectorPlugin::new());
-
-    //bevy_mod_debugdump::print_schedule_graph(&mut app, PreUpdate);
+    if args.debug_inspector {
+        app.add_plugins(WorldInspectorPlugin::new());
+    }
+    if args.debug_physics {
+        app.add_plugins(PhysicsDebugPlugin::default());
+    }
 
     app.run();
     Ok(())

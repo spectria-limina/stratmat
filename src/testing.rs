@@ -5,9 +5,11 @@ use bevy::{
     render::camera::ScalingMode,
     window::PrimaryWindow,
 };
-
 use bevy_mod_picking::picking_core::Pickable;
+use bevy_xpbd_2d::prelude::*;
 use itertools::Itertools;
+
+use crate::Layer;
 
 /// Adds a new test camera to the world, configured such that world and viewport coordinate systems are identical.
 pub fn add_test_camera(mut commands: Commands, win_q: Query<&Window, With<PrimaryWindow>>) {
@@ -36,8 +38,9 @@ pub fn add_test_camera(mut commands: Commands, win_q: Query<&Window, With<Primar
 #[derive(Bundle, Default)]
 pub struct DragSurfaceBundle {
     sprite: SpriteBundle,
-    drag_surface: crate::cursor::DragSurface,
     pickable: Pickable,
+    collider: Collider,
+    layers: CollisionLayers,
 }
 
 impl DragSurfaceBundle {
@@ -52,6 +55,8 @@ impl DragSurfaceBundle {
                 ..default()
             },
             pickable: Pickable::IGNORE,
+            collider: Collider::cuboid(rect.width(), rect.height()),
+            layers: CollisionLayers::all_masks::<Layer>().add_group(Layer::DragSurface),
             ..default()
         }
     }

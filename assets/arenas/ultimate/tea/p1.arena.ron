@@ -5,4 +5,5 @@
     map_id: 693,
     size: Vec2(40.0, 40.0),
     offset: Vec2(100.0, 100.0),
+    shape: Circle(20.0),
 )

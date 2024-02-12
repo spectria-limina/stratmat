@@ -5,10 +5,12 @@ use bevy::{
     prelude::*,
     render::camera::ScalingMode,
 };
+use bevy_picking_core::Pickable;
+use bevy_xpbd_2d::prelude::*;
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::cursor::DragSurface;
+use crate::Layer;
 
 /// A list of all the supported maps, used to hardcode asset paths.
 ///
@@ -26,6 +28,24 @@ impl Map {
     }
 }
 
+/// Quick and dirty enum to support arena collision shapes until something better comes along.
+///
+/// TODO: is there any hope of us ever eliminating this kind of type?
+#[derive(Reflect, Copy, Clone, PartialEq, Debug, Deserialize)]
+pub enum ArenaShape {
+    Rect(f32, f32),
+    Circle(f32),
+}
+
+impl From<ArenaShape> for Collider {
+    fn from(value: ArenaShape) -> Self {
+        match value {
+            ArenaShape::Rect(width, height) => Collider::cuboid(width, height),
+            ArenaShape::Circle(radius) => Collider::ball(radius),
+        }
+    }
+}
+
 #[derive(Component, Reflect, Clone, Debug, Deserialize)]
 pub struct ArenaData {
     pub name: String,
@@ -39,6 +59,8 @@ pub struct ArenaData {
     /// The Y-coordinate in stratmat corresponds to the Z-coordinate in FFXIV.
     /// Used for import/export only; internally the origin is always the center.
     pub offset: Vec2,
+    /// The shape of the actual usuable arena surface, inside the (death)wall.
+    pub shape: ArenaShape,
 }
 
 #[derive(Default, Copy, Clone, Debug)]
@@ -112,6 +134,39 @@ const ARENA_VIEWPORT_SCALE: f32 = 1.1;
 /// Our default viewport is (-1000.0, 1000.0), so make sure we are ever so slightly inside that.
 const ARENA_BACKGROUND_Z: f32 = -999.0;
 
+/// Bundle of components for the arena background.
+#[derive(Bundle)]
+pub struct ArenaBackgroundBundle {
+    name: Name,
+    data: ArenaData,
+    sprite: SpriteBundle,
+    collider: Collider,
+    layers: CollisionLayers,
+    pickable: Pickable,
+}
+
+impl ArenaBackgroundBundle {
+    pub fn new(data: ArenaData, texture: Handle<Image>) -> Self {
+        Self {
+            name: format!("{} Background", data.short_name).into(),
+            sprite: SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(data.size),
+                    ..default()
+                },
+                texture,
+                transform: Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
+                ..default()
+            },
+            collider: data.shape.into(),
+            layers: CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
+            pickable: Pickable::IGNORE,
+            // Put this last so the borrow checker is happy!
+            data,
+        }
+    }
+}
+
 impl ArenaBackground {
     pub fn handle_events(
         q: Query<(Entity, &Handle<Arena>), With<ArenaBackground>>,
@@ -126,24 +181,14 @@ impl ArenaBackground {
                 | AssetEvent::Modified { id: arena_id } => {
                     for (id, handle) in q.iter().filter(|(_, handle)| handle.id() == *arena_id) {
                         if let Some(arena) = arenas.get(handle) {
-                            commands.entity(id).insert((
-                                Name::new(format!("Arena Background of {}", arena.data.short_name)),
-                                arena.data.clone(),
-                                DragSurface,
-                                SpriteBundle {
-                                    sprite: Sprite {
-                                        custom_size: Some(arena.data.size),
-                                        ..default()
-                                    },
-                                    texture: arena.background_image.clone(),
-                                    transform: Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
-                                    ..default()
-                                },
-                            ));
                             camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
                                 min_width: arena.data.size.x * ARENA_VIEWPORT_SCALE,
                                 min_height: arena.data.size.y * ARENA_VIEWPORT_SCALE,
                             };
+                            commands.entity(id).insert(ArenaBackgroundBundle::new(
+                                arena.data.clone(),
+                                arena.background_image.clone(),
+                            ));
                         }
                     }
                 }

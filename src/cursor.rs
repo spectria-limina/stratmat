@@ -1,15 +1,19 @@
 //! Utilities for working with cursor manipulation.
 
-use bevy::{prelude::*, render::primitives::Aabb};
+use std::fmt::Debug;
+
+use bevy::prelude::*;
 use bevy_commandify::entity_command;
 use bevy_mod_picking::prelude::*;
+use bevy_xpbd_2d::prelude::*;
 
 use crate::color::HasColor;
+use crate::Layer;
 
 /// The factor to apply to a sprite's alpha channel when it is dragged out of bounds.
 const OOB_ALPHA_FACTOR: f32 = 0.1;
 
-/// Callback to add the [`Dragged`] component to newly-dragged entities.
+/// Callback to add the update collision mask and add the [`Dragged`] component to newly-dragged entities.
 pub fn on_drag_start(event: Listener<Pointer<DragStart>>, mut commands: Commands) {
     let id = event.listener();
     debug!("dragging {id:?}");
@@ -30,6 +34,13 @@ pub fn start_drag(id: Entity, world: &mut World) {
     if !entity.contains::<Draggable>() {
         debug!("but it isn't draggable");
         return;
+    }
+    if let Some(mut layers) = entity.get_mut::<CollisionLayers>() {
+        *layers = layers
+            .add_group(Layer::Dragged)
+            .add_mask(Layer::DragSurface);
+    } else {
+        entity.insert(CollisionLayers::new([Layer::Dragged], [Layer::DragSurface]));
     }
     entity.insert(Dragged);
 }
@@ -65,20 +76,18 @@ pub fn on_drag(
 }
 
 fn drag_update_oob(
-    q: Query<(Entity, &Transform), With<Dragged>>,
-    surface_q: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
+    q: Query<(Entity, &CollidingEntities), With<Dragged>>,
+    surface_q: Query<&CollisionLayers>,
     mut commands: Commands,
 ) {
-    for (id, transform) in &q {
+    for (id, collisions) in &q {
         let mut on_surface = false;
-        for (surface_aabb, surface_transform) in &surface_q {
-            let surface_translation = surface_transform.translation().xy();
-            let surface_rect = Rect::from_corners(
-                surface_aabb.min().xy() + surface_translation,
-                surface_aabb.max().xy() + surface_translation,
-            );
-            if surface_rect.contains(transform.translation.xy()) {
-                on_surface = true;
+        for &surface_id in collisions.iter() {
+            if let Ok(layers) = surface_q.get(surface_id) {
+                if layers.contains_group(Layer::DragSurface) {
+                    on_surface = true;
+                    break;
+                }
             }
         }
 
@@ -93,12 +102,12 @@ fn drag_update_oob(
 /// When the listener entity is dropped [`OutOfBounds`], despawn it and its children, otherwise undoes [`on_drag_start`].
 pub fn on_drag_end(
     event: Listener<Pointer<DragEnd>>,
-    q: Query<Has<OutOfBounds>>,
+    mut q: Query<(&mut CollisionLayers, Has<OutOfBounds>)>,
     mut commands: Commands,
 ) {
     let id = event.listener();
     debug!("ending drag on {id:?}");
-    let Ok(oob) = q.get(id) else {
+    let Ok((mut layers, oob)) = q.get_mut(id) else {
         debug!("but it doesn't exist");
         return;
     };
@@ -106,13 +115,12 @@ pub fn on_drag_end(
         debug!("{id:?} dropped out of bounds, despawning");
         commands.entity(id).despawn_recursive();
     } else {
+        *layers = layers
+            .remove_mask(Layer::DragSurface)
+            .remove_group(Layer::Dragged);
         commands.entity(id).remove::<Dragged>();
     }
 }
-
-#[derive(Component, Copy, Clone, Default, Debug)]
-/// Marker component for drag surfaces.
-pub struct DragSurface;
 
 #[derive(Component, Copy, Clone, Default, Debug)]
 /// Marker component for draggable entities.

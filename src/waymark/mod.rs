@@ -9,6 +9,7 @@ use bevy::window::RequestRedraw;
 use bevy_commandify::{command, entity_command};
 use bevy_mod_picking::prelude::*;
 use bevy_vector_shapes::prelude::*;
+use bevy_xpbd_2d::prelude::*;
 use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
@@ -192,6 +193,7 @@ struct WaymarkBundle {
     pickable: PickableBundle,
     draggable: DraggableBundle,
     spatial: SpatialBundle,
+    collider: Collider,
 }
 
 impl WaymarkBundle {
@@ -202,6 +204,11 @@ impl WaymarkBundle {
             pickable: PickableBundle::default(),
             draggable: DraggableBundle::default(),
             spatial: SpatialBundle::default(),
+            collider: if waymark.is_square() {
+                Collider::cuboid(WAYMARK_SIZE, WAYMARK_SIZE)
+            } else {
+                Collider::ball(WAYMARK_SIZE / 2.0)
+            },
         }
     }
 }
