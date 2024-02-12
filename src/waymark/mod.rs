@@ -112,6 +112,22 @@ impl Waymark {
         }
     }
 
+    /// Produces true if this waymark is a circle.
+    pub fn is_circle(self) -> bool {
+        match self {
+            Waymark::A | Waymark::B | Waymark::C | Waymark::D => true,
+            _ => false,
+        }
+    }
+
+    /// Produces true if this waymark is a square.
+    pub fn is_square(self) -> bool {
+        match self {
+            Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => true,
+            _ => false,
+        }
+    }
+
     /// Produces a name suitable for use as an entity label.
     fn name(self) -> &'static str {
         match self {
@@ -169,23 +185,38 @@ pub fn despawn_all_waymarks(world: &mut World) {
     world.send_event(RequestRedraw);
 }
 
+#[derive(Bundle)]
+struct WaymarkBundle {
+    name: Name,
+    waymark: Waymark,
+    pickable: PickableBundle,
+    draggable: DraggableBundle,
+    spatial: SpatialBundle,
+}
+
+impl WaymarkBundle {
+    fn new(waymark: Waymark) -> Self {
+        Self {
+            name: Name::new(waymark.name()),
+            waymark,
+            pickable: PickableBundle::default(),
+            draggable: DraggableBundle::default(),
+            spatial: SpatialBundle::default(),
+        }
+    }
+}
+
 /// [`EntityCommand`](bevy::ecs::system::EntityCommand) to insert a waymark's entities.
 ///
 /// If a [`PresetEntry`] is provided, it will be used to position the waymark.
 #[entity_command]
-fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Option<PresetEntry>) {
-    log::debug!("inserting waymark {:?} on entity {:?}", waymark, id);
+pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Option<PresetEntry>) {
+    debug!("inserting waymark {:?} on entity {:?}", waymark, id);
     let asset_server = world.resource::<AssetServer>();
     let image = waymark.asset_handle(&asset_server);
 
     let mut entity = world.entity_mut(id);
-    entity.insert((
-        Name::new(waymark.name()),
-        waymark,
-        PickableBundle::default(),
-        DraggableBundle::default(),
-        SpatialBundle::default(),
-    ));
+    entity.insert(WaymarkBundle::new(waymark));
 
     if let Some(entry) = entry {
         let offset = entity.world_scope(|world| {
@@ -218,15 +249,16 @@ fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Option
         ));
 
         let mut spawn_shape = |name, config| {
-            match waymark {
-                Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => parent.spawn((
+            if waymark.is_square() {
+                parent.spawn((
                     Name::new(name),
                     ShapeBundle::rect(&config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
-                )),
-                Waymark::A | Waymark::B | Waymark::C | Waymark::D => parent.spawn((
+                ));
+            } else {
+                parent.spawn((
                     Name::new(name),
                     ShapeBundle::circle(&config, WAYMARK_SIZE / 2.0),
-                )),
+                ));
             };
         };
 
