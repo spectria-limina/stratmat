@@ -293,19 +293,19 @@ impl WaymarkWindow {
 
 /// Plugin for the waymark window.
 #[derive(Debug, Default, Copy, Clone)]
-pub struct WaymarkPlugin {
+pub struct WaymarkUiPlugin {
     #[cfg(test)]
     for_test: bool,
 }
 
-impl WaymarkPlugin {
+impl WaymarkUiPlugin {
     #[cfg(test)]
     fn new_for_test() -> Self {
         Self { for_test: true }
     }
 }
 
-impl Plugin for WaymarkPlugin {
+impl Plugin for WaymarkUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, Spawner::extract_ui)
             .add_systems(PostUpdate, Spawner::generate_hits)
@@ -401,7 +401,7 @@ mod test {
         })
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultPickingPlugins)
-        .add_plugins(WaymarkPlugin::new_for_test())
+        .add_plugins(WaymarkUiPlugin::new_for_test())
         .add_systems(Startup, add_test_camera)
         .add_systems(Startup, spawn_test_entities)
         .add_systems(Update, draw_test_win)

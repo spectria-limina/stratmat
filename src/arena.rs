@@ -163,7 +163,10 @@ impl Plugin for ArenaPlugin {
             .register_type::<Arena>()
             .register_type::<ArenaData>()
             .init_asset_loader::<ArenaLoader>()
-            .add_systems(First, ArenaBackground::handle_events)
+            .add_systems(
+                First,
+                ArenaBackground::handle_events.run_if(on_event::<AssetEvent<Arena>>()),
+            )
             .add_systems(Startup, spawn_tea_p1);
     }
 }

@@ -71,7 +71,7 @@ fn main() -> eyre::Result<()> {
     .add_plugins(arena::plugin())
     .add_plugins(color::plugin())
     .add_plugins(cursor::plugin())
-    .add_plugins(waymark::window::WaymarkPlugin::default())
+    .add_plugins(waymark::window::WaymarkUiPlugin::default())
     .insert_resource(WinitSettings::desktop_app())
     .insert_resource(args)
     .add_systems(Startup, spawn_camera)

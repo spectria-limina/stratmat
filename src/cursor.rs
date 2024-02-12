@@ -200,8 +200,8 @@ pub struct CursorPlugin;
 
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, apply_oob_alpha)
-            .add_systems(PostUpdate, remove_oob_alpha)
+        app.add_systems(PostUpdate, apply_oob_alpha.run_if(any_with_component::<OutOfBounds>()))
+            .add_systems(PostUpdate, remove_oob_alpha.run_if(any_component_removed::<OutOfBounds>()))
             // Prevent crashes due to despawned entities
             .add_systems(
                 PreUpdate,
@@ -212,14 +212,12 @@ impl Plugin for CursorPlugin {
             // Ensure that drag_update_oob is applied before despawn_dropped_oob
             .add_systems(
                 PreUpdate,
-                noop
+                IntoSystem::into_system(||{})
                     .after(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<Drag>>::cleanup)
                     .before(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<DragEnd>>::build)
             );
     }
 }
-
-fn noop() {}
 
 pub fn plugin() -> CursorPlugin {
     CursorPlugin
