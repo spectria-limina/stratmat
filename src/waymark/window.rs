@@ -10,6 +10,7 @@ use itertools::Itertools;
 
 use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
 use crate::arena::ArenaData;
+use crate::cursor::EntityCommandsStartDragExt;
 use crate::systems::RegistryExt;
 use crate::waymark::EntityCommandsInsertWaymarkExt;
 
@@ -96,6 +97,8 @@ impl Spawner {
 
         entity.insert_waymark(spawner.waymark, None);
         entity.insert(Transform::from_translation(translation));
+        // Forward to the general dragging implementation.
+        entity.start_drag();
     }
 
     /// System that takes hover data from the UI and uses it to generate pointer events.
@@ -308,15 +311,7 @@ impl Plugin for WaymarkUiPlugin {
             .add_systems(PostUpdate, Spawner::generate_hits)
             .register(WaymarkWindow::export_to_clipboard)
             .register_type::<Spawner>()
-            .register_type::<SpawnerUi>()
-            // Ensure that deferred commands are run after [DragStart] events but before [Drag] events.
-            // This is required to allow entities to transform themselves in response to [DragStart] and still pick up [Drag] the same frame.
-            .add_systems(
-                PreUpdate,
-                apply_deferred
-                    .after(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<DragStart>>::cleanup)
-                    .before(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<Drag>>::build)
-            );
+            .register_type::<SpawnerUi>();
 
         #[allow(unused_mut, unused_assignments)]
         let mut for_test = false;
@@ -398,6 +393,7 @@ mod test {
         })
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultPickingPlugins)
+        .add_plugins(crate::cursor::plugin())
         .add_plugins(WaymarkUiPlugin::new_for_test())
         .add_systems(Startup, add_test_camera)
         .add_systems(Startup, spawn_test_entities)

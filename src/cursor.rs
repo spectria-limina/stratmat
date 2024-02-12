@@ -1,9 +1,7 @@
 //! Utilities for working with cursor manipulation.
-//!
-//! Callbacks in this module are intended to be used in conjunction with [bevy_mod_picking::prelude::On::run]
-//! in conjunction with various events.
 
 use bevy::{prelude::*, render::primitives::Aabb};
+use bevy_commandify::entity_command;
 use bevy_mod_picking::prelude::*;
 
 use crate::color::HasColor;
@@ -11,42 +9,48 @@ use crate::color::HasColor;
 /// The factor to apply to a sprite's alpha channel when it is dragged out of bounds.
 const OOB_ALPHA_FACTOR: f32 = 0.1;
 
+/// Callback to add the [`Dragged`] component to newly-dragged entities.
+pub fn on_drag_start(event: Listener<Pointer<DragStart>>, mut commands: Commands) {
+    let id = event.listener();
+    debug!("dragging {id:?}");
+    if let Some(mut entity) = commands.get_entity(id) {
+        entity.start_drag();
+    } else {
+        debug!("but it doesn't exist");
+    }
+}
+
+/// Implementation of [`on_drag_start`] as a [`Command`](bevy::ecs::system::Command).
+#[entity_command]
+pub fn start_drag(id: Entity, world: &mut World) {
+    debug!("starting drag on {id:?}");
+    let Some(mut entity) = world.get_entity_mut(id) else {
+        return;
+    };
+    if !entity.contains::<Draggable>() {
+        debug!("but it isn't draggable");
+        return;
+    }
+    entity.insert(Dragged);
+}
+
 /// Callback to allow dragging the listener entity around.
 ///
 /// It converts the cursor delta into world coordinates and applies the resulting delta to
 /// the [Transform] of the listener entity (not the target entity).
 ///
-/// It also applies or removes the [OutOfBounds] marker according to whether the dragged
-/// entity is within the bounding box of a [DragSurface] or not, computed using the dragged
-/// entity's translation.
-///
-/// TODO: Allow the dragged entity to have better collision logic than only checking its
-/// translation once we have 0.13's bounding volume support.
-///
 /// Will panic if there is not exactly one camera.
-pub fn drag_listener(
+pub fn on_drag(
     event: Listener<Pointer<Drag>>,
-    commands: Commands,
-    mut transform_q: Query<(Entity, &mut Transform), Without<DragSurface>>,
+    mut q: Query<&mut Transform>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    surface_q: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
 ) {
     trace!("drag_listener");
-    let Ok((entity, mut transform)) = transform_q.get_mut(event.listener()) else {
+    let Ok(mut transform) = q.get_mut(event.listener()) else {
         return;
     };
     let (camera, camera_transform) = camera_q.single();
-    drag_update_transform(&event, &mut transform, camera, camera_transform);
-    drag_update_oob(commands, entity, &transform, surface_q);
-}
 
-/// Update the given transform based on a [[Drag]] event.
-fn drag_update_transform(
-    event: &ListenerInput<Pointer<Drag>>,
-    transform: &mut Transform,
-    camera: &Camera,
-    camera_transform: &GlobalTransform,
-) {
     let new_pos_viewport = event.pointer_location.position;
     let old_pos_viewport = new_pos_viewport - event.delta;
     let new_pos_world = camera
@@ -61,65 +65,81 @@ fn drag_update_transform(
 }
 
 fn drag_update_oob(
+    q: Query<(Entity, &Transform), With<Dragged>>,
+    surface_q: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
     mut commands: Commands,
-    entity: Entity,
-    transform: &Transform,
-    surface_query: Query<(&Aabb, &GlobalTransform), With<DragSurface>>,
 ) {
-    let mut on_surface = false;
-    for (surface_aabb, surface_transform) in &surface_query {
-        let surface_translation = surface_transform.translation().xy();
-        let surface_rect = Rect::from_corners(
-            surface_aabb.min().xy() + surface_translation,
-            surface_aabb.max().xy() + surface_translation,
-        );
-        if surface_rect.contains(transform.translation.xy()) {
-            on_surface = true;
+    for (id, transform) in &q {
+        let mut on_surface = false;
+        for (surface_aabb, surface_transform) in &surface_q {
+            let surface_translation = surface_transform.translation().xy();
+            let surface_rect = Rect::from_corners(
+                surface_aabb.min().xy() + surface_translation,
+                surface_aabb.max().xy() + surface_translation,
+            );
+            if surface_rect.contains(transform.translation.xy()) {
+                on_surface = true;
+            }
+        }
+
+        if on_surface {
+            commands.entity(id).remove::<OutOfBounds>();
+        } else {
+            commands.entity(id).insert(OutOfBounds);
         }
     }
-
-    if on_surface {
-        commands.entity(entity).remove::<OutOfBounds>();
-    } else {
-        commands.entity(entity).insert(OutOfBounds);
-    }
 }
 
-/// When the listener entity is dropped [OutOfBounds], despawn it and its children.
-pub fn despawn_dropped_oob(
+/// When the listener entity is dropped [`OutOfBounds`], despawn it and its children, otherwise undoes [`on_drag_start`].
+pub fn on_drag_end(
     event: Listener<Pointer<DragEnd>>,
+    q: Query<Has<OutOfBounds>>,
     mut commands: Commands,
-    oob_query: Query<Entity, With<OutOfBounds>>,
 ) {
-    let entity = event.listener();
-    debug!("ending drag on {entity:?}");
-    if oob_query.contains(entity) {
-        debug!("{entity:?} dropped out of bounds, despawning");
-        commands.entity(entity).despawn_recursive()
+    let id = event.listener();
+    debug!("ending drag on {id:?}");
+    let Ok(oob) = q.get(id) else {
+        debug!("but it doesn't exist");
+        return;
+    };
+    if oob {
+        debug!("{id:?} dropped out of bounds, despawning");
+        commands.entity(id).despawn_recursive();
+    } else {
+        commands.entity(id).remove::<Dragged>();
     }
 }
 
-/// Marker component for entities that can have entities placed on them via dragging.
-#[derive(Debug, Default, Component)]
+#[derive(Component, Copy, Clone, Default, Debug)]
+/// Marker component for drag surfaces.
 pub struct DragSurface;
 
-/// Marker component for out-of-bounds entities.
-///
-/// When added or removed from an entity, the entity and all its children will have their
-/// alpha scaled to make them appear faint while out of bounds.
-#[derive(Debug, Component)]
-pub struct OutOfBounds;
-
-#[derive(Debug, Component)]
+#[derive(Component, Copy, Clone, Default, Debug)]
 /// Marker component for draggable entities.
 ///
 /// Do not insert this directly; use a [DraggableBundle] instead.
 pub struct Draggable;
 
-/// Bundle for entities that can be dragged onto [DragSurface]s.
+/// Marker component for entities currently being dragged.
+#[derive(Component, Copy, Clone, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct Dragged;
+
+/// Marker component for out-of-bounds entities.
+///
+/// When added or removed from an entity, the entity and all its children will have their
+/// alpha scaled to make them appear faint while out of bounds.
+#[derive(Component, Copy, Clone, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct OutOfBounds;
+
+/// Bundle for entities that can be dragged onto [`DragSurface`](Layer::DragSurface)s.
+///
+/// To work properly, requires the entity also have a [`Collider`].
 #[derive(Bundle)]
 pub struct DraggableBundle {
     draggable: Draggable,
+    drag_start: On<Pointer<DragStart>>,
     drag: On<Pointer<Drag>>,
     drag_end: On<Pointer<DragEnd>>,
 }
@@ -128,8 +148,9 @@ impl DraggableBundle {
     pub fn new() -> Self {
         Self {
             draggable: Draggable,
-            drag: On::<Pointer<Drag>>::run(drag_listener),
-            drag_end: On::<Pointer<DragEnd>>::run(despawn_dropped_oob),
+            drag_start: On::<Pointer<DragStart>>::run(on_drag_start),
+            drag: On::<Pointer<Drag>>::run(on_drag),
+            drag_end: On::<Pointer<DragEnd>>::run(on_drag_end),
         }
     }
 }
@@ -200,7 +221,8 @@ pub struct CursorPlugin;
 
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, apply_oob_alpha.run_if(any_with_component::<OutOfBounds>()))
+        app.add_systems(Update, drag_update_oob)
+            .add_systems(PostUpdate, apply_oob_alpha.run_if(any_with_component::<OutOfBounds>()))
             .add_systems(PostUpdate, remove_oob_alpha.run_if(any_component_removed::<OutOfBounds>()))
             // Prevent crashes due to despawned entities
             .add_systems(
@@ -209,10 +231,16 @@ impl Plugin for CursorPlugin {
                     .after(bevy_picking_core::PickSet::PostFocus)
                     .before(bevy_eventlistener_core::EventListenerSet),
             )
-            // Ensure that drag_update_oob is applied before despawn_dropped_oob
+            // Sequence drag events with command execution in between.
             .add_systems(
                 PreUpdate,
-                IntoSystem::into_system(||{})
+                apply_deferred
+                    .after(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<DragStart>>::cleanup)
+                    .before(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<Drag>>::build)
+            )
+            .add_systems(
+                PreUpdate,
+                apply_deferred
                     .after(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<Drag>>::cleanup)
                     .before(bevy_eventlistener_core::event_dispatcher::EventDispatcher::<Pointer<DragEnd>>::build)
             );
