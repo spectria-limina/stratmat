@@ -11,7 +11,7 @@ use itertools::Itertools;
 use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
 use crate::arena::Arena;
 use crate::cursor::EntityCommandsStartDragExt;
-use crate::systems::RegistryExt;
+use crate::ecs::RegistryExt;
 use crate::waymark::EntityCommandsInsertWaymarkExt;
 
 /// The size of waymark spawner, in pixels.

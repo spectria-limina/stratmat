@@ -10,7 +10,7 @@ use bevy_xpbd_2d::prelude::*;
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::Layer;
+use crate::{waymark::CommandsSpawnWaymarksFromPresetExt, Layer};
 
 /// A list of all the supported maps, used to hardcode asset paths.
 ///
@@ -159,6 +159,7 @@ impl ArenaBackgroundBundle {
 }
 
 impl ArenaBackground {
+    // TODO: Turn this into a deferred command once systemify is available.
     pub fn handle_events(
         q: Query<(Entity, &Handle<Arena>), With<ArenaBackground>>,
         mut camera_q: Query<&mut OrthographicProjection, With<Camera2d>>,
@@ -218,6 +219,21 @@ fn spawn_tea_p1(mut commands: Commands, asset_server: Res<AssetServer>) {
         ArenaBackground,
         asset_server.load::<Arena>(Map::TeaP1.asset_path()),
     ));
+
+    let waymarks = r#"{
+  "Name":"TEA",
+  "MapID":694,
+  "A":{"X":100.0,"Y":0.0,"Z":88.0,"ID":0,"Active":true},
+  "B":{"X":114.0,"Y":0.0,"Z":100.0,"ID":1,"Active":true},
+  "C":{"X":100.0,"Y":0.0,"Z":116.0,"ID":2,"Active":true},
+  "D":{"X":84.0,"Y":0.0,"Z":100.0,"ID":3,"Active":true},
+  "One":{"X":92.2,"Y":0.0,"Z":107.8,"ID":4,"Active":true},
+  "Two":{"X":100.0,"Y":0.0,"Z":107.8,"ID":5,"Active":true},
+  "Three":{"X":107.8,"Y":0.0,"Z":107.8,"ID":6,"Active":true},
+  "Four":{"X":107.8,"Y":0.0,"Z":100.0,"ID":7,"Active":true}
+}"#;
+
+    commands.spawn_waymarks_from_preset(serde_json::de::from_str(&waymarks).unwrap());
 }
 
 pub fn plugin() -> ArenaPlugin {

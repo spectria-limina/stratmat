@@ -15,6 +15,7 @@ use bevy_xpbd_2d::{
     prelude::PhysicsLayer,
 };
 use clap::{ArgAction, Parser as _};
+use waymark::WaymarkPlugin;
 
 #[cfg(test)]
 mod testing;
@@ -22,7 +23,7 @@ mod testing;
 mod arena;
 mod color;
 mod cursor;
-mod systems;
+mod ecs;
 mod waymark;
 
 /// Collision layers.
@@ -103,6 +104,7 @@ fn main() -> eyre::Result<()> {
         .add_plugins(arena::plugin())
         .add_plugins(color::plugin())
         .add_plugins(cursor::plugin())
+        .add_plugins(WaymarkPlugin)
         .add_plugins(waymark::window::WaymarkUiPlugin::default())
         .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera)

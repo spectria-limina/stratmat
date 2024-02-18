@@ -19,6 +19,7 @@ use thiserror::Error;
 
 use crate::arena::Arena;
 use crate::cursor::DraggableBundle;
+use crate::ecs::{AssetCommandPlugin, AssetCommands};
 
 pub mod window;
 
@@ -220,7 +221,7 @@ enum InsertWaymarkError {
     #[error("Unable to retrieve arena: {0}")]
     Single(#[from] QuerySingleError),
     #[error("Arena data not loaded")]
-    NotLoaded,
+    NotLoaded(AssetId<Arena>),
 }
 
 /// [`EntityCommand`](bevy::ecs::system::EntityCommand) to insert a waymark's entities.
@@ -239,10 +240,11 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
         match entity.world_scope(|world| {
             world.resource_scope(|world: &mut World, arenas: Mut<Assets<Arena>>| {
                 let mut arena_q = world.query::<&Handle<Arena>>();
+                let handle = arena_q.get_single(world)?;
                 arenas
-                    .get(arena_q.get_single(world)?)
+                    .get(handle)
                     .map(|arena| arena.offset)
-                    .ok_or(InsertWaymarkError::NotLoaded)
+                    .ok_or(InsertWaymarkError::NotLoaded(handle.id()))
             })
         }) {
             Ok(offset) => {
@@ -252,6 +254,19 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
                     offset.y - entry.z,
                     0.0,
                 ));
+            }
+            Err(InsertWaymarkError::NotLoaded(asset_id)) => {
+                // Defer execution of the command until the arena finishes loading.
+                debug!("waymark {waymark:?} spawn deferred until arena is loaded");
+                world.resource_mut::<AssetCommands<Arena>>().on_load(
+                    asset_id,
+                    InsertWaymarkEntityCommand {
+                        waymark,
+                        entry: Some(entry),
+                    }
+                    .with_entity(id),
+                );
+                return;
             }
             Err(e) => {
                 error!("Unable to insert waymark: {e}");
@@ -313,4 +328,16 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
             },
         );
     });
+}
+
+/// Plugin for waymark support.
+#[derive(Default, Copy, Clone, Debug)]
+pub struct WaymarkPlugin;
+
+impl Plugin for WaymarkPlugin {
+    fn build(&self, app: &mut App) {
+        if !app.is_plugin_added::<AssetCommandPlugin<Arena>>() {
+            app.add_plugins(AssetCommandPlugin::<Arena>::default());
+        }
+    }
 }
