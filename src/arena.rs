@@ -46,12 +46,18 @@ impl From<ArenaShape> for Collider {
     }
 }
 
-#[derive(Component, Reflect, Clone, Debug, Deserialize)]
+/// An [`Arena`] is the backdrop to a fight, and includes everything needed to stage and set up a fight,
+/// such as the arena's background image, dimensions, and other metadata.
+#[derive(Asset, Component, Reflect, Clone, Debug, Deserialize)]
 pub struct ArenaData {
     pub name: String,
     pub short_name: String,
     /// The FFXIV map ID.
     pub map_id: u32,
+    /// The asset path to the background image.
+    ///
+    /// In an actual asset file, this should be specified as a relative path from the asset,
+    /// or an absolute path from the asset root. It will be replaced with the correct [`AssetPath`] during loading.
     pub background_path: String,
     /// The size of the arena image, in yalms.
     pub size: Vec2,

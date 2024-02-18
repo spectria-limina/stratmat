@@ -2,7 +2,7 @@
     name: "Anabaseios: The Ninth Circle (Savage) — Kokytos",
     short_name: "P9S",
     map_id: 937,
-    background_path: "p9s.webp",
+    background_path: "/sprites/arenas/savage/pandaemonium/p9s.webp",
     size: Vec2(44.0, 44.0),
     offset: Vec2(100.0, 100.0),
     shape: Circle(20.0),
