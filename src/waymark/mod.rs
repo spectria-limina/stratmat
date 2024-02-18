@@ -19,7 +19,7 @@ use thiserror::Error;
 
 use crate::arena::Arena;
 use crate::cursor::DraggableBundle;
-use crate::ecs::{AssetCommandPlugin, AssetCommands};
+use crate::ecs::AssetCommands;
 
 pub mod window;
 
@@ -332,9 +332,5 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
 pub struct WaymarkPlugin;
 
 impl Plugin for WaymarkPlugin {
-    fn build(&self, app: &mut App) {
-        if !app.is_plugin_added::<AssetCommandPlugin<Arena>>() {
-            app.add_plugins(AssetCommandPlugin::<Arena>::default());
-        }
-    }
+    fn build(&self, _app: &mut App) {}
 }

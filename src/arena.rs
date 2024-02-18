@@ -2,15 +2,21 @@ use std::io;
 
 use bevy::{
     asset::{AssetLoader, AsyncReadExt, ParseAssetPathError},
+    ecs::system::{SystemParam, SystemState},
     prelude::*,
     render::camera::ScalingMode,
 };
+use bevy_commandify::{command, entity_command};
 use bevy_picking_core::Pickable;
 use bevy_xpbd_2d::prelude::*;
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::{waymark::CommandsSpawnWaymarksFromPresetExt, Layer};
+use crate::{
+    ecs::{AssetCommandPlugin, AssetCommands},
+    waymark::CommandsSpawnWaymarksFromPresetExt,
+    Layer,
+};
 
 /// A list of all the supported maps, used to hardcode asset paths.
 ///
@@ -131,7 +137,6 @@ const ARENA_BACKGROUND_Z: f32 = -999.0;
 #[derive(Bundle)]
 pub struct ArenaBackgroundBundle {
     name: Name,
-    arena: Handle<Arena>,
     sprite: SpriteBundle,
     collider: Collider,
     layers: CollisionLayers,
@@ -139,7 +144,7 @@ pub struct ArenaBackgroundBundle {
 }
 
 impl ArenaBackgroundBundle {
-    pub fn new(arena: &Arena, handle: Handle<Arena>, texture: Handle<Image>) -> Self {
+    pub fn new(arena: &Arena, texture: Handle<Image>) -> Self {
         Self {
             name: format!("{} Background", arena.short_name).into(),
             sprite: SpriteBundle {
@@ -154,48 +159,59 @@ impl ArenaBackgroundBundle {
             collider: arena.shape.into(),
             layers: CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
             pickable: Pickable::IGNORE,
-            arena: handle,
         }
     }
 }
 
-impl ArenaBackground {
-    // TODO: Turn this into a deferred command once systemify is available.
-    pub fn handle_events(
-        q: Query<(Entity, &Handle<Arena>), With<ArenaBackground>>,
-        mut camera_q: Query<&mut OrthographicProjection, With<Camera2d>>,
-        arenas: Res<Assets<Arena>>,
-        mut evs: EventReader<AssetEvent<Arena>>,
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-    ) {
-        for ev in evs.read() {
-            match ev {
-                AssetEvent::LoadedWithDependencies { id: arena_id }
-                | AssetEvent::Modified { id: arena_id } => {
-                    for (id, handle) in q.iter().filter(|(_, handle)| handle.id() == *arena_id) {
-                        if let Some(arena) = arenas.get(handle) {
-                            camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
-                                min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
-                                min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
-                            };
-                            commands.entity(id).insert(ArenaBackgroundBundle::new(
-                                arena,
-                                handle.clone(),
-                                asset_server.load(&arena.background_path),
-                            ));
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
+#[derive(SystemParam)]
+struct ArenaSpawnState<'w, 's> {
+    arena_q: Query<'w, 's, &'static Handle<Arena>, With<ArenaBackground>>,
+    camera_q: Query<'w, 's, &'static mut OrthographicProjection, With<Camera2d>>,
+    arenas: Res<'w, Assets<Arena>>,
+    arena_commands: ResMut<'w, AssetCommands<Arena>>,
+    asset_server: Res<'w, AssetServer>,
+}
+
+#[derive(Resource)]
+struct CachedArenaSpawnState(SystemState<ArenaSpawnState<'static, 'static>>);
+
+impl FromWorld for CachedArenaSpawnState {
+    fn from_world(world: &mut World) -> Self {
+        Self(SystemState::new(world))
     }
 }
 
-/// A [`Resource`] containing information on the available arenas.
-struct Arenas {
-    arenas: Vec<Handle<Arena>>,
+#[command]
+pub fn spawn_arena(world: &mut World, arena: Handle<Arena>) {
+    world.spawn((ArenaBackground, arena)).finish_spawn_arena();
+}
+
+/// Finish the post-asset-load spawning of an arena.
+///
+/// TODO: TEST TEST TEST
+#[entity_command]
+fn finish_spawn_arena(world: &mut World, id: Entity) {
+    world.resource_scope(|world, mut state: Mut<CachedArenaSpawnState>| {
+        let mut state = state.0.get_mut(world);
+        let Ok(handle) = state.arena_q.get(id) else {
+            // The entity was despawned or the ArenaBackground removed, so abort.
+            return;
+        };
+        let Some(arena) = state.arenas.get(handle) else {
+            // The arena is not yet loaded; queue this for later.
+            state
+                .arena_commands
+                .on_load(handle.id(), FinishSpawnArenaEntityCommand.with_entity(id));
+            return;
+        };
+        state.camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
+            min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
+            min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
+        };
+        let background = state.asset_server.load(&arena.background_path);
+        let bundle = ArenaBackgroundBundle::new(arena, background);
+        world.entity_mut(id).insert(bundle);
+    });
 }
 
 #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -205,21 +221,15 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<Arena>()
             .register_type::<Arena>()
+            .add_plugins(AssetCommandPlugin::<Arena>::default())
             .init_asset_loader::<ArenaLoader>()
-            .add_systems(
-                First,
-                ArenaBackground::handle_events.run_if(on_event::<AssetEvent<Arena>>()),
-            )
+            .init_resource::<CachedArenaSpawnState>()
             .add_systems(Startup, spawn_tea_p1);
     }
 }
 
 fn spawn_tea_p1(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Name::new("Background Loader for Tea P1"),
-        ArenaBackground,
-        asset_server.load::<Arena>(Map::TeaP1.asset_path()),
-    ));
+    commands.spawn_arena(asset_server.load::<Arena>(Map::TeaP1.asset_path()));
 
     let waymarks = r#"{
   "Name":"TEA",

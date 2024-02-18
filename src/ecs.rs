@@ -155,7 +155,10 @@ impl<A: Asset> Plugin for AssetCommandPlugin<A> {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetCommands<A>>()
             .init_schedule(DeferredAssetCommands)
-            .add_systems(DeferredAssetCommands, AssetCommands::<A>::handle_events);
+            .add_systems(
+                DeferredAssetCommands,
+                AssetCommands::<A>::handle_events.run_if(on_event::<AssetEvent<A>>()),
+            );
 
         app.world
             .resource_mut::<MainScheduleOrder>()
