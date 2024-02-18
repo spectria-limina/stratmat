@@ -9,7 +9,7 @@ use bevy_mod_picking::prelude::*;
 use itertools::Itertools;
 
 use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
-use crate::arena::ArenaData;
+use crate::arena::Arena;
 use crate::cursor::EntityCommandsStartDragExt;
 use crate::systems::RegistryExt;
 use crate::waymark::EntityCommandsInsertWaymarkExt;
@@ -264,10 +264,11 @@ impl WaymarkWindow {
     pub fn export_to_clipboard(
         win_q: Query<&WaymarkWindow>,
         waymarks_q: Query<(&Waymark, &Transform)>,
-        arena_q: Query<&ArenaData>,
+        arena_q: Query<&Handle<Arena>>,
+        arenas: Res<Assets<Arena>>,
         mut clipboard: ResMut<EguiClipboard>,
     ) {
-        let arena = arena_q.single();
+        let arena = arenas.get(arena_q.single()).unwrap();
         let preset = Preset {
             name: win_q.single().preset_name.clone(),
             map_id: arena.map_id,

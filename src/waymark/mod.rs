@@ -3,6 +3,7 @@
 //! This module implements support for FFXIV waymarks.
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
+use bevy::ecs::query::QuerySingleError;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy::window::RequestRedraw;
@@ -14,8 +15,9 @@ use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::arena::ArenaData;
+use crate::arena::Arena;
 use crate::cursor::DraggableBundle;
 
 pub mod window;
@@ -213,6 +215,14 @@ impl WaymarkBundle {
     }
 }
 
+#[derive(Error, Debug)]
+enum InsertWaymarkError {
+    #[error("Unable to retrieve arena: {0}")]
+    Single(#[from] QuerySingleError),
+    #[error("Arena data not loaded")]
+    NotLoaded,
+}
+
 /// [`EntityCommand`](bevy::ecs::system::EntityCommand) to insert a waymark's entities.
 ///
 /// If a [`PresetEntry`] is provided, it will be used to position the waymark.
@@ -226,17 +236,28 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
     entity.insert(WaymarkBundle::new(waymark));
 
     if let Some(entry) = entry {
-        let offset = entity.world_scope(|world| {
-            let mut arena_q = world.query::<&ArenaData>();
-            // TODO: This will crash if the arena isn't loaded. Figure out what should actually happen.
-            arena_q.get_single(world).unwrap().offset
-        });
-        entity.insert(Transform::from_xyz(
-            entry.x - offset.x,
-            // The entry's Z axis is our negative Y axis.
-            offset.y - entry.z,
-            0.0,
-        ));
+        match entity.world_scope(|world| {
+            world.resource_scope(|world: &mut World, arenas: Mut<Assets<Arena>>| {
+                let mut arena_q = world.query::<&Handle<Arena>>();
+                arenas
+                    .get(arena_q.get_single(world)?)
+                    .map(|arena| arena.offset)
+                    .ok_or(InsertWaymarkError::NotLoaded)
+            })
+        }) {
+            Ok(offset) => {
+                entity.insert(Transform::from_xyz(
+                    entry.x - offset.x,
+                    // The entry's Z axis is our negative Y axis.
+                    offset.y - entry.z,
+                    0.0,
+                ));
+            }
+            Err(e) => {
+                error!("Unable to insert waymark: {e}");
+                return;
+            }
+        }
     }
 
     entity.with_children(|parent| {

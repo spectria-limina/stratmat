@@ -48,8 +48,8 @@ impl From<ArenaShape> for Collider {
 
 /// An [`Arena`] is the backdrop to a fight, and includes everything needed to stage and set up a fight,
 /// such as the arena's background image, dimensions, and other metadata.
-#[derive(Asset, Component, Reflect, Clone, Debug, Deserialize)]
-pub struct ArenaData {
+#[derive(Asset, Reflect, Clone, Debug, Deserialize)]
+pub struct Arena {
     pub name: String,
     pub short_name: String,
     /// The FFXIV map ID.
@@ -96,32 +96,18 @@ impl AssetLoader for ArenaLoader {
         Box::pin(async move {
             let mut buf = Vec::new();
             reader.read_to_end(&mut buf).await?;
-            let data: ArenaData = ron::de::from_bytes(&buf)?;
-            let background_path = load_context
+            let mut data: Arena = ron::de::from_bytes(&buf)?;
+            data.background_path = load_context
                 .asset_path()
-                .parent()
-                .unwrap_or_else(|| "".into())
-                .resolve(&data.background_path)?;
-            debug!(
-                "for arena {}: loading background image: {}",
-                data.name, background_path
-            );
-            Ok(Arena {
-                data,
-                background_image: load_context.load(background_path),
-            })
+                .resolve(&data.background_path)?
+                .to_string();
+            Ok(data)
         })
     }
 
     fn extensions(&self) -> &[&str] {
         &["arena.ron"]
     }
-}
-
-#[derive(Asset, Reflect, Clone, Debug)]
-pub struct Arena {
-    data: ArenaData,
-    background_image: Handle<Image>,
 }
 
 /// Marker component for the current arena background.
@@ -144,7 +130,7 @@ const ARENA_BACKGROUND_Z: f32 = -999.0;
 #[derive(Bundle)]
 pub struct ArenaBackgroundBundle {
     name: Name,
-    data: ArenaData,
+    arena: Handle<Arena>,
     sprite: SpriteBundle,
     collider: Collider,
     layers: CollisionLayers,
@@ -152,23 +138,22 @@ pub struct ArenaBackgroundBundle {
 }
 
 impl ArenaBackgroundBundle {
-    pub fn new(data: ArenaData, texture: Handle<Image>) -> Self {
+    pub fn new(arena: &Arena, handle: Handle<Arena>, texture: Handle<Image>) -> Self {
         Self {
-            name: format!("{} Background", data.short_name).into(),
+            name: format!("{} Background", arena.short_name).into(),
             sprite: SpriteBundle {
                 sprite: Sprite {
-                    custom_size: Some(data.size),
+                    custom_size: Some(arena.size),
                     ..default()
                 },
                 texture,
                 transform: Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
                 ..default()
             },
-            collider: data.shape.into(),
+            collider: arena.shape.into(),
             layers: CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
             pickable: Pickable::IGNORE,
-            // Put this last so the borrow checker is happy!
-            data,
+            arena: handle,
         }
     }
 }
@@ -180,6 +165,7 @@ impl ArenaBackground {
         arenas: Res<Assets<Arena>>,
         mut evs: EventReader<AssetEvent<Arena>>,
         mut commands: Commands,
+        asset_server: Res<AssetServer>,
     ) {
         for ev in evs.read() {
             match ev {
@@ -188,12 +174,13 @@ impl ArenaBackground {
                     for (id, handle) in q.iter().filter(|(_, handle)| handle.id() == *arena_id) {
                         if let Some(arena) = arenas.get(handle) {
                             camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
-                                min_width: arena.data.size.x * ARENA_VIEWPORT_SCALE,
-                                min_height: arena.data.size.y * ARENA_VIEWPORT_SCALE,
+                                min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
+                                min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
                             };
                             commands.entity(id).insert(ArenaBackgroundBundle::new(
-                                arena.data.clone(),
-                                arena.background_image.clone(),
+                                arena,
+                                handle.clone(),
+                                asset_server.load(&arena.background_path),
                             ));
                         }
                     }
@@ -204,6 +191,11 @@ impl ArenaBackground {
     }
 }
 
+/// A [`Resource`] containing information on the available arenas.
+struct Arenas {
+    arenas: Vec<Handle<Arena>>,
+}
+
 #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ArenaPlugin;
 
@@ -211,7 +203,6 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<Arena>()
             .register_type::<Arena>()
-            .register_type::<ArenaData>()
             .init_asset_loader::<ArenaLoader>()
             .add_systems(
                 First,
