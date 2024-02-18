@@ -330,6 +330,13 @@ impl Plugin for WaymarkUiPlugin {
     }
 }
 
+// TODO: Put this somewhere better lol.
+fn log_debug<E: std::fmt::Debug + Event>(mut events: EventReader<E>) {
+    for ev in events.read() {
+        debug!("{ev:?}");
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -523,12 +530,5 @@ mod test {
         let transform = waymark_q.single(&app.world);
         assert_float_eq!(transform.translation.x, end_pos.x, abs <= 0.0001,);
         assert_float_eq!(transform.translation.y, end_pos.y, abs <= 0.0001,);
-    }
-}
-
-// TODO: Put this somewhere better lol.
-fn log_debug<E: std::fmt::Debug + Event>(mut events: EventReader<E>) {
-    for ev in events.read() {
-        debug!("{ev:?}");
     }
 }

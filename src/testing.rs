@@ -57,7 +57,6 @@ impl DragSurfaceBundle {
             pickable: Pickable::IGNORE,
             collider: Collider::cuboid(rect.width(), rect.height()),
             layers: CollisionLayers::all_masks::<Layer>().add_group(Layer::DragSurface),
-            ..default()
         }
     }
 }

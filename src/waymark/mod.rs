@@ -118,18 +118,15 @@ impl Waymark {
 
     /// Produces true if this waymark is a circle.
     pub fn is_circle(self) -> bool {
-        match self {
-            Waymark::A | Waymark::B | Waymark::C | Waymark::D => true,
-            _ => false,
-        }
+        matches!(self, Waymark::A | Waymark::B | Waymark::C | Waymark::D)
     }
 
     /// Produces true if this waymark is a square.
     pub fn is_square(self) -> bool {
-        match self {
-            Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Waymark::One | Waymark::Two | Waymark::Three | Waymark::Four
+        )
     }
 
     /// Produces a name suitable for use as an entity label.
@@ -146,8 +143,8 @@ impl Waymark {
         }
     }
 
-    /// Produces a [PresetEntry] corresponding to this waymark,
-    /// using the provided [Arena](crate::arena::Arena) center `offset` and the provided [Transform].
+    /// Produces a [`PresetEntry`] corresponding to this waymark,
+    /// using the provided [`Arena`] center `offset` and the provided [`Transform`].
     pub fn to_entry(self, transform: &Transform, offset: Vec2) -> PresetEntry {
         PresetEntry {
             x: offset.x + transform.translation.x,
@@ -163,7 +160,7 @@ impl Waymark {
     ///
     /// The entities include the `Waymark` entity itself as well as the necessary sprite entities
     /// to render it correctly.
-    pub fn spawn<'w, 's, 'a>(self, commands: &'a mut Commands<'w, 's>) {
+    pub fn spawn(self, commands: &mut Commands<'_, '_>) {
         commands.spawn_empty().insert_waymark(self, None);
     }
 }
@@ -231,7 +228,7 @@ enum InsertWaymarkError {
 pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Option<PresetEntry>) {
     debug!("inserting waymark {:?} on entity {:?}", waymark, id);
     let asset_server = world.resource::<AssetServer>();
-    let image = waymark.asset_handle(&asset_server);
+    let image = waymark.asset_handle(asset_server);
 
     let mut entity = world.entity_mut(id);
     entity.insert(WaymarkBundle::new(waymark));

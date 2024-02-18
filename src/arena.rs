@@ -57,7 +57,8 @@ pub struct Arena {
     /// The asset path to the background image.
     ///
     /// In an actual asset file, this should be specified as a relative path from the asset,
-    /// or an absolute path from the asset root. It will be replaced with the correct [`AssetPath`] during loading.
+    /// or an absolute path from the asset root.
+    /// It will be replaced with the correct full asset path during loading.
     pub background_path: String,
     /// The size of the arena image, in yalms.
     pub size: Vec2,
@@ -75,11 +76,11 @@ pub struct ArenaLoader;
 #[derive(Error, Debug)]
 pub enum ArenaLoadError {
     #[error("Could not load asset file: {0}")]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
     #[error("Could not parse asset file: {0}")]
-    ParseError(#[from] ron::error::SpannedError),
+    Parse(#[from] ron::error::SpannedError),
     #[error("Invalid image path in arena asset: {0}")]
-    ImagePathError(#[from] ParseAssetPathError),
+    ImagePath(#[from] ParseAssetPathError),
 }
 
 impl AssetLoader for ArenaLoader {
@@ -233,7 +234,7 @@ fn spawn_tea_p1(mut commands: Commands, asset_server: Res<AssetServer>) {
   "Four":{"X":107.8,"Y":0.0,"Z":100.0,"ID":7,"Active":true}
 }"#;
 
-    commands.spawn_waymarks_from_preset(serde_json::de::from_str(&waymarks).unwrap());
+    commands.spawn_waymarks_from_preset(serde_json::de::from_str(waymarks).unwrap());
 }
 
 pub fn plugin() -> ArenaPlugin {

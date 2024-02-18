@@ -30,7 +30,7 @@ impl RegistryExt for World {
             registry
                 .0
                 .try_insert(name.clone(), system_id)
-                .expect(&format!("Duplicate registration of system {name}"));
+                .unwrap_or_else(|e| panic!("Duplicate registration of system {name}: {e}"));
             info!("Registered system {name}")
         });
         self
@@ -42,7 +42,7 @@ impl RegistryExt for World {
             let id = registry
                 .0
                 .get(&*system.name())
-                .expect(&format!("System {} not registered", system.name()));
+                .unwrap_or_else(|| panic!("System {} not registered", system.name()));
             world.run_system(*id).unwrap();
         });
     }
