@@ -230,7 +230,9 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
     let asset_server = world.resource::<AssetServer>();
     let image = waymark.asset_handle(asset_server);
 
-    let mut entity = world.entity_mut(id);
+    let Some(mut entity) = world.get_entity_mut(id) else {
+        return;
+    };
     entity.insert(WaymarkBundle::new(waymark));
 
     if let Some(entry) = entry {

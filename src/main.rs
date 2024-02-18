@@ -106,6 +106,7 @@ fn main() -> eyre::Result<()> {
         .add_plugins(cursor::plugin())
         .add_plugins(WaymarkPlugin)
         .add_plugins(waymark::window::WaymarkUiPlugin::default())
+        .add_plugins(arena::menu::ArenaMenuPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, configure_picker_debug);

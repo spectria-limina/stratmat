@@ -1,7 +1,7 @@
 use std::io;
 
 use bevy::{
-    asset::{AssetLoader, AsyncReadExt, ParseAssetPathError},
+    asset::{AssetLoader, AsyncReadExt, LoadedFolder, ParseAssetPathError, VisitAssetDependencies},
     ecs::system::{SystemParam, SystemState},
     prelude::*,
     render::camera::ScalingMode,
@@ -9,6 +9,7 @@ use bevy::{
 use bevy_commandify::{command, entity_command};
 use bevy_picking_core::Pickable;
 use bevy_xpbd_2d::prelude::*;
+use itertools::Itertools;
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -17,6 +18,8 @@ use crate::{
     waymark::CommandsSpawnWaymarksFromPresetExt,
     Layer,
 };
+
+pub mod menu;
 
 /// A list of all the supported maps, used to hardcode asset paths.
 ///
@@ -214,6 +217,54 @@ fn finish_spawn_arena(world: &mut World, id: Entity) {
     });
 }
 
+/// Despawn all arenas.
+#[command]
+pub fn despawn_all_arenas(world: &mut World) {
+    let mut q = world.query_filtered::<Entity, With<ArenaBackground>>();
+    for id in q.iter(world).collect_vec() {
+        world.despawn(id);
+    }
+}
+
+/// A [`Resource`] containing a folder of arenas.
+#[derive(Resource, Clone, Debug)]
+pub struct ArenaFolder(Handle<LoadedFolder>);
+
+impl FromWorld for ArenaFolder {
+    fn from_world(world: &mut World) -> Self {
+        Self(world.resource::<AssetServer>().load_folder("arenas"))
+    }
+}
+
+/// A [`SystemParam`] for accessing the loaded [`ArenaFolder`].
+#[derive(SystemParam)]
+pub struct Arenas<'w, 's> {
+    folder: Res<'w, ArenaFolder>,
+    loaded_folders: Res<'w, Assets<LoadedFolder>>,
+    arenas: Res<'w, Assets<Arena>>,
+    asset_server: Res<'w, AssetServer>,
+    commands: Commands<'w, 's>,
+}
+
+impl<'w, 's> Arenas<'w, 's> {
+    pub fn get(&self) -> Option<impl Iterator<Item = (AssetId<Arena>, &Arena)>> {
+        let id = self.folder.0.id();
+
+        if !self.asset_server.is_loaded_with_dependencies(id) {
+            // Folder not loaded yet.
+            return None;
+        }
+        let folder = self.loaded_folders.get(id).unwrap();
+        let mut res = vec![];
+        folder.visit_dependencies(&mut |id| {
+            let id = id.typed::<Arena>();
+            let arena = self.arenas.get(id).unwrap();
+            res.push((id, arena));
+        });
+        Some(res.into_iter())
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ArenaPlugin;
 
@@ -224,6 +275,7 @@ impl Plugin for ArenaPlugin {
             .add_plugins(AssetCommandPlugin::<Arena>::default())
             .init_asset_loader::<ArenaLoader>()
             .init_resource::<CachedArenaSpawnState>()
+            .init_resource::<ArenaFolder>()
             .add_systems(Startup, spawn_tea_p1);
     }
 }
