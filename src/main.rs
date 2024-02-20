@@ -24,6 +24,7 @@ mod arena;
 mod color;
 mod cursor;
 mod ecs;
+mod spawner;
 mod waymark;
 
 /// Collision layers.
@@ -105,7 +106,7 @@ fn main() -> eyre::Result<()> {
         .add_plugins(color::plugin())
         .add_plugins(cursor::plugin())
         .add_plugins(WaymarkPlugin)
-        .add_plugins(waymark::window::WaymarkUiPlugin::default())
+        .add_plugins(waymark::window::WaymarkWindowPlugin::default())
         .add_plugins(arena::menu::ArenaMenuPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera)

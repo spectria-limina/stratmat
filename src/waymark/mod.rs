@@ -20,6 +20,7 @@ use thiserror::Error;
 use crate::arena::Arena;
 use crate::cursor::DraggableBundle;
 use crate::ecs::AssetCommands;
+use crate::spawner::Spawnable;
 
 pub mod window;
 
@@ -130,7 +131,7 @@ impl Waymark {
     }
 
     /// Produces a name suitable for use as an entity label.
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Waymark::A => "Waymark A",
             Waymark::B => "Waymark B",
@@ -327,6 +328,20 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
             },
         );
     });
+}
+
+impl Spawnable for Waymark {
+    fn spawner_name(&self) -> std::borrow::Cow<'static, str> {
+        self.name().into()
+    }
+
+    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
+        self.asset_handle(asset_server)
+    }
+
+    fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) {
+        entity.insert_waymark(*self, None)
+    }
 }
 
 /// Plugin for waymark support.
