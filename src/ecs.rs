@@ -63,8 +63,8 @@ impl RegistryExt for App {
 fn register_impl<S: System<In = (), Out = ()>>(world: &mut World, system: S) {
     world.register(system);
 }
-#[command]
-fn run_impl<S: System<In = (), Out = ()>>(world: &mut World, system: S) {
+#[command(struct_name = Run)]
+pub fn run_impl<S: System<In = (), Out = ()>>(world: &mut World, system: S) {
     world.run(system);
 }
 

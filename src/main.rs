@@ -25,6 +25,7 @@ mod color;
 mod cursor;
 mod ecs;
 mod waymark;
+mod widget;
 
 /// Collision layers.
 #[derive(PhysicsLayer)]

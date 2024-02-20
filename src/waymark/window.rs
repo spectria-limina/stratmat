@@ -1,8 +1,7 @@
 //! Waymark tray and associated code.
 
-use bevy::ecs::system::SystemState;
+use bevy::ecs::system::{SystemParam, SystemState};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use bevy_egui::egui::{Response, TextEdit, Ui};
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 use bevy_mod_picking::backend::{HitData, PointerHits};
@@ -14,6 +13,7 @@ use crate::arena::Arena;
 use crate::cursor::EntityCommandsStartDragExt;
 use crate::ecs::RegistryExt;
 use crate::waymark::EntityCommandsInsertWaymarkExt;
+use crate::widget::{self, egui_context, WidgetId, WidgetSystem};
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
@@ -31,6 +31,57 @@ pub struct Spawner {
     waymark: Waymark,
     #[reflect(ignore)]
     texture_id: egui::TextureId,
+}
+
+#[derive(SystemParam)]
+
+pub struct SpawnerWidget<'w, 's> {
+    spawner_q: Query<'w, 's, (Entity, &'static Spawner)>,
+    waymark_q: Query<'w, 's, &'static Waymark>,
+    pointer_ev: EventWriter<'w, PointerHits>,
+}
+
+impl WidgetSystem for SpawnerWidget<'_, '_> {
+    type In = Waymark;
+    type Out = ();
+
+    fn run_with(
+        world: &mut World,
+        state: &mut SystemState<Self>,
+        ui: &mut Ui,
+        _id: WidgetId,
+        waymark: Waymark,
+    ) -> Self::Out {
+        let mut state = state.get_mut(world);
+        for (id, spawner) in &state.spawner_q {
+            if spawner.waymark != waymark {
+                continue;
+            }
+            let enabled = !state.waymark_q.iter().contains(&spawner.waymark);
+            let resp = ui.add(
+                egui::Image::new((
+                    spawner.texture_id,
+                    egui::Vec2::new(WAYMARK_SPAWNER_SIZE, WAYMARK_SPAWNER_SIZE),
+                ))
+                .tint(egui::Color32::from_white_alpha(if enabled {
+                    WAYMARK_SPAWNER_ALPHA
+                } else {
+                    WAYMARK_SPAWNER_DISABLED_ALPHA
+                }))
+                .sense(egui::Sense::drag()),
+            );
+
+            if resp.hovered() {
+                let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
+                state.pointer_ev.send(PointerHits::new(
+                    PointerId::Mouse,
+                    vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
+                    // egui is at depth 1_000_000, we need to be in front of that.
+                    1_000_001.0,
+                ));
+            }
+        }
+    }
 }
 
 /// Information required for communication between a [Spawner] and the UI function.
@@ -181,7 +232,7 @@ impl SpawnerBundle {
 }
 
 /// A window with controls to manipulate the waymarks.
-#[derive(Debug, Default, Component)]
+#[derive(Debug, Default, Clone, Component)]
 pub struct WaymarkWindow {
     preset_name: String,
 }
@@ -192,18 +243,14 @@ impl WaymarkWindow {
     /// Will panic if there is more than one camera.
     pub fn draw(world: &mut World) {
         let ctx = egui_context(world);
-        let mut state = SystemState::<(
-            Query<&mut WaymarkWindow>,
-            Query<(&mut SpawnerUi, &Spawner)>,
-            Commands,
-            Res<EguiClipboard>,
-        )>::new(world);
-        let (mut win_q, mut spawner_q, mut commands, clipboard) = state.get_mut(world);
-
-        let mut win = win_q.single_mut();
+        let mut state =
+            SystemState::<(Query<&mut WaymarkWindow>, Commands, Res<EguiClipboard>)>::new(world);
 
         let ewin = egui::Window::new("Waymarks").default_width(4.0 * WAYMARK_SPAWNER_SIZE);
         ewin.show(&ctx, |ui| {
+            let (mut win_q, mut commands, clipboard) = state.get_mut(world);
+            let mut win = win_q.single_mut();
+
             ui.horizontal(|ui| {
                 ui.label("Preset: ");
                 ui.add(TextEdit::singleline(&mut win.preset_name).desired_width(100.0));
@@ -230,32 +277,33 @@ impl WaymarkWindow {
                     }
                 }
                 if ui.button("Export").clicked() {
-                    commands.run(Self::export_to_clipboard)
+                    commands.run(Self::export_to_clipboard);
                 }
                 if ui.button("Clear").clicked() {
-                    commands.despawn_all_waymarks()
+                    commands.despawn_all_waymarks();
                 }
             });
-
-            let mut spawners: HashMap<_, _> = spawner_q
-                .iter_mut()
-                .map(|(ui, spawner)| (spawner.waymark, (ui, spawner)))
-                .collect();
-            let show = |&mut (ref mut spawner_ui, spawner): &mut (Mut<'_, SpawnerUi>, &Spawner),
-                        ui: &mut Ui| { spawner_ui.show(ui, spawner) };
 
             ui.separator();
             ui.horizontal(|ui| {
-                show(spawners.get_mut(&Waymark::One).unwrap(), ui);
-                show(spawners.get_mut(&Waymark::Two).unwrap(), ui);
-                show(spawners.get_mut(&Waymark::Three).unwrap(), ui);
-                show(spawners.get_mut(&Waymark::Four).unwrap(), ui);
+                for waymark in [Waymark::One, Waymark::Two, Waymark::Three, Waymark::Four] {
+                    widget::show_with::<SpawnerWidget>(
+                        world,
+                        ui,
+                        WidgetId::new(waymark.name()),
+                        waymark,
+                    )
+                }
             });
             ui.horizontal(|ui| {
-                show(spawners.get_mut(&Waymark::A).unwrap(), ui);
-                show(spawners.get_mut(&Waymark::B).unwrap(), ui);
-                show(spawners.get_mut(&Waymark::C).unwrap(), ui);
-                show(spawners.get_mut(&Waymark::D).unwrap(), ui);
+                for waymark in [Waymark::A, Waymark::B, Waymark::C, Waymark::D] {
+                    widget::show_with::<SpawnerWidget>(
+                        world,
+                        ui,
+                        WidgetId::new(waymark.name()),
+                        waymark,
+                    )
+                }
             });
         });
     }
@@ -418,59 +466,6 @@ mod test {
     }
 
     #[test]
-    pub fn spawner_hover_pos() {
-        let (mut app, primary_window) = test_app();
-
-        app.world.send_event(CursorMoved {
-            window: primary_window,
-            position: Vec2::new(-100.0, -100.0),
-        });
-        app.update();
-
-        let desc = "cursor at (-100, -100), spawner with top left at (0, 0)";
-
-        let mut ui_q = app.world.query::<&SpawnerUi>();
-        let ui = ui_q.single(&app.world);
-        assert_eq!(
-            ui.hover_pos, None,
-            "with {desc}: ui.hover_pos = {:?}; want None",
-            ui.hover_pos,
-        );
-
-        let target = Vec2::new(20.0, 20.0);
-        app.world.send_event(CursorMoved {
-            window: primary_window,
-            position: target,
-        });
-        app.update();
-
-        let ui = ui_q.single(&app.world);
-        assert!(
-            ui.hover_pos.is_some(),
-            "with {desc}: ui.hover_pos = None; want {:?}",
-            Some(target)
-        );
-
-        let Vec2 {
-            x: hover_x,
-            y: hover_y,
-        } = ui.hover_pos.unwrap();
-        assert_float_eq!(
-            hover_x,
-            target.x,
-            abs <= 0.0001,
-            "with {desc}: check ui.hover_pos.x",
-        );
-        assert_float_eq!(
-            hover_y,
-            target.y,
-            abs <= 0.0001,
-            "with {desc}: check ui.hover_pos.y",
-        );
-    }
-
-    #[test]
-    //#[ignore = "broken due to Drag imprecision"]
     fn spawner_drag() {
         let (mut app, _) = test_app();
 
