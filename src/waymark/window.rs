@@ -1,5 +1,6 @@
 //! Waymark tray and associated code.
 
+use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui::{Response, TextEdit, Ui};
@@ -38,7 +39,6 @@ pub struct SpawnerUi {
     // Spawner -> UI
     pub enabled: bool,
     // UI -> Spawner
-    pub center: Vec2,
     pub hover_pos: Option<Vec2>,
 }
 
@@ -145,9 +145,6 @@ impl SpawnerUi {
             .sense(egui::Sense::drag()),
         );
 
-        let egui::Pos2 { x, y } = resp.rect.center();
-        self.center = Vec2::new(x, y);
-
         self.hover_pos = if resp.hovered() {
             let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
             Some(Vec2::new(x, y))
@@ -193,17 +190,20 @@ impl WaymarkWindow {
     /// [System] that draws the waymark window and handles events.
     ///
     /// Will panic if there is more than one camera.
-    pub fn draw(
-        mut win_q: Query<&mut WaymarkWindow>,
-        mut spawner_q: Query<(&mut SpawnerUi, &Spawner)>,
-        mut commands: Commands,
-        mut contexts: EguiContexts,
-        clipboard: Res<EguiClipboard>,
-    ) {
+    pub fn draw(world: &mut World) {
+        let ctx = egui_context(world);
+        let mut state = SystemState::<(
+            Query<&mut WaymarkWindow>,
+            Query<(&mut SpawnerUi, &Spawner)>,
+            Commands,
+            Res<EguiClipboard>,
+        )>::new(world);
+        let (mut win_q, mut spawner_q, mut commands, clipboard) = state.get_mut(world);
+
         let mut win = win_q.single_mut();
 
         let ewin = egui::Window::new("Waymarks").default_width(4.0 * WAYMARK_SPAWNER_SIZE);
-        ewin.show(contexts.ctx_mut(), |ui| {
+        ewin.show(&ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Preset: ");
                 ui.add(TextEdit::singleline(&mut win.preset_name).desired_width(100.0));
@@ -347,7 +347,6 @@ mod test {
     use bevy::render::RenderPlugin;
     use bevy::window::PrimaryWindow;
     use bevy::winit::WinitPlugin;
-    use bevy_egui::egui::Pos2;
     use bevy_egui::EguiPlugin;
     use bevy_egui::{egui, EguiContexts};
 
@@ -416,32 +415,6 @@ mod test {
         let mut win_q = app.world.query_filtered::<Entity, With<PrimaryWindow>>();
         let primary_window = win_q.single(&app.world);
         (app, primary_window)
-    }
-
-    #[test]
-    pub fn spawner_center() {
-        let (mut app, _) = test_app();
-
-        let mut ui_q = app.world.query::<&SpawnerUi>();
-        let ui = ui_q.single(&app.world);
-        assert_float_eq!(ui.center.x, WAYMARK_SPAWNER_SIZE / 2.0, abs <= 0.0001,);
-        assert_float_eq!(ui.center.y, WAYMARK_SPAWNER_SIZE / 2.0, abs <= 0.0001,);
-
-        let pos = Pos2::new(250.0, -500.0);
-        app.world.resource_mut::<TestWinPos>().0 = pos;
-        app.update();
-
-        let ui = ui_q.single(&app.world);
-        assert_float_eq!(
-            ui.center.x,
-            pos.x + WAYMARK_SPAWNER_SIZE / 2.0,
-            abs <= 0.0001,
-        );
-        assert_float_eq!(
-            ui.center.y,
-            pos.y + WAYMARK_SPAWNER_SIZE / 2.0,
-            abs <= 0.0001,
-        );
     }
 
     #[test]
