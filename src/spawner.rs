@@ -32,12 +32,11 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 /// An entity that can be clicked & dragged to spawn a waymark.
 ///
 /// Rendered using egui, not the normal logic.
-#[derive(Debug, Clone, Component, Reflect)]
-#[reflect(from_reflect = false)]
+#[derive(Debug, Clone, Component)]
 pub struct Spawner<Target: Spawnable> {
     pub target: Target,
-    #[reflect(ignore)]
     pub texture_id: egui::TextureId,
+    pub size: Vec2,
     pub enabled: bool,
 }
 
@@ -114,7 +113,7 @@ pub struct SpawnerWidget<'w, 's, Target: Spawnable> {
 }
 
 impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
-    type In = Vec2;
+    type In = ();
     type Out = egui::Response;
 
     fn run_with(
@@ -122,18 +121,21 @@ impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
         state: &mut SystemState<Self>,
         ui: &mut Ui,
         id: Entity,
-        size: Vec2,
+        (): (),
     ) -> Self::Out {
         let mut state = state.get_mut(world);
         let spawner = state.spawner_q.get(id).unwrap();
         let resp = ui.add(
-            egui::Image::new((spawner.texture_id, egui::Vec2::new(size.x, size.y)))
-                .tint(egui::Color32::from_white_alpha(if spawner.enabled {
-                    SPAWNER_ALPHA
-                } else {
-                    SPAWNER_DISABLED_ALPHA
-                }))
-                .sense(egui::Sense::drag()),
+            egui::Image::new((
+                spawner.texture_id,
+                egui::Vec2::new(spawner.size.x, spawner.size.y),
+            ))
+            .tint(egui::Color32::from_white_alpha(if spawner.enabled {
+                SPAWNER_ALPHA
+            } else {
+                SPAWNER_DISABLED_ALPHA
+            }))
+            .sense(egui::Sense::drag()),
         );
 
         if resp.hovered() {
@@ -160,14 +162,14 @@ pub struct SpawnerBundle<T: Spawnable> {
 }
 
 impl<T: Spawnable> SpawnerBundle<T> {
-    pub fn new(entity: T, asset_server: &AssetServer, contexts: &mut EguiContexts) -> Self {
-        let texture = entity.texture_handle(asset_server);
+    pub fn new(entity: T, texture: Handle<Image>, size: Vec2, contexts: &mut EguiContexts) -> Self {
         Self {
             name: Name::new(format!("Spawner for {}", entity.spawner_name())),
             spawner: Spawner {
                 target: entity,
                 texture_id: contexts.add_image(texture),
                 enabled: true,
+                size,
             },
             pickable: default(),
             drag_start: On::<Pointer<DragStart>>::run(Spawner::<T>::drag_start),
@@ -191,7 +193,6 @@ impl<T> Default for SpawnerPlugin<T> {
 
 impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.register_type::<Spawner<T>>();
         if <T as Spawnable>::UNIQUE {
             app.add_systems(PostUpdate, Spawner::<T>::update_enabled_state);
         }
@@ -236,7 +237,7 @@ mod test {
         egui::Area::new("test").fixed_pos(pos).show(&ctx, |ui| {
             let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
             let id = q.single(world);
-            widget::show_with::<SpawnerWidget<Waymark>>(world, ui, id, Vec2::splat(SPAWNER_SIZE));
+            widget::show::<SpawnerWidget<Waymark>>(world, ui, id);
         });
     }
 
@@ -245,7 +246,12 @@ mod test {
         asset_server: Res<AssetServer>,
         mut contexts: EguiContexts,
     ) {
-        commands.spawn(SpawnerBundle::new(Waymark::A, &asset_server, &mut contexts));
+        commands.spawn(SpawnerBundle::new(
+            Waymark::A,
+            asset_server.load(Waymark::A.asset_path()),
+            Vec2::splat(SPAWNER_SIZE),
+            &mut contexts,
+        ));
         commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
             Vec2::ZERO,
             Vec2::splat(100.0),

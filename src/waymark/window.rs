@@ -83,23 +83,13 @@ impl WaymarkWindow {
             ui.separator();
             ui.horizontal(|ui| {
                 for waymark in [Waymark::One, Waymark::Two, Waymark::Three, Waymark::Four] {
-                    widget::show_with::<SpawnerWidget<Waymark>>(
-                        world,
-                        ui,
-                        spawners[&waymark],
-                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
-                    );
+                    widget::show::<SpawnerWidget<Waymark>>(world, ui, spawners[&waymark]);
                 }
             });
             ui.horizontal(|ui| {
                 for waymark in [Waymark::A, Waymark::B, Waymark::C, Waymark::D] {
                     let _spawner = spawners[&waymark];
-                    widget::show_with::<SpawnerWidget<Waymark>>(
-                        world,
-                        ui,
-                        spawners[&waymark],
-                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
-                    );
+                    widget::show::<SpawnerWidget<Waymark>>(world, ui, spawners[&waymark]);
                 }
             });
             state.apply(world);
@@ -144,7 +134,8 @@ impl WaymarkWindow {
                 for waymark in enum_iterator::all::<Waymark>() {
                     parent.spawn(SpawnerBundle::<Waymark>::new(
                         waymark,
-                        &asset_server,
+                        asset_server.load(waymark.asset_path()),
+                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
                         &mut contexts,
                     ));
                 }
