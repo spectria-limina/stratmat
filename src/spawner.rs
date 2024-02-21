@@ -13,7 +13,7 @@ use itertools::Itertools;
 use std::fmt::Debug;
 
 use crate::cursor::EntityCommandsStartDragExt;
-use crate::widget::{WidgetId, WidgetSystem};
+use crate::widget::WidgetSystem;
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
 const SPAWNER_ALPHA: u8 = 230;
@@ -58,13 +58,13 @@ impl<T: Spawnable> Spawner<T> {
     /// Panics if there is more than one camera.
     pub fn drag_start(
         ev: Listener<Pointer<DragStart>>,
-        spawner_q: Query<&Spawner<T>>,
+        spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
         let id = ev.listener();
         debug!("starting drag on spawner {id:?}");
-        let Ok(spawner) = spawner_q.get(id) else {
+        let Ok((spawner, parent)) = spawner_q.get(id) else {
             debug!("but it doesn't exist");
             return;
         };
@@ -73,12 +73,15 @@ impl<T: Spawnable> Spawner<T> {
             return;
         }
 
-        commands.spawn(SpawnerBundle {
+        let mut new_spawner = commands.spawn(SpawnerBundle {
             name: Name::new(format!("Spawner for {}", spawner.target.spawner_name())),
             spawner: spawner.clone(),
             pickable: default(),
             drag_start: On::<Pointer<DragStart>>::run(Self::drag_start),
         });
+        if let Some(parent) = parent {
+            new_spawner.set_parent(parent.get());
+        }
 
         let (camera, camera_transform) = camera_q.single();
         let hit_position = ev.hit.position.unwrap().truncate();
@@ -105,29 +108,24 @@ impl<T: Spawnable> Spawner<T> {
 #[derive(SystemParam)]
 
 pub struct SpawnerWidget<'w, 's, Target: Spawnable> {
-    spawner_q: Query<'w, 's, (Entity, &'static Spawner<Target>)>,
+    spawner_q: Query<'w, 's, &'static Spawner<Target>>,
     target_q: Query<'w, 's, &'static Target>,
     pointer_ev: EventWriter<'w, PointerHits>,
 }
 
 impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
-    type In = (T, Vec2);
+    type In = Vec2;
     type Out = egui::Response;
 
     fn run_with(
         world: &mut World,
         state: &mut SystemState<Self>,
         ui: &mut Ui,
-        _id: WidgetId,
-        (target, size): (T, Vec2),
+        id: Entity,
+        size: Vec2,
     ) -> Self::Out {
         let mut state = state.get_mut(world);
-        let (id, spawner) = state
-            .spawner_q
-            .iter()
-            .filter(|(_, spawner)| spawner.target == target)
-            .exactly_one()
-            .unwrap_or_else(|e| panic!("Tried to run a spawner that doesn't exist uniquely: {e}"));
+        let spawner = state.spawner_q.get(id).unwrap();
         let resp = ui.add(
             egui::Image::new((spawner.texture_id, egui::Vec2::new(size.x, size.y)))
                 .tint(egui::Color32::from_white_alpha(if spawner.enabled {
@@ -236,12 +234,9 @@ mod test {
         let ctx = egui_context(world);
         let pos = world.resource::<TestWinPos>().0;
         egui::Area::new("test").fixed_pos(pos).show(&ctx, |ui| {
-            widget::show_with::<SpawnerWidget<Waymark>>(
-                world,
-                ui,
-                WidgetId::new("spawner"),
-                (Waymark::A, Vec2::splat(SPAWNER_SIZE)),
-            );
+            let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
+            let id = q.single(world);
+            widget::show_with::<SpawnerWidget<Waymark>>(world, ui, id, Vec2::splat(SPAWNER_SIZE));
         });
     }
 

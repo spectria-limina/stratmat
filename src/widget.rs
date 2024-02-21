@@ -1,9 +1,7 @@
-use std::hash::Hasher;
-
 use bevy::{
     ecs::system::{SystemParam, SystemParamItem, SystemState},
     prelude::*,
-    utils::{AHasher, HashMap},
+    utils::HashMap,
 };
 use bevy_egui::{
     egui::{self, Ui},
@@ -14,7 +12,7 @@ pub trait WidgetSystem: SystemParam {
     type In;
     type Out;
 
-    fn run(world: &mut World, state: &mut SystemState<Self>, ui: &mut Ui, id: WidgetId) -> Self::Out
+    fn run(world: &mut World, state: &mut SystemState<Self>, ui: &mut Ui, id: Entity) -> Self::Out
     where
         Self: WidgetSystem<In = ()>,
     {
@@ -25,7 +23,7 @@ pub trait WidgetSystem: SystemParam {
         world: &mut World,
         state: &mut SystemState<Self>,
         ui: &mut Ui,
-        id: WidgetId,
+        id: Entity,
         args: Self::In,
     ) -> Self::Out;
 }
@@ -46,7 +44,7 @@ pub fn egui_context(world: &mut World) -> egui::Context {
 pub fn show<S: 'static + WidgetSystem<In = ()>>(
     world: &mut World,
     ui: &mut Ui,
-    id: WidgetId,
+    id: Entity,
 ) -> S::Out {
     show_with::<S>(world, ui, id, ())
 }
@@ -54,7 +52,7 @@ pub fn show<S: 'static + WidgetSystem<In = ()>>(
 pub fn show_with<S: 'static + WidgetSystem>(
     world: &mut World,
     ui: &mut Ui,
-    id: WidgetId,
+    id: Entity,
     args: S::In,
 ) -> S::Out {
     // We need to cache `SystemState` to allow for a system's locally tracked state
@@ -85,19 +83,5 @@ pub fn show_with<S: 'static + WidgetSystem>(
 /// not shared. This hashmap allows us to dynamically store instance states.
 #[derive(Resource, Default)]
 struct StateInstances<T: WidgetSystem + 'static> {
-    instances: HashMap<WidgetId, SystemState<T>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WidgetId(pub u64);
-impl WidgetId {
-    pub fn new(name: &str) -> Self {
-        let bytes = name.as_bytes();
-        let mut hasher = AHasher::default();
-        hasher.write(bytes);
-        WidgetId(hasher.finish())
-    }
-    pub fn with(&self, name: &str) -> WidgetId {
-        Self::new(&format!("{}{name}", self.0))
-    }
+    instances: HashMap<Entity, SystemState<T>>,
 }

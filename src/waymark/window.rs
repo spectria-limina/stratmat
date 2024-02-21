@@ -3,14 +3,15 @@
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 
+use bevy::utils::hashbrown::HashMap;
 use bevy_egui::egui::TextEdit;
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 
 use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
 use crate::arena::Arena;
 use crate::ecs::RegistryExt;
-use crate::spawner::{SpawnerBundle, SpawnerPlugin, SpawnerWidget};
-use crate::widget::{self, egui_context, WidgetId};
+use crate::spawner::{Spawner, SpawnerBundle, SpawnerPlugin, SpawnerWidget};
+use crate::widget::{self, egui_context};
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
@@ -27,13 +28,17 @@ impl WaymarkWindow {
     /// Will panic if there is more than one camera.
     pub fn draw(world: &mut World) {
         let ctx = egui_context(world);
-        let mut state =
-            SystemState::<(Query<&mut WaymarkWindow>, Commands, Res<EguiClipboard>)>::new(world);
+        let mut state = SystemState::<(
+            Query<(Entity, &mut WaymarkWindow)>,
+            Query<(Entity, &Parent, &Spawner<Waymark>)>,
+            Commands,
+            Res<EguiClipboard>,
+        )>::new(world);
 
         let ewin = egui::Window::new("Waymarks").default_width(4.0 * WAYMARK_SPAWNER_SIZE);
         ewin.show(&ctx, |ui| {
-            let (mut win_q, mut commands, clipboard) = state.get_mut(world);
-            let mut win = win_q.single_mut();
+            let (mut win_q, mut spawner_q, mut commands, clipboard) = state.get_mut(world);
+            let (id, mut win) = win_q.single_mut();
 
             ui.horizontal(|ui| {
                 ui.label("Preset: ");
@@ -68,19 +73,12 @@ impl WaymarkWindow {
                 }
             });
 
-            /* TODO: Bring this back
-            let mut spawners: HashMap<_, _> = spawner_q
+            let spawners: HashMap<_, _> = spawner_q
                 .iter_mut()
-                .map(|(ui, spawner)| (spawner.target, (ui, spawner)))
+                .filter_map(|(spawner_id, parent, spawner)| {
+                    (parent.get() == id).then_some((spawner.target, spawner_id))
+                })
                 .collect();
-            let show = |&mut (ref mut spawner_ui, spawner): &mut (
-                Mut<'_, SpawnerUi>,
-                &Spawner<Waymark>,
-            ),
-                        ui: &mut Ui| {
-                spawner_ui.show(ui, spawner, Vec2::splat(WAYMARK_SPAWNER_SIZE))
-            };
-            */
 
             ui.separator();
             ui.horizontal(|ui| {
@@ -88,18 +86,19 @@ impl WaymarkWindow {
                     widget::show_with::<SpawnerWidget<Waymark>>(
                         world,
                         ui,
-                        WidgetId::new(waymark.name()),
-                        (waymark, Vec2::splat(WAYMARK_SPAWNER_SIZE)),
+                        spawners[&waymark],
+                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
                     );
                 }
             });
             ui.horizontal(|ui| {
                 for waymark in [Waymark::A, Waymark::B, Waymark::C, Waymark::D] {
+                    let _spawner = spawners[&waymark];
                     widget::show_with::<SpawnerWidget<Waymark>>(
                         world,
                         ui,
-                        WidgetId::new(waymark.name()),
-                        (waymark, Vec2::splat(WAYMARK_SPAWNER_SIZE)),
+                        spawners[&waymark],
+                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
                     );
                 }
             });
