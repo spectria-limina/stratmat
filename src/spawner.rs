@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use bevy::ecs::system::EntityCommands;
+use bevy::ecs::system::{EntityCommands, SystemParam, SystemState};
 use bevy::prelude::*;
-use bevy_egui::egui::Response;
+use bevy_egui::egui::{Response, Ui};
 use bevy_egui::{egui, EguiContexts};
 use bevy_mod_picking::backend::{HitData, PointerHits};
 use bevy_mod_picking::prelude::*;
@@ -11,6 +11,7 @@ use itertools::Itertools;
 use std::fmt::Debug;
 
 use crate::cursor::EntityCommandsStartDragExt;
+use crate::widget::{WidgetId, WidgetSystem};
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
 const SPAWNER_ALPHA: u8 = 230;
@@ -146,6 +147,54 @@ impl SpawnerUi {
             None
         };
         resp
+    }
+}
+
+#[derive(SystemParam)]
+
+pub struct SpawnerWidget<'w, 's, E: Spawnable> {
+    spawner_q: Query<'w, 's, (Entity, &'static Spawner<E>)>,
+    target_q: Query<'w, 's, &'static E>,
+    pointer_ev: EventWriter<'w, PointerHits>,
+}
+
+impl<E: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, E> {
+    type In = (E, Vec2);
+    type Out = ();
+
+    fn run_with(
+        world: &mut World,
+        state: &mut SystemState<Self>,
+        ui: &mut Ui,
+        _id: WidgetId,
+        (target, size): (E, Vec2),
+    ) -> Self::Out {
+        let mut state = state.get_mut(world);
+        for (id, spawner) in &state.spawner_q {
+            if spawner.target != target {
+                continue;
+            }
+            let enabled = !state.target_q.iter().contains(&spawner.target);
+            let resp = ui.add(
+                egui::Image::new((spawner.texture_id, egui::Vec2::new(size.x, size.y)))
+                    .tint(egui::Color32::from_white_alpha(if enabled {
+                        SPAWNER_ALPHA
+                    } else {
+                        SPAWNER_DISABLED_ALPHA
+                    }))
+                    .sense(egui::Sense::drag()),
+            );
+
+            if resp.hovered() {
+                let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
+                state.pointer_ev.send(PointerHits::new(
+                    PointerId::Mouse,
+                    vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
+                    // egui is at depth 1_000_000, we need to be in front of that.
+                    1_000_001.0,
+                ));
+            }
+        }
     }
 }
 
