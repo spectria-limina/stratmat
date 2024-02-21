@@ -32,13 +32,13 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 /// Rendered using egui, not the normal logic.
 #[derive(Debug, Clone, Component, Reflect)]
 #[reflect(from_reflect = false)]
-pub struct Spawner<E: Spawnable> {
-    pub target: E,
+pub struct Spawner<Target: Spawnable> {
+    pub target: Target,
     #[reflect(ignore)]
     pub texture_id: egui::TextureId,
 }
 
-impl<E: Spawnable> Spawner<E> {
+impl<T: Spawnable> Spawner<T> {
     /// Handle a drag event, spawning a new [Waymark] in place of the current entity if
     /// the [Spawner] is enabled.
     ///
@@ -48,7 +48,7 @@ impl<E: Spawnable> Spawner<E> {
     /// Panics if there is more than one camera.
     pub fn drag_start(
         ev: Listener<Pointer<DragStart>>,
-        spawner_q: Query<&Spawner<E>>,
+        spawner_q: Query<&Spawner<T>>,
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
@@ -66,7 +66,7 @@ impl<E: Spawnable> Spawner<E> {
         });
 
         let mut entity = commands.entity(id);
-        entity.remove::<SpawnerBundle<E>>();
+        entity.remove::<SpawnerBundle<T>>();
 
         let (camera, camera_transform) = camera_q.single();
         let hit_position = ev.hit.position.unwrap().truncate();
@@ -88,14 +88,14 @@ impl<E: Spawnable> Spawner<E> {
 
 #[derive(SystemParam)]
 
-pub struct SpawnerWidget<'w, 's, E: Spawnable> {
-    spawner_q: Query<'w, 's, (Entity, &'static Spawner<E>)>,
-    target_q: Query<'w, 's, &'static E>,
+pub struct SpawnerWidget<'w, 's, Target: Spawnable> {
+    spawner_q: Query<'w, 's, (Entity, &'static Spawner<Target>)>,
+    target_q: Query<'w, 's, &'static Target>,
     pointer_ev: EventWriter<'w, PointerHits>,
 }
 
-impl<E: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, E> {
-    type In = (E, Vec2);
+impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
+    type In = (T, Vec2);
     type Out = egui::Response;
 
     fn run_with(
@@ -103,7 +103,7 @@ impl<E: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, E> {
         state: &mut SystemState<Self>,
         ui: &mut Ui,
         _id: WidgetId,
-        (target, size): (E, Vec2),
+        (target, size): (T, Vec2),
     ) -> Self::Out {
         let mut state = state.get_mut(world);
         let (id, spawner) = state
@@ -139,15 +139,15 @@ impl<E: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, E> {
 
 /// Bundle of components for a [Spawner].
 #[derive(Bundle)]
-pub struct SpawnerBundle<E: Spawnable> {
+pub struct SpawnerBundle<T: Spawnable> {
     pub name: Name,
-    pub spawner: Spawner<E>,
+    pub spawner: Spawner<T>,
     pub pickable: PickableBundle,
     pub drag_start: On<Pointer<DragStart>>,
 }
 
-impl<E: Spawnable> SpawnerBundle<E> {
-    pub fn new(entity: E, asset_server: &AssetServer, contexts: &mut EguiContexts) -> Self {
+impl<T: Spawnable> SpawnerBundle<T> {
+    pub fn new(entity: T, asset_server: &AssetServer, contexts: &mut EguiContexts) -> Self {
         let texture = entity.texture_handle(asset_server);
         Self {
             name: Name::new(format!("Spawner for {}", entity.spawner_name())),
@@ -156,18 +156,18 @@ impl<E: Spawnable> SpawnerBundle<E> {
                 texture_id: contexts.add_image(texture),
             },
             pickable: default(),
-            drag_start: On::<Pointer<DragStart>>::run(Spawner::<E>::drag_start),
+            drag_start: On::<Pointer<DragStart>>::run(Spawner::<T>::drag_start),
         }
     }
 }
 
 /// Plugin for spawner support
 #[derive(Copy, Clone, Debug)]
-pub struct SpawnerPlugin<E> {
-    _phantom: PhantomData<E>,
+pub struct SpawnerPlugin<Target> {
+    _phantom: PhantomData<Target>,
 }
 
-impl<E> Default for SpawnerPlugin<E> {
+impl<T> Default for SpawnerPlugin<T> {
     fn default() -> Self {
         Self {
             _phantom: default(),
@@ -175,9 +175,9 @@ impl<E> Default for SpawnerPlugin<E> {
     }
 }
 
-impl<E: Spawnable> Plugin for SpawnerPlugin<E> {
+impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.register_type::<Spawner<E>>();
+        app.register_type::<Spawner<T>>();
     }
 }
 
@@ -213,7 +213,7 @@ mod test {
 
     const SPAWNER_SIZE: f32 = 40.0;
 
-    fn draw_test_win<E: Spawnable>(world: &mut World) {
+    fn draw_test_win<T: Spawnable>(world: &mut World) {
         let ctx = egui_context(world);
         let pos = world.resource::<TestWinPos>().0;
         egui::Area::new("test").fixed_pos(pos).show(&ctx, |ui| {
