@@ -90,7 +90,7 @@ impl WaymarkWindow {
                         ui,
                         WidgetId::new(waymark.name()),
                         (waymark, Vec2::splat(WAYMARK_SPAWNER_SIZE)),
-                    )
+                    );
                 }
             });
             ui.horizontal(|ui| {
@@ -100,7 +100,7 @@ impl WaymarkWindow {
                         ui,
                         WidgetId::new(waymark.name()),
                         (waymark, Vec2::splat(WAYMARK_SPAWNER_SIZE)),
-                    )
+                    );
                 }
             });
             state.apply(world);
