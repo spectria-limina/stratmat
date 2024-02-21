@@ -331,6 +331,8 @@ pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Op
 }
 
 impl Spawnable for Waymark {
+    const UNIQUE: bool = true;
+
     fn spawner_name(&self) -> std::borrow::Cow<'static, str> {
         self.name().into()
     }

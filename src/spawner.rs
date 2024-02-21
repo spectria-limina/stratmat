@@ -22,6 +22,8 @@ const SPAWNER_DISABLED_ALPHA: u8 = 25;
 
 /// An entity that can be spawned.
 pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug {
+    const UNIQUE: bool;
+
     fn spawner_name(&self) -> Cow<'static, str>;
     fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image>;
     fn insert(&self, entity: &mut EntityCommands);
@@ -36,9 +38,17 @@ pub struct Spawner<Target: Spawnable> {
     pub target: Target,
     #[reflect(ignore)]
     pub texture_id: egui::TextureId,
+    pub enabled: bool,
 }
 
 impl<T: Spawnable> Spawner<T> {
+    // TODO: TEST TEST TEST
+    pub fn update_enabled_state(mut q: Query<&mut Spawner<T>>, target_q: Query<&T>) {
+        for mut spawner in &mut q {
+            spawner.enabled = !target_q.iter().contains(&spawner.target);
+        }
+    }
+
     /// Handle a drag event, spawning a new [Waymark] in place of the current entity if
     /// the [Spawner] is enabled.
     ///
@@ -58,6 +68,11 @@ impl<T: Spawnable> Spawner<T> {
             debug!("but it doesn't exist");
             return;
         };
+        if !spawner.enabled {
+            debug!("but it was disabled");
+            return;
+        }
+
         commands.spawn(SpawnerBundle {
             name: Name::new(format!("Spawner for {}", spawner.target.spawner_name())),
             spawner: spawner.clone(),
@@ -112,10 +127,9 @@ impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
             .filter(|(_, spawner)| spawner.target == target)
             .exactly_one()
             .unwrap_or_else(|e| panic!("Tried to run a spawner that doesn't exist uniquely: {e}"));
-        let enabled = !state.target_q.iter().contains(&spawner.target);
         let resp = ui.add(
             egui::Image::new((spawner.texture_id, egui::Vec2::new(size.x, size.y)))
-                .tint(egui::Color32::from_white_alpha(if enabled {
+                .tint(egui::Color32::from_white_alpha(if spawner.enabled {
                     SPAWNER_ALPHA
                 } else {
                     SPAWNER_DISABLED_ALPHA
@@ -154,6 +168,7 @@ impl<T: Spawnable> SpawnerBundle<T> {
             spawner: Spawner {
                 target: entity,
                 texture_id: contexts.add_image(texture),
+                enabled: true,
             },
             pickable: default(),
             drag_start: On::<Pointer<DragStart>>::run(Spawner::<T>::drag_start),
@@ -178,6 +193,9 @@ impl<T> Default for SpawnerPlugin<T> {
 impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
     fn build(&self, app: &mut App) {
         app.register_type::<Spawner<T>>();
+        if <T as Spawnable>::UNIQUE {
+            app.add_systems(PostUpdate, Spawner::<T>::update_enabled_state);
+        }
     }
 }
 
