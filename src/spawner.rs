@@ -80,9 +80,6 @@ impl<T: Spawnable> Spawner<T> {
             drag_start: On::<Pointer<DragStart>>::run(Self::drag_start),
         });
 
-        let mut entity = commands.entity(id);
-        entity.remove::<SpawnerBundle<T>>();
-
         let (camera, camera_transform) = camera_q.single();
         let hit_position = ev.hit.position.unwrap().truncate();
         let translation = camera
@@ -94,6 +91,10 @@ impl<T: Spawnable> Spawner<T> {
             spawner.target,
         );
 
+        let mut entity = commands.entity(id);
+        entity.remove::<SpawnerBundle<T>>();
+        // We might be parented to the window/another widget.
+        entity.remove_parent();
         spawner.target.insert(&mut entity);
         entity.insert(Transform::from_translation(translation));
         // Forward to the general dragging implementation.

@@ -139,15 +139,17 @@ impl WaymarkWindow {
         asset_server: Res<AssetServer>,
         mut contexts: EguiContexts,
     ) {
-        commands.spawn(WaymarkWindow::default());
-        // TODO: Make spawners children of the window?
-        for waymark in enum_iterator::all::<Waymark>() {
-            commands.spawn(SpawnerBundle::<Waymark>::new(
-                waymark,
-                &asset_server,
-                &mut contexts,
-            ));
-        }
+        commands
+            .spawn(WaymarkWindow::default())
+            .with_children(|parent| {
+                for waymark in enum_iterator::all::<Waymark>() {
+                    parent.spawn(SpawnerBundle::<Waymark>::new(
+                        waymark,
+                        &asset_server,
+                        &mut contexts,
+                    ));
+                }
+            });
     }
 }
 
