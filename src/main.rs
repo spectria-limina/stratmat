@@ -15,6 +15,7 @@ use bevy_xpbd_2d::{
     prelude::PhysicsLayer,
 };
 use clap::{ArgAction, Parser as _};
+use hitbox::{EntityCommandsInsertHitboxExt, Hitbox, HitboxKind};
 use waymark::WaymarkPlugin;
 
 #[cfg(test)]
@@ -24,6 +25,7 @@ mod arena;
 mod color;
 mod cursor;
 mod ecs;
+mod hitbox;
 mod spawner;
 mod waymark;
 mod widget;
@@ -111,7 +113,14 @@ fn main() -> eyre::Result<()> {
         .add_plugins(arena::menu::ArenaMenuPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera)
-        .add_systems(Startup, configure_picker_debug);
+        .add_systems(Startup, configure_picker_debug)
+        .add_systems(Startup, |mut commands: Commands| {
+            commands.spawn_empty().insert_hitbox(Hitbox::new(
+                HitboxKind::Directional,
+                Color::SALMON,
+                10.0,
+            ));
+        });
 
     if args.debug_inspector {
         app.add_plugins(WorldInspectorPlugin::new());
