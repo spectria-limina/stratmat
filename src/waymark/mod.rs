@@ -3,23 +3,21 @@
 //! This module implements support for FFXIV waymarks.
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
-use bevy::ecs::query::QuerySingleError;
+use avian2d::prelude::*;
+use bevy::color::palettes::css::{FUCHSIA, LIGHT_CYAN, RED, YELLOW};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy::window::RequestRedraw;
-use bevy_commandify::{command, entity_command};
-use bevy_mod_picking::prelude::*;
 use bevy_vector_shapes::prelude::*;
-use bevy_xpbd_2d::prelude::*;
 use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
-use crate::arena::Arena;
-use crate::cursor::DraggableBundle;
-use crate::ecs::AssetCommands;
+use crate::arena::{Arena, ArenaBackground};
+use crate::color::AlphaScale;
+use crate::cursor::make_draggable_world;
+use crate::ecs::AssetCommandsExt;
 use crate::spawner::Spawnable;
 
 pub mod window;
@@ -110,10 +108,10 @@ impl Waymark {
     /// Produces the fill/stroke colour for this waymark.
     pub fn color(self) -> Color {
         match self {
-            Waymark::One | Waymark::A => Color::RED,
-            Waymark::Two | Waymark::B => Color::YELLOW,
-            Waymark::Three | Waymark::C => Color::CYAN,
-            Waymark::Four | Waymark::D => Color::FUCHSIA,
+            Waymark::One | Waymark::A => RED.into(),
+            Waymark::Two | Waymark::B => YELLOW.into(),
+            Waymark::Three | Waymark::C => LIGHT_CYAN.into(),
+            Waymark::Four | Waymark::D => FUCHSIA.into(),
         }
     }
 
@@ -162,39 +160,38 @@ impl Waymark {
     /// The entities include the `Waymark` entity itself as well as the necessary sprite entities
     /// to render it correctly.
     pub fn spawn(self, commands: &mut Commands<'_, '_>) {
-        commands.spawn_empty().insert_waymark(self, None);
+        let mut entity = commands.spawn_empty();
+        entity.queue(insert_waymark(self, None));
     }
-}
 
-/// [`Command`](bevy::ecs::system::Command) to spawn all of the waymarks specified in the given `preset`.
-#[command]
-pub fn spawn_waymarks_from_preset(preset: Preset, world: &mut World) {
-    for (waymark, entry) in preset.waymarks {
-        if entry.active {
-            world.spawn_empty().insert_waymark(waymark, Some(entry));
+    pub fn spawn_from_preset(commands: &mut Commands, preset: Preset) {
+        for (waymark, entry) in preset.waymarks {
+            if entry.active {
+                let mut entity = commands.spawn_empty();
+                entity.queue(insert_waymark(waymark, Some(entry)));
+            }
         }
     }
-}
 
-/// [`Command`](bevy::ecs::system::Command) to despawn all active waymarks.
-#[command]
-pub fn despawn_all_waymarks(world: &mut World) {
-    let mut query = world.query_filtered::<Entity, &Waymark>();
-    let entities = query.iter(world).collect_vec();
-    for entity in entities {
-        world.entity_mut(entity).despawn_recursive();
+    pub fn despawn_all(world: &mut World) {
+        let mut query = world.query_filtered::<Entity, With<Waymark>>();
+        let entities = query.iter(world).collect_vec();
+        for entity in entities {
+            world.entity_mut(entity).despawn_recursive();
+        }
+        world.send_event(RequestRedraw);
     }
-    world.send_event(RequestRedraw);
 }
 
 #[derive(Bundle)]
 struct WaymarkBundle {
     name: Name,
     waymark: Waymark,
-    pickable: PickableBundle,
-    draggable: DraggableBundle,
-    spatial: SpatialBundle,
+    transform: Transform,
+    visibility: Visibility,
     collider: Collider,
+    colliding: CollidingEntities,
+    alpha: AlphaScale,
 }
 
 impl WaymarkBundle {
@@ -202,132 +199,137 @@ impl WaymarkBundle {
         Self {
             name: Name::new(waymark.name()),
             waymark,
-            pickable: PickableBundle::default(),
-            draggable: DraggableBundle::default(),
-            spatial: SpatialBundle::default(),
+            transform: default(),
+            visibility: default(),
             collider: if waymark.is_square() {
-                Collider::cuboid(WAYMARK_SIZE, WAYMARK_SIZE)
+                Collider::rectangle(WAYMARK_SIZE, WAYMARK_SIZE)
             } else {
-                Collider::ball(WAYMARK_SIZE / 2.0)
+                Collider::circle(WAYMARK_SIZE / 2.0)
             },
+            colliding: default(),
+            alpha: default(),
         }
     }
 }
 
-#[derive(Error, Debug)]
-enum InsertWaymarkError {
-    #[error("Unable to retrieve arena: {0}")]
-    Single(#[from] QuerySingleError),
-    #[error("Arena data not loaded")]
-    NotLoaded(AssetId<Arena>),
+struct InsertWaymark {
+    waymark: Waymark,
+    entry: Option<PresetEntry>,
 }
 
-/// [`EntityCommand`](bevy::ecs::system::EntityCommand) to insert a waymark's entities.
-///
-/// If a [`PresetEntry`] is provided, it will be used to position the waymark.
-#[entity_command]
-pub fn insert_waymark(id: Entity, world: &mut World, waymark: Waymark, entry: Option<PresetEntry>) {
-    debug!("inserting waymark {:?} on entity {:?}", waymark, id);
-    let asset_server = world.resource::<AssetServer>();
-    let image = waymark.asset_handle(asset_server);
+impl EntityCommand for InsertWaymark {
+    fn apply(self, id: Entity, world: &mut World) {
+        let InsertWaymark { waymark, entry } = self;
+        debug!("inserting waymark {waymark:?} on entity {id:?} with preset {entry:?}",);
+        let asset_server = world.resource::<AssetServer>();
+        let image = waymark.asset_handle(asset_server);
 
-    let Some(mut entity) = world.get_entity_mut(id) else {
-        return;
-    };
-    entity.insert(WaymarkBundle::new(waymark));
-
-    if let Some(entry) = entry {
-        match entity.world_scope(|world| {
-            world.resource_scope(|world: &mut World, arenas: Mut<Assets<Arena>>| {
-                let mut arena_q = world.query::<&Handle<Arena>>();
-                let handle = arena_q.get_single(world)?;
-                arenas
-                    .get(handle)
-                    .map(|arena| arena.offset)
-                    .ok_or(InsertWaymarkError::NotLoaded(handle.id()))
-            })
-        }) {
-            Ok(offset) => {
-                entity.insert(Transform::from_xyz(
-                    entry.x - offset.x,
-                    // The entry's Z axis is our negative Y axis.
-                    offset.y - entry.z,
-                    0.0,
-                ));
-            }
-            Err(InsertWaymarkError::NotLoaded(asset_id)) => {
-                // Defer execution of the command until the arena finishes loading.
-                debug!("waymark {waymark:?} spawn deferred until arena is loaded");
-                world.resource_mut::<AssetCommands<Arena>>().on_load(
-                    asset_id,
-                    InsertWaymarkEntityCommand {
-                        waymark,
-                        entry: Some(entry),
-                    }
-                    .with_entity(id),
-                );
-                return;
-            }
-            Err(e) => {
-                error!("Unable to insert waymark: {e}");
-                return;
+        if let Some(entry) = entry {
+            let mut arena_q = world.query::<&ArenaBackground>();
+            match arena_q.get_single(world) {
+                Ok(arena) => {
+                    debug!("positioning waymark {waymark:?} when arena loaded");
+                    world.run_system_when_asset_loaded_with(
+                        arena.handle.id(),
+                        set_position_from_preset,
+                        (id, entry, arena.handle.clone()),
+                    );
+                }
+                Err(e) => {
+                    error!("Unable to position waymark by preset because there is no arena: {e}");
+                }
             }
         }
-    }
 
-    entity.with_children(|parent| {
-        parent.spawn((
-            Name::new("Waymark Image"),
-            SpriteBundle {
-                sprite: Sprite {
+        let Ok(mut entity) = world.get_entity_mut(id) else {
+            return;
+        };
+        entity.insert(WaymarkBundle::new(waymark));
+        make_draggable_world(&mut entity);
+        entity.with_children(|parent| {
+            parent.spawn((
+                Name::new("Waymark Image"),
+                Sprite {
+                    image,
                     custom_size: Some(Vec2::new(
                         WAYMARK_SIZE * IMAGE_SCALE,
                         WAYMARK_SIZE * IMAGE_SCALE,
                     )),
                     ..default()
                 },
-                texture: image,
-                ..default()
-            },
-        ));
+                AlphaScale::default(),
+            ));
 
-        let mut spawn_shape = |name, config| {
-            if waymark.is_square() {
-                parent.spawn((
-                    Name::new(name),
-                    ShapeBundle::rect(&config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
-                ));
-            } else {
-                parent.spawn((
-                    Name::new(name),
-                    ShapeBundle::circle(&config, WAYMARK_SIZE / 2.0),
-                ));
+            let mut spawn_shape = |name, alpha, config| {
+                if waymark.is_square() {
+                    parent.spawn((
+                        Name::new(name),
+                        AlphaScale(alpha),
+                        ShapeBundle::rect(&config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
+                    ));
+                } else {
+                    parent.spawn((
+                        Name::new(name),
+                        AlphaScale(alpha),
+                        ShapeBundle::circle(&config, WAYMARK_SIZE / 2.0),
+                    ));
+                };
             };
-        };
 
-        spawn_shape(
-            "Waymark Stroke",
-            ShapeConfig {
-                color: waymark.color().with_a(STROKE_OPACITY),
-                thickness: STROKE_WIDTH,
-                hollow: true,
-                alpha_mode: AlphaMode::Blend,
-                transform: Transform::from_xyz(0.0, 0.0, -0.1),
-                ..ShapeConfig::default_2d()
-            },
-        );
+            spawn_shape(
+                "Waymark Stroke",
+                STROKE_OPACITY,
+                ShapeConfig {
+                    color: waymark.color(),
+                    thickness: STROKE_WIDTH,
+                    hollow: true,
+                    alpha_mode: AlphaMode::Blend.into(),
+                    transform: Transform::from_xyz(0.0, 0.0, -0.1),
+                    ..ShapeConfig::default_2d()
+                },
+            );
 
-        spawn_shape(
-            "Waymark Fill",
-            ShapeConfig {
-                color: waymark.color().with_a(FILL_OPACITY),
-                hollow: false,
-                alpha_mode: AlphaMode::Blend,
-                transform: Transform::from_xyz(0.0, 0.0, -0.2),
-                ..ShapeConfig::default_2d()
-            },
-        );
-    });
+            spawn_shape(
+                "Waymark Fill",
+                FILL_OPACITY,
+                ShapeConfig {
+                    color: waymark.color(),
+                    hollow: false,
+                    alpha_mode: AlphaMode::Blend.into(),
+                    transform: Transform::from_xyz(0.0, 0.0, -0.2),
+                    ..ShapeConfig::default_2d()
+                },
+            );
+        });
+    }
+}
+
+// Call this only if we are positive the asset indicated by the handle exists.
+fn set_position_from_preset(
+    In((id, entry, handle)): In<(Entity, PresetEntry, Handle<Arena>)>,
+    world: &mut World,
+) {
+    let offset = world
+        .resource::<Assets<Arena>>()
+        .get(&handle)
+        .unwrap()
+        .offset;
+    let Ok(mut entity) = world.get_entity_mut(id) else {
+        return;
+    };
+    entity.insert(Transform::from_xyz(
+        entry.x - offset.x,
+        // The entry's Z axis is our negative Y axis.
+        offset.y - entry.z,
+        0.0,
+    ));
+}
+
+/// [`EntityCommand`] to insert a waymark's entities.
+///
+/// If a [`PresetEntry`] is provided, it will be used to position the waymark.
+pub fn insert_waymark(waymark: Waymark, entry: Option<PresetEntry>) -> impl EntityCommand {
+    InsertWaymark { waymark, entry }
 }
 
 impl Spawnable for Waymark {
@@ -342,7 +344,7 @@ impl Spawnable for Waymark {
     }
 
     fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) {
-        entity.insert_waymark(*self, None)
+        entity.queue(insert_waymark(*self, None));
     }
 }
 

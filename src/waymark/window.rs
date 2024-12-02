@@ -7,9 +7,8 @@ use bevy::utils::hashbrown::HashMap;
 use bevy_egui::egui::TextEdit;
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 
-use super::{CommandsDespawnAllWaymarksExt, CommandsSpawnWaymarksFromPresetExt, Preset, Waymark};
-use crate::arena::Arena;
-use crate::ecs::RegistryExt;
+use super::{Preset, Waymark};
+use crate::arena::{Arena, ArenaBackground};
 use crate::spawner::{Spawner, SpawnerBundle, SpawnerPlugin, SpawnerWidget};
 use crate::widget::{self, egui_context};
 
@@ -32,12 +31,12 @@ impl WaymarkWindow {
             Query<(Entity, &mut WaymarkWindow)>,
             Query<(Entity, &Parent, &Spawner<Waymark>)>,
             Commands,
-            Res<EguiClipboard>,
+            ResMut<EguiClipboard>,
         )>::new(world);
 
         let ewin = egui::Window::new("Waymarks").default_width(4.0 * WAYMARK_SPAWNER_SIZE);
         ewin.show(&ctx, |ui| {
-            let (mut win_q, mut spawner_q, mut commands, clipboard) = state.get_mut(world);
+            let (mut win_q, mut spawner_q, mut commands, mut clipboard) = state.get_mut(world);
             let (id, mut win) = win_q.single_mut();
 
             ui.horizontal(|ui| {
@@ -50,8 +49,8 @@ impl WaymarkWindow {
                         match serde_json::from_str::<Preset>(&contents) {
                             Ok(preset) => {
                                 win.preset_name = preset.name.clone();
-                                commands.despawn_all_waymarks();
-                                commands.spawn_waymarks_from_preset(preset);
+                                commands.run_system_cached(Waymark::despawn_all);
+                                Waymark::spawn_from_preset(&mut commands, preset);
                                 info!(
                                     "Imported waymark preset '{}' from the clipboard",
                                     win.preset_name
@@ -66,10 +65,10 @@ impl WaymarkWindow {
                     }
                 }
                 if ui.button("Export").clicked() {
-                    commands.run(Self::export_to_clipboard);
+                    commands.run_system_cached(Self::export_to_clipboard);
                 }
                 if ui.button("Clear").clicked() {
-                    commands.despawn_all_waymarks();
+                    commands.run_system_cached(Waymark::despawn_all);
                 }
             });
 
@@ -100,11 +99,11 @@ impl WaymarkWindow {
     pub fn export_to_clipboard(
         win_q: Query<&WaymarkWindow>,
         waymarks_q: Query<(&Waymark, &Transform)>,
-        arena_q: Query<&Handle<Arena>>,
+        arena_q: Query<&ArenaBackground>,
         arenas: Res<Assets<Arena>>,
         mut clipboard: ResMut<EguiClipboard>,
     ) {
-        let arena = arenas.get(arena_q.single()).unwrap();
+        let arena = arenas.get(&arena_q.single().handle).unwrap();
         let preset = Preset {
             name: win_q.single().preset_name.clone(),
             map_id: arena.map_id,
@@ -132,12 +131,14 @@ impl WaymarkWindow {
             .spawn(WaymarkWindow::default())
             .with_children(|parent| {
                 for waymark in enum_iterator::all::<Waymark>() {
-                    parent.spawn(SpawnerBundle::<Waymark>::new(
-                        waymark,
-                        asset_server.load(waymark.asset_path()),
-                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
-                        &mut contexts,
-                    ));
+                    parent
+                        .spawn(SpawnerBundle::<Waymark>::new(
+                            waymark,
+                            asset_server.load(waymark.asset_path()),
+                            Vec2::splat(WAYMARK_SPAWNER_SIZE),
+                            &mut contexts,
+                        ))
+                        .observe(Spawner::<Waymark>::start_drag);
                 }
             });
     }
@@ -149,8 +150,7 @@ pub struct WaymarkWindowPlugin {}
 
 impl Plugin for WaymarkWindowPlugin {
     fn build(&self, app: &mut App) {
-        app.register(WaymarkWindow::export_to_clipboard)
-            .add_plugins(SpawnerPlugin::<Waymark>::default())
+        app.add_plugins(SpawnerPlugin::<Waymark>::default())
             .add_systems(Update, WaymarkWindow::draw)
             .add_systems(Startup, WaymarkWindow::setup);
     }

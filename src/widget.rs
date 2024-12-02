@@ -67,7 +67,7 @@ pub fn show_with<S: 'static + WidgetSystem>(
     world.resource_scope(|world, mut states: Mut<StateInstances<S>>| {
         if !states.instances.contains_key(&id) {
             debug!(
-                "Registering system state for widget {id:?} of type {}",
+                "registering system state for widget {id:?} of type {}",
                 std::any::type_name::<S>()
             );
             states.instances.insert(id, SystemState::new(world));

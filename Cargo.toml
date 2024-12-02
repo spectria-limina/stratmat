@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.12.0", default-features = false, features = [
+bevy = { version = "0.15.0", default-features = false, features = [
     "animation",
     "bevy_animation",
     "bevy_asset",
@@ -18,59 +18,56 @@ bevy = { version = "0.12.0", default-features = false, features = [
     "bevy_winit",
     "default_font",
     "jpeg",
-    "multi-threaded",
+    "multi_threaded",
     "serialize",
-    "subpixel_glyph_atlas",
     "png",
     "trace",
     "webgl2",
     "x11",
     "webp",
 ] }
-bevy-inspector-egui = { version = "0.21.0", default-features = false }
-bevy-trait-query = "0.4.0"
-bevy_commandify = "0.2.0"
-bevy_egui = "0.23.0"
-bevy_eventlistener_core = "0.6.2"
-bevy_mod_debugdump = "0.9.0"
-bevy_mod_picking = { version = "0.17.0", default-features = false, features = [
-    "backend_egui",
-    "backend_sprite",
-    "debug",
+bevy-inspector-egui = { version = "0.28.0", default-features = false, features=[
+    "bevy_render",
+    "bevy_image",
+    "egui_clipboard",
+    "egui_open_url",
 ] }
-bevy_picking_core = "0.17.0"
-bevy_vector_shapes = "0.6.0"
-bevy_xpbd_2d = { version = "0.3.2", features = ["serialize", "debug-plugin"] }
-chrono = "0.4.31"
-clap = { version = "4.4.18", features = ["derive", "env"] }
-derive_more = { version = "0.99.17", default-features = false, features = [
+bevy-trait-query = "0.6.0"
+bevy_egui = "0.31.1"
+bevy_vector_shapes = "0.9.2"
+avian2d = { version = "0.1.2", features = ["serialize", "debug-plugin"] }
+chrono = "0.4.38"
+clap = { version = "4.5.21", features = ["derive", "env"] }
+derive_more = { version = "1.0.0", default-features = false, features = [
     "from",
 ] }
-enum-iterator = "1.5.0"
+enum-iterator = "2.1.0"
 eyre = "0.6.12"
 float_eq = "1.0.1"
-int-enum = "1.0.0"
-itertools = "0.12.0"
-log = "0.4.20"
-parry2d = { version = "0.13.6", features = [
+int-enum = "1.1.2"
+itertools = "0.13.0"
+log = "0.4.22"
+parry2d = { version = "0.17.4", features = [
     "serde",
     "simd-is-enabled",
     "simd-stable",
     "serde-serialize",
 ] }
 ron = "0.8.1"
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = "1.0.111"
-thiserror = "1.0.56"
-tracing = "0.1.40"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
+thiserror = "2.0.3"
+tracing = "0.1.41"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
 opt-level = 1
 
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+# Enable high optimizations for dependencies (esp. Bevy), but not for our code:
 [profile.dev.package."*"]
 opt-level = 3
 
 [patch.crates-io]
-bevy_xpbd_2d = { git = "https://github.com/Jondolf/bevy_xpbd.git" }
+# These crates haven't yet released with 0.15 support.
+avian2d = { git = "https://github.com/Jondolf/avian.git" }
+bevy-trait-query = { git = "https://github.com/JoJoJet/bevy-trait-query.git" }

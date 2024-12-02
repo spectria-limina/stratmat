@@ -1,18 +1,21 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use bevy::ecs::system::{EntityCommands, SystemParam, SystemState};
-use bevy::prelude::*;
+use bevy::{
+    ecs::system::{EntityCommands, SystemParam, SystemState},
+    picking::{
+        backend::{HitData, PointerHits},
+        pointer::PointerId,
+    },
+    prelude::*,
+};
 use bevy_egui::{
     egui::{self, Ui},
     EguiContexts,
 };
-use bevy_mod_picking::backend::{HitData, PointerHits};
-use bevy_mod_picking::prelude::*;
 use itertools::Itertools;
 use std::fmt::Debug;
 
-use crate::cursor::EntityCommandsStartDragExt;
 use crate::widget::WidgetSystem;
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
@@ -48,20 +51,20 @@ impl<T: Spawnable> Spawner<T> {
         }
     }
 
-    /// Handle a drag event, spawning a new [Waymark] in place of the current entity if
+    /// Handle a drag event, spawning a new entity in place of the current entity if
     /// the [Spawner] is enabled.
     ///
     /// Technically what it actually does is, to preserve continuity of the drag event,
     /// replaces this entity with the new waymark, and spawns a new [Spawner] in its place.
     ///
     /// Panics if there is more than one camera.
-    pub fn drag_start(
-        ev: Listener<Pointer<DragStart>>,
+    pub fn start_drag(
+        ev: Trigger<Pointer<DragStart>>,
         spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
-        let id = ev.listener();
+        let id = ev.entity();
         debug!("starting drag on spawner {id:?}");
         let Ok((spawner, parent)) = spawner_q.get(id) else {
             debug!("but it doesn't exist");
@@ -75,9 +78,8 @@ impl<T: Spawnable> Spawner<T> {
         let mut new_spawner = commands.spawn(SpawnerBundle {
             name: Name::new(format!("Spawner for {}", spawner.target.spawner_name())),
             spawner: spawner.clone(),
-            pickable: default(),
-            drag_start: On::<Pointer<DragStart>>::run(Self::drag_start),
         });
+        new_spawner.observe(Self::start_drag);
         if let Some(parent) = parent {
             new_spawner.set_parent(parent.get());
         }
@@ -100,7 +102,7 @@ impl<T: Spawnable> Spawner<T> {
         spawner.target.insert(&mut entity);
         entity.insert(Transform::from_translation(translation));
         // Forward to the general dragging implementation.
-        entity.start_drag();
+        commands.run_system_cached_with(crate::cursor::start_drag, id);
     }
 }
 
@@ -157,8 +159,6 @@ impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
 pub struct SpawnerBundle<T: Spawnable> {
     pub name: Name,
     pub spawner: Spawner<T>,
-    pub pickable: PickableBundle,
-    pub drag_start: On<Pointer<DragStart>>,
 }
 
 impl<T: Spawnable> SpawnerBundle<T> {
@@ -171,8 +171,6 @@ impl<T: Spawnable> SpawnerBundle<T> {
                 enabled: true,
                 size,
             },
-            pickable: default(),
-            drag_start: On::<Pointer<DragStart>>::run(Spawner::<T>::drag_start),
         }
     }
 }
@@ -222,8 +220,6 @@ mod test {
     use bevy_egui::EguiPlugin;
     use bevy_egui::{egui, EguiContexts};
 
-    use bevy_mod_picking::DefaultPickingPlugins;
-    use bevy_picking_core::events::{Drag, DragEnd, DragStart, Pointer};
     use float_eq::assert_float_eq;
 
     #[derive(Default, Resource)]
@@ -234,11 +230,13 @@ mod test {
     fn draw_test_win<T: Spawnable>(world: &mut World) {
         let ctx = egui_context(world);
         let pos = world.resource::<TestWinPos>().0;
-        egui::Area::new("test").fixed_pos(pos).show(&ctx, |ui| {
-            let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
-            let id = q.single(world);
-            widget::show::<SpawnerWidget<Waymark>>(world, ui, id);
-        });
+        egui::Area::new("test".into())
+            .fixed_pos(pos)
+            .show(&ctx, |ui| {
+                let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
+                let id = q.single(world);
+                widget::show::<SpawnerWidget<Waymark>>(world, ui, id);
+            });
     }
 
     fn spawn_test_entities(
@@ -246,12 +244,14 @@ mod test {
         asset_server: Res<AssetServer>,
         mut contexts: EguiContexts,
     ) {
-        commands.spawn(SpawnerBundle::new(
-            Waymark::A,
-            asset_server.load(Waymark::A.asset_path()),
-            Vec2::splat(SPAWNER_SIZE),
-            &mut contexts,
-        ));
+        commands
+            .spawn(SpawnerBundle::new(
+                Waymark::A,
+                asset_server.load(Waymark::A.asset_path()),
+                Vec2::splat(SPAWNER_SIZE),
+                &mut contexts,
+            ))
+            .observe(Spawner::<Waymark>::start_drag);
         commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
             Vec2::ZERO,
             Vec2::splat(100.0),
@@ -264,6 +264,7 @@ mod test {
         app.add_plugins(
             DefaultPlugins
                 .set(RenderPlugin {
+                    synchronous_pipeline_compilation: true,
                     render_creation: RenderCreation::Automatic(WgpuSettings {
                         backends: None,
                         ..default()
@@ -289,8 +290,10 @@ mod test {
         app.cleanup();
         app.update();
 
-        let mut win_q = app.world.query_filtered::<Entity, With<PrimaryWindow>>();
-        let primary_window = win_q.single(&app.world);
+        let mut win_q = app
+            .world_mut()
+            .query_filtered::<Entity, With<PrimaryWindow>>();
+        let primary_window = win_q.single(app.world());
         (app, primary_window)
     }
 
@@ -302,7 +305,7 @@ mod test {
         let drag = Vec2::splat(50.0);
         let start_pos = Vec2::splat(SPAWNER_SIZE / 2.0);
         let end_pos = start_pos + drag;
-        app.world.spawn(MockDrag {
+        app.world_mut().spawn(MockDrag {
             start_pos,
             end_pos,
             button: MouseButton::Left,
@@ -321,11 +324,15 @@ mod test {
             app.update();
         }
 
-        let mut spawner_q = app.world.query_filtered::<(), With<Spawner<Waymark>>>();
-        spawner_q.single(&app.world);
+        let mut spawner_q = app
+            .world_mut()
+            .query_filtered::<(), With<Spawner<Waymark>>>();
+        spawner_q.single(app.world());
 
-        let mut waymark_q = app.world.query_filtered::<&Transform, With<Waymark>>();
-        let transform = waymark_q.single(&app.world);
+        let mut waymark_q = app
+            .world_mut()
+            .query_filtered::<&Transform, With<Waymark>>();
+        let transform = waymark_q.single(app.world());
         assert_float_eq!(transform.translation.x, end_pos.x, abs <= 0.0001,);
         assert_float_eq!(transform.translation.y, end_pos.y, abs <= 0.0001,);
     }

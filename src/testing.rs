@@ -1,12 +1,10 @@
+use avian2d::prelude::*;
 use bevy::{
     ecs::query::QuerySingleError,
     input::{mouse::MouseButtonInput, ButtonState},
     prelude::*,
-    render::camera::ScalingMode,
     window::PrimaryWindow,
 };
-use bevy_mod_picking::picking_core::Pickable;
-use bevy_xpbd_2d::prelude::*;
 use itertools::Itertools;
 
 use crate::Layer;
@@ -19,26 +17,22 @@ pub fn add_test_camera(mut commands: Commands, win_q: Query<&Window, With<Primar
         win_rect.size(),
         win_rect.center(),
     );
-    commands.spawn(Camera2dBundle {
-        projection: OrthographicProjection {
-            near: -1000.0,
-            far: 1000.0,
-            scaling_mode: ScalingMode::WindowSize(1.0),
-            ..default()
-        },
-        transform: Transform {
+    commands.spawn((
+        Camera2d,
+        OrthographicProjection::default_2d(),
+        Transform {
             translation: win_rect.center().extend(0.0),
             scale: Vec3::new(1.0, -1.0, 1.0),
             rotation: Quat::IDENTITY,
         },
-        ..default()
-    });
+    ));
 }
 
 #[derive(Bundle, Default)]
 pub struct DragSurfaceBundle {
-    sprite: SpriteBundle,
-    pickable: Pickable,
+    sprite: Sprite,
+    transform: Transform,
+    pickable: PickingBehavior,
     collider: Collider,
     layers: CollisionLayers,
 }
@@ -46,17 +40,14 @@ pub struct DragSurfaceBundle {
 impl DragSurfaceBundle {
     pub fn new(rect: Rect) -> Self {
         Self {
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(rect.size()),
-                    ..default()
-                },
-                transform: Transform::from_translation(rect.center().extend(0.0)),
+            sprite: Sprite {
+                custom_size: Some(rect.size()),
                 ..default()
             },
-            pickable: Pickable::IGNORE,
-            collider: Collider::cuboid(rect.width(), rect.height()),
-            layers: CollisionLayers::all_masks::<Layer>().add_group(Layer::DragSurface),
+            transform: Transform::from_translation(rect.center().extend(0.0)),
+            pickable: PickingBehavior::IGNORE,
+            collider: Collider::rectangle(rect.width(), rect.height()),
+            layers: CollisionLayers::new(Layer::DragSurface, LayerMask::ALL),
         }
     }
 }
@@ -79,6 +70,7 @@ pub struct MockDrag {
 #[derive(Component, Default, Debug)]
 pub struct MockDragState {
     pub tick: f32,
+    pub pos: Vec2,
 }
 
 impl MockDrag {
@@ -97,10 +89,14 @@ impl MockDrag {
             Ok((id, drag, None)) => {
                 // On the first frame, we must hover over the start position without clicking to generate hits.
                 // Thanks egui.
-                commands.entity(id).insert(MockDragState::default());
+                commands.entity(id).insert(MockDragState {
+                    pos: drag.start_pos,
+                    ..default()
+                });
                 cursor_ev.send(CursorMoved {
                     window: win,
                     position: drag.start_pos,
+                    delta: None,
                 });
                 debug!("beginning mock drag at {}", drag.start_pos);
             }
@@ -125,13 +121,15 @@ impl MockDrag {
                     return;
                 }
                 let progress = f32::min(state.tick / drag.duration, 1.0);
-                let position = drag.start_pos.lerp(drag.end_pos, progress);
+                let pos = drag.start_pos.lerp(drag.end_pos, progress);
                 cursor_ev.send(CursorMoved {
                     window: win,
-                    position,
+                    position: pos,
+                    delta: Some(pos - state.pos),
                 });
                 state.tick += 1.0;
-                debug!("continuing mock drag to {}", position);
+                state.pos = pos;
+                debug!("continuing mock drag to {}", pos);
             }
             Err(QuerySingleError::MultipleEntities(s)) => {
                 panic!("can only process one MockDrag at a time: {s}")
@@ -147,11 +145,7 @@ pub fn debug_entities(world: &World) {
         debug!(
             "{:?}: {:?}",
             e.id(),
-            world
-                .inspect_entity(e.id())
-                .iter()
-                .map(|c| c.name())
-                .collect_vec()
+            world.inspect_entity(e.id()).map(|c| c.name()).collect_vec()
         );
     }
 }

@@ -1,21 +1,20 @@
 use std::io;
 
+use avian2d::prelude::*;
 use bevy::{
-    asset::{AssetLoader, AsyncReadExt, LoadedFolder, ParseAssetPathError, VisitAssetDependencies},
+    asset::{AssetLoader, LoadedFolder, ParseAssetPathError, VisitAssetDependencies},
     ecs::system::{SystemParam, SystemState},
     prelude::*,
     render::camera::ScalingMode,
 };
-use bevy_commandify::{command, entity_command};
-use bevy_picking_core::Pickable;
-use bevy_xpbd_2d::prelude::*;
+use bevy_inspector_egui::InspectorOptions;
 use itertools::Itertools;
 use serde::Deserialize;
 use thiserror::Error;
 
 use crate::{
-    ecs::{AssetCommandPlugin, AssetCommands},
-    waymark::CommandsSpawnWaymarksFromPresetExt,
+    ecs::{trigger_all_events, AssetCommandsExt},
+    waymark::Waymark,
     Layer,
 };
 
@@ -49,15 +48,15 @@ pub enum ArenaShape {
 impl From<ArenaShape> for Collider {
     fn from(value: ArenaShape) -> Self {
         match value {
-            ArenaShape::Rect(width, height) => Collider::cuboid(width, height),
-            ArenaShape::Circle(radius) => Collider::ball(radius),
+            ArenaShape::Rect(width, height) => Collider::rectangle(width, height),
+            ArenaShape::Circle(radius) => Collider::circle(radius),
         }
     }
 }
 
 /// An [`Arena`] is the backdrop to a fight, and includes everything needed to stage and set up a fight,
 /// such as the arena's background image, dimensions, and other metadata.
-#[derive(Asset, Reflect, Clone, Debug, Deserialize)]
+#[derive(Asset, Reflect, Clone, Debug, Deserialize, InspectorOptions)]
 pub struct Arena {
     pub name: String,
     pub short_name: String,
@@ -97,22 +96,20 @@ impl AssetLoader for ArenaLoader {
     type Settings = ();
     type Error = ArenaLoadError;
 
-    fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut bevy::asset::LoadContext,
-    ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
-        Box::pin(async move {
-            let mut buf = Vec::new();
-            reader.read_to_end(&mut buf).await?;
-            let mut data: Arena = ron::de::from_bytes(&buf)?;
-            data.background_path = load_context
-                .asset_path()
-                .resolve(&data.background_path)?
-                .to_string();
-            Ok(data)
-        })
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        _settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf).await?;
+        let mut data: Arena = ron::de::from_bytes(&buf)?;
+        data.background_path = load_context
+            .asset_path()
+            .resolve(&data.background_path)?
+            .to_string();
+        Ok(data)
     }
 
     fn extensions(&self) -> &[&str] {
@@ -125,8 +122,10 @@ impl AssetLoader for ArenaLoader {
 /// Currently only one is allowed at a time.
 ///
 /// TODO: Make more than one allowed at a time.
-#[derive(Component, Reflect, Copy, Clone, Debug)]
-pub struct ArenaBackground;
+#[derive(Component, Reflect, Clone, Debug)]
+pub struct ArenaBackground {
+    pub handle: Handle<Arena>,
+}
 
 /// How big the viewport should be relative to the size of the arena.
 const ARENA_VIEWPORT_SCALE: f32 = 1.1;
@@ -140,38 +139,52 @@ const ARENA_BACKGROUND_Z: f32 = -999.0;
 #[derive(Bundle)]
 pub struct ArenaBackgroundBundle {
     name: Name,
-    sprite: SpriteBundle,
+    sprite: Sprite,
+    transform: Transform,
     collider: Collider,
     layers: CollisionLayers,
-    pickable: Pickable,
+    pickable: PickingBehavior,
 }
 
 impl ArenaBackgroundBundle {
-    pub fn new(arena: &Arena, texture: Handle<Image>) -> Self {
+    pub fn new(arena: &Arena, image: Handle<Image>) -> Self {
         Self {
             name: format!("{} Background", arena.short_name).into(),
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(arena.size),
-                    ..default()
-                },
-                texture,
-                transform: Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
+            sprite: Sprite {
+                image,
+                custom_size: Some(arena.size),
                 ..default()
             },
+            transform: Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
             collider: arena.shape.into(),
             layers: CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
-            pickable: Pickable::IGNORE,
+            pickable: PickingBehavior::IGNORE,
         }
     }
 }
 
+/// Spawn an arena entity.
+///
+/// This will defer most of the work until the arena is loaded.
+pub fn spawn_arena(In(handle): In<Handle<Arena>>, world: &mut World) {
+    let path = world.resource::<AssetServer>().get_path(&handle);
+    debug!(
+        "spawning new arena with asset ID {} from path '{path:?}'",
+        handle.id()
+    );
+    let id = world
+        .spawn(ArenaBackground {
+            handle: handle.clone(),
+        })
+        .id();
+    world.run_system_when_asset_loaded_with(&handle, finish_spawn_arena, id);
+}
+
 #[derive(SystemParam)]
 struct ArenaSpawnState<'w, 's> {
-    arena_q: Query<'w, 's, &'static Handle<Arena>, With<ArenaBackground>>,
+    arena_q: Query<'w, 's, &'static ArenaBackground>,
     camera_q: Query<'w, 's, &'static mut OrthographicProjection, With<Camera2d>>,
     arenas: Res<'w, Assets<Arena>>,
-    arena_commands: ResMut<'w, AssetCommands<Arena>>,
     asset_server: Res<'w, AssetServer>,
 }
 
@@ -184,41 +197,37 @@ impl FromWorld for CachedArenaSpawnState {
     }
 }
 
-#[command]
-pub fn spawn_arena(world: &mut World, arena: Handle<Arena>) {
-    world.spawn((ArenaBackground, arena)).finish_spawn_arena();
-}
-
 /// Finish the post-asset-load spawning of an arena.
-///
-/// TODO: TEST TEST TEST
-#[entity_command]
-fn finish_spawn_arena(world: &mut World, id: Entity) {
+fn finish_spawn_arena(In(id): In<Entity>, world: &mut World) {
+    debug!("finishing spawning arena");
     world.resource_scope(|world, mut state: Mut<CachedArenaSpawnState>| {
-        let mut state = state.0.get_mut(world);
-        let Ok(handle) = state.arena_q.get(id) else {
+        let ArenaSpawnState {
+            arena_q,
+            mut camera_q,
+            arenas,
+            asset_server,
+        } = state.0.get_mut(world);
+
+        let Ok(background) = arena_q.get(id) else {
             // The entity was despawned or the ArenaBackground removed, so abort.
             return;
         };
-        let Some(arena) = state.arenas.get(handle) else {
-            // The arena is not yet loaded; queue this for later.
-            state
-                .arena_commands
-                .on_load(handle.id(), FinishSpawnArenaEntityCommand.with_entity(id));
+        let Some(arena) = arenas.get(&background.handle) else {
+            warn!("finish_spawn_arena called with asset not loaded!");
             return;
         };
-        state.camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
+        // FIXME: Single-camera assumption.
+        camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
             min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
             min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
         };
-        let background = state.asset_server.load(&arena.background_path);
+        let background = asset_server.load(&arena.background_path);
         let bundle = ArenaBackgroundBundle::new(arena, background);
         world.entity_mut(id).insert(bundle);
     });
 }
 
 /// Despawn all arenas.
-#[command]
 pub fn despawn_all_arenas(world: &mut World) {
     let mut q = world.query_filtered::<Entity, With<ArenaBackground>>();
     for id in q.iter(world).collect_vec() {
@@ -246,7 +255,7 @@ pub struct Arenas<'w, 's> {
     commands: Commands<'w, 's>,
 }
 
-impl<'w, 's> Arenas<'w, 's> {
+impl Arenas<'_, '_> {
     pub fn get(&self) -> Option<impl Iterator<Item = (AssetId<Arena>, &Arena)>> {
         let id = self.folder.0.id();
 
@@ -272,16 +281,19 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<Arena>()
             .register_type::<Arena>()
-            .add_plugins(AssetCommandPlugin::<Arena>::default())
             .init_asset_loader::<ArenaLoader>()
-            .init_resource::<CachedArenaSpawnState>()
             .init_resource::<ArenaFolder>()
+            .init_resource::<CachedArenaSpawnState>()
+            .add_systems(PreUpdate, trigger_all_events::<AssetEvent<Arena>>)
             .add_systems(Startup, spawn_tea_p1);
     }
 }
 
 fn spawn_tea_p1(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_arena(asset_server.load::<Arena>(Map::TeaP1.asset_path()));
+    commands.run_system_cached_with(
+        spawn_arena,
+        asset_server.load::<Arena>(Map::TeaP1.asset_path()),
+    );
 
     let waymarks = r#"{
   "Name":"TEA",
@@ -296,7 +308,7 @@ fn spawn_tea_p1(mut commands: Commands, asset_server: Res<AssetServer>) {
   "Four":{"X":107.8,"Y":0.0,"Z":100.0,"ID":7,"Active":true}
 }"#;
 
-    commands.spawn_waymarks_from_preset(serde_json::de::from_str(waymarks).unwrap());
+    Waymark::spawn_from_preset(&mut commands, serde_json::de::from_str(waymarks).unwrap());
 }
 
 pub fn plugin() -> ArenaPlugin {

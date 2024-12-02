@@ -1,12 +1,11 @@
 use std::f32::consts::PI;
 
+use avian2d::prelude::*;
 use bevy::prelude::*;
-use bevy_commandify::entity_command;
 use bevy_vector_shapes::{
     painter::ShapeConfig,
     shapes::{DiscBundle, ShapeBundle},
 };
-use bevy_xpbd_2d::components::Collider;
 
 /// The specific type of hitbox. Defines several important properties.
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -62,7 +61,7 @@ impl Hitbox {
 
     /// Construct a collider for this hitbox
     pub fn collider(&self) -> Collider {
-        Collider::ball(if self.kind == HitboxKind::Player {
+        Collider::circle(if self.kind == HitboxKind::Player {
             0.001 // There's no support for point colliders so use a very small circle.
         } else {
             self.outer_radius
@@ -72,20 +71,21 @@ impl Hitbox {
 
 impl Default for Hitbox {
     fn default() -> Self {
-        Self::new(default(), Color::SALMON, 10.0)
+        Self::new(default(), bevy::color::palettes::css::SALMON.into(), 10.0)
     }
 }
 
 #[derive(Bundle, Default)]
 struct HitboxBundle {
     hitbox: Hitbox,
-    spatial: SpatialBundle,
+    transform: Transform,
+    visibility: Visibility,
     collider: Collider,
 }
 
-#[entity_command]
-pub fn insert_hitbox(world: &mut World, id: Entity, hitbox: Hitbox) {
-    world.entity_mut(id).with_children(|parent| {
+pub fn insert_hitbox(entity: &mut EntityCommands, hitbox: Hitbox) {
+    entity.insert_if_new((GlobalTransform::default(), InheritedVisibility::default()));
+    entity.with_children(|parent| {
         parent
             // Insert the hitbox last so that it's not used after move.
             // Hence, start with an empty spawn.
