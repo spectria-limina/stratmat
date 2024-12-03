@@ -1,0 +1,268 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.73s
+     Running `target/debug/stratmat --log-asset-events true`
+[2m2024-12-03T10:13:27.619539Z[0m [34mDEBUG[0m [2mbevy_asset::io::file[0m[2m:[0m Asset Server using /home/alercah/games/ffxiv/stratmat/assets as its base path.
+[2m2024-12-03T10:13:27.619707Z[0m [34mDEBUG[0m [2mbevy_asset::io::file[0m[2m:[0m Asset Server using /home/alercah/games/ffxiv/stratmat/imported_assets/Default as its base path.
+[2m2024-12-03T10:13:27.622208Z[0m [34mDEBUG[0m [2mbevy_asset::io::file[0m[2m:[0m Asset Server using /home/alercah/games/ffxiv/stratmat/assets as its base path.
+[2m2024-12-03T10:13:27.622279Z[0m [34mDEBUG[0m [2mbevy_asset::io::file[0m[2m:[0m Asset Server using /home/alercah/games/ffxiv/stratmat/imported_assets/Default as its base path.
+[2m2024-12-03T10:13:27.622317Z[0m [33m WARN[0m [2mbevy_asset::io::source[0m[2m:[0m AssetSourceId::Name(embedded) does not have a processed AssetWatcher configured. Consider enabling the `embedded_watcher` cargo feature.
+[2m2024-12-03T10:13:27.622349Z[0m [34mDEBUG[0m [2mbevy_asset::io::file[0m[2m:[0m Asset Server using /home/alercah/games/ffxiv/stratmat/assets as its base path.
+[2m2024-12-03T10:13:27.622394Z[0m [34mDEBUG[0m [2mbevy_asset::io::file[0m[2m:[0m Asset Server using /home/alercah/games/ffxiv/stratmat/imported_assets/Default as its base path.
+[2m2024-12-03T10:13:27.985170Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m scouting for contraband for 'arenas.index' in 'arenas'
+[2m2024-12-03T10:13:27.985367Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<bevy_asset::folder::LoadedFolder>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:27.985768Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m beginning load of dir 'arenas'
+[2m2024-12-03T10:13:27.985883Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas": visiting
+[2m2024-12-03T10:13:28.033532Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing Assets
+[2m2024-12-03T10:13:28.033714Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m spawning new arena with asset ID AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} from path 'Some(arenas/ultimate/tea/p1.arena.ron)'
+[2m2024-12-03T10:13:28.033995Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.034135Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark One on entity 25v1#4294967321 with preset Some(PresetEntry { x: 92.2, y: 0.0, z: 107.8, id: 4, active: true })
+[2m2024-12-03T10:13:28.034244Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark One when arena loaded
+[2m2024-12-03T10:13:28.034411Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.035174Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark B on entity 26v1#4294967322 with preset Some(PresetEntry { x: 114.0, y: 0.0, z: 100.0, id: 1, active: true })
+[2m2024-12-03T10:13:28.035296Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark B when arena loaded
+[2m2024-12-03T10:13:28.035402Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.035755Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark A on entity 27v1#4294967323 with preset Some(PresetEntry { x: 100.0, y: 0.0, z: 88.0, id: 0, active: true })
+[2m2024-12-03T10:13:28.035831Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark A when arena loaded
+[2m2024-12-03T10:13:28.035879Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.036156Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark Four on entity 28v1#4294967324 with preset Some(PresetEntry { x: 107.8, y: 0.0, z: 100.0, id: 7, active: true })
+[2m2024-12-03T10:13:28.036262Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark Four when arena loaded
+[2m2024-12-03T10:13:28.036313Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.036612Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark C on entity 29v1#4294967325 with preset Some(PresetEntry { x: 100.0, y: 0.0, z: 116.0, id: 2, active: true })
+[2m2024-12-03T10:13:28.036690Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark C when arena loaded
+[2m2024-12-03T10:13:28.036727Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.037065Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark Three on entity 30v1#4294967326 with preset Some(PresetEntry { x: 107.8, y: 0.0, z: 107.8, id: 6, active: true })
+[2m2024-12-03T10:13:28.037150Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark Three when arena loaded
+[2m2024-12-03T10:13:28.037191Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.037447Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark Two on entity 31v1#4294967327 with preset Some(PresetEntry { x: 100.0, y: 0.0, z: 107.8, id: 5, active: true })
+[2m2024-12-03T10:13:28.037507Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark Two when arena loaded
+[2m2024-12-03T10:13:28.037540Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.037734Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m inserting waymark D on entity 32v1#4294967328 with preset Some(PresetEntry { x: 84.0, y: 0.0, z: 100.0, id: 3, active: true })
+[2m2024-12-03T10:13:28.037788Z[0m [34mDEBUG[0m [2mstratmat::waymark[0m[2m:[0m positioning waymark D when arena loaded
+[2m2024-12-03T10:13:28.037820Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferring system execution until asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} is loaded
+[2m2024-12-03T10:13:28.049814Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m Init system state stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050001Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 24v1#4294967320 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050157Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 33v1#4294967329 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050281Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 34v1#4294967330 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050389Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 35v1#4294967331 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050487Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 20v1#4294967316 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050592Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 21v1#4294967317 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050686Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 22v1#4294967318 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.050839Z[0m [34mDEBUG[0m [2mstratmat::widget[0m[2m:[0m registering system state for widget 23v1#4294967319 of type stratmat::spawner::SpawnerWidget<stratmat::waymark::Waymark>
+[2m2024-12-03T10:13:28.054242Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/savage/pandaemonium/p9s.arena.ron
+[2m2024-12-03T10:13:28.054625Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/tea/p1.arena.ron
+[2m2024-12-03T10:13:28.055100Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p1.arena.ron
+[2m2024-12-03T10:13:28.055158Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p2.arena.ron
+[2m2024-12-03T10:13:28.055161Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/savage/pandaemonium/p9s.arena.ron"
+[2m2024-12-03T10:13:28.055227Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p3.arena.ron
+[2m2024-12-03T10:13:28.055860Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p5.arena.ron
+[2m2024-12-03T10:13:28.055937Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/tea/p1.arena.ron"
+[2m2024-12-03T10:13:28.055962Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/i1.arena.ron
+[2m2024-12-03T10:13:28.056355Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p3.arena.ron"
+[2m2024-12-03T10:13:28.056399Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p4.arena.ron
+[2m2024-12-03T10:13:28.056736Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p5.arena.ron"
+[2m2024-12-03T10:13:28.056808Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p1.arena.ron"
+[2m2024-12-03T10:13:28.056842Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p2.arena.ron"
+[2m2024-12-03T10:13:28.057354Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p4.arena.ron"
+[2m2024-12-03T10:13:28.057412Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/i1.arena.ron"
+[2m2024-12-03T10:13:28.057484Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p10s.webp
+[2m2024-12-03T10:13:28.057535Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p11s.webp
+[2m2024-12-03T10:13:28.057779Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p12s/p1.webp
+[2m2024-12-03T10:13:28.057798Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p12s/p2.webp
+[2m2024-12-03T10:13:28.058980Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p10s.webp"
+[2m2024-12-03T10:13:28.059150Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p9s.webp
+[2m2024-12-03T10:13:28.060097Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p9s.webp"
+[2m2024-12-03T10:13:28.060344Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p11s.webp"
+[2m2024-12-03T10:13:28.060448Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p1.png
+[2m2024-12-03T10:13:28.060518Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p2.png
+[2m2024-12-03T10:13:28.060579Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p3.png
+[2m2024-12-03T10:13:28.060639Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p4.png
+[2m2024-12-03T10:13:28.060447Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p12s/p1.webp"
+[2m2024-12-03T10:13:28.060874Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p12s/p2.webp"
+[2m2024-12-03T10:13:28.062455Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p1.png
+[2m2024-12-03T10:13:28.062601Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p3.png
+[2m2024-12-03T10:13:28.063923Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p5.png
+[2m2024-12-03T10:13:28.064040Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/i1.png
+[2m2024-12-03T10:13:28.064185Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p2.png
+[2m2024-12-03T10:13:28.087719Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p1.png"
+[2m2024-12-03T10:13:28.109947Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p3.png"
+[2m2024-12-03T10:13:28.112110Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p1.png"
+[2m2024-12-03T10:13:28.112879Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p2.png"
+[2m2024-12-03T10:13:28.113650Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_1.png
+[2m2024-12-03T10:13:28.113869Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_2.png
+[2m2024-12-03T10:13:28.113983Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_3.png
+[2m2024-12-03T10:13:28.114135Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_4.png
+[2m2024-12-03T10:13:28.114300Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_a.png
+[2m2024-12-03T10:13:28.114695Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_b.png
+[2m2024-12-03T10:13:28.115102Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_c.png
+[2m2024-12-03T10:13:28.118122Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p3.png"
+[2m2024-12-03T10:13:28.123096Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p5.png"
+[2m2024-12-03T10:13:28.125100Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125174Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125225Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125252Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125287Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125313Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125491Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125528Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125567Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125595Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125631Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125658Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125690Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125716Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125756Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125797Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.125834Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.125860Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<stratmat::arena::Arena>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.126223Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m finishing spawning arena
+[2m2024-12-03T10:13:28.128619Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_d.png
+[2m2024-12-03T10:13:28.128638Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_1.png"
+[2m2024-12-03T10:13:28.129287Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_a.png"
+[2m2024-12-03T10:13:28.130075Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_b.png"
+[2m2024-12-03T10:13:28.130394Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_4.png"
+[2m2024-12-03T10:13:28.130721Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_3.png"
+[2m2024-12-03T10:13:28.131082Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_c.png"
+[2m2024-12-03T10:13:28.131489Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_d.png"
+[2m2024-12-03T10:13:28.131804Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_2.png"
+[2m2024-12-03T10:13:28.132961Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas.index
+[2m2024-12-03T10:13:28.135250Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' checking for contraband
+[2m2024-12-03T10:13:28.135438Z[0m [31mERROR[0m [2mbevy_asset::processor[0m[2m:[0m Failed to process asset arenas.index: Failed to load asset 'arenas.index' with asset loader 'stratmat::asset::IndexPseudoLoader': everyone is frozen in time
+[2m2024-12-03T10:13:28.135530Z[0m [31mERROR[0m [2mbevy_asset::server[0m[2m:[0m Path not found: arenas.index
+[2m2024-12-03T10:13:28.141790Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/i1.png"
+[2m2024-12-03T10:13:28.143277Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} } on path 'Some(arenas/ultimate/tea/p1.arena.ron)'
+[2m2024-12-03T10:13:28.145255Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p4.png"
+[2m2024-12-03T10:13:28.145320Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p2.png"
+[2m2024-12-03T10:13:28.145403Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing finished in 111.879884ms
+[2m2024-12-03T10:13:28.145474Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Listening for changes to source assets
+[2m2024-12-03T10:13:28.145476Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas": started
+[2m2024-12-03T10:13:28.145726Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas": traversing
+[2m2024-12-03T10:13:28.145888Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas": loading "arenas/savage" as folder
+[2m2024-12-03T10:13:28.145938Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage": visiting
+[2m2024-12-03T10:13:28.145973Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage": started
+[2m2024-12-03T10:13:28.146109Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage": traversing
+[2m2024-12-03T10:13:28.146233Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage": loading "arenas/savage/pandaemonium" as folder
+[2m2024-12-03T10:13:28.146276Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage/pandaemonium": visiting
+[2m2024-12-03T10:13:28.146318Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage/pandaemonium": started
+[2m2024-12-03T10:13:28.146435Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage/pandaemonium": traversing
+[2m2024-12-03T10:13:28.146563Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage/pandaemonium": loading "arenas/savage/pandaemonium/p9s.arena.ron" as asset
+[2m2024-12-03T10:13:28.147563Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage/pandaemonium": done traversing
+[2m2024-12-03T10:13:28.147716Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/savage": done traversing
+[2m2024-12-03T10:13:28.147839Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas": loading "arenas/ultimate" as folder
+[2m2024-12-03T10:13:28.147923Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate": visiting
+[2m2024-12-03T10:13:28.147966Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate": started
+[2m2024-12-03T10:13:28.148105Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate": traversing
+[2m2024-12-03T10:13:28.148288Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate": loading "arenas/ultimate/tea" as folder
+[2m2024-12-03T10:13:28.148322Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/tea": visiting
+[2m2024-12-03T10:13:28.148352Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/tea": started
+[2m2024-12-03T10:13:28.148468Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/tea": traversing
+[2m2024-12-03T10:13:28.148609Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/tea": loading "arenas/ultimate/tea/p1.arena.ron" as asset
+[2m2024-12-03T10:13:28.149137Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/tea": done traversing
+[2m2024-12-03T10:13:28.149256Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate": loading "arenas/ultimate/fru" as folder
+[2m2024-12-03T10:13:28.149286Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": visiting
+[2m2024-12-03T10:13:28.149324Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": started
+[2m2024-12-03T10:13:28.149441Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": traversing
+[2m2024-12-03T10:13:28.149595Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": loading "arenas/ultimate/fru/i1.arena.ron" as asset
+[2m2024-12-03T10:13:28.150230Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": loading "arenas/ultimate/fru/p3.arena.ron" as asset
+[2m2024-12-03T10:13:28.151015Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": loading "arenas/ultimate/fru/p1.arena.ron" as asset
+[2m2024-12-03T10:13:28.151824Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": loading "arenas/ultimate/fru/p4.arena.ron" as asset
+[2m2024-12-03T10:13:28.152769Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": loading "arenas/ultimate/fru/p2.arena.ron" as asset
+[2m2024-12-03T10:13:28.153585Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": loading "arenas/ultimate/fru/p5.arena.ron" as asset
+[2m2024-12-03T10:13:28.154558Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate/fru": done traversing
+[2m2024-12-03T10:13:28.154649Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas/ultimate": done traversing
+[2m2024-12-03T10:13:28.154731Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m "arenas": done traversing
+[2m2024-12-03T10:13:28.154762Z[0m [34mDEBUG[0m [2mbevy_asset::server[0m[2m:[0m done traversing for 'arenas'
+[2m2024-12-03T10:13:28.523973Z[0m [32m INFO[0m [2mbevy_asset::server[0m[2m:[0m Reloading arenas.index because it has changed
+[2m2024-12-03T10:13:28.524133Z[0m [31mERROR[0m [2mbevy_asset::server[0m[2m:[0m Path not found: arenas.index
+[2m2024-12-03T10:13:28.524189Z[0m [31mERROR[0m [2mbevy_asset::server[0m[2m:[0m Path not found: arenas.index
+[2m2024-12-03T10:13:28.537048Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} } on path 'Some(arenas/ultimate/tea/p1.arena.ron)'
+[2m2024-12-03T10:13:28.537124Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 1, generation: 0} } on path 'Some(arenas/savage/pandaemonium/p9s.arena.ron)'
+[2m2024-12-03T10:13:28.537149Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 2, generation: 0} } on path 'Some(arenas/ultimate/fru/i1.arena.ron)'
+[2m2024-12-03T10:13:28.537169Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 3, generation: 0} } on path 'Some(arenas/ultimate/fru/p3.arena.ron)'
+[2m2024-12-03T10:13:28.537189Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 4, generation: 0} } on path 'Some(arenas/ultimate/fru/p1.arena.ron)'
+[2m2024-12-03T10:13:28.537210Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 5, generation: 0} } on path 'Some(arenas/ultimate/fru/p4.arena.ron)'
+[2m2024-12-03T10:13:28.537237Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 6, generation: 0} } on path 'Some(arenas/ultimate/fru/p2.arena.ron)'
+[2m2024-12-03T10:13:28.537257Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<stratmat::arena::Arena>{ index: 7, generation: 0} } on path 'Some(arenas/ultimate/fru/p5.arena.ron)'
+[2m2024-12-03T10:13:28.537040Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event LoadedWithDependencies { id: AssetId<bevy_asset::folder::LoadedFolder>{ index: 0, generation: 0} } on path 'Some(arenas)'
+[2m2024-12-03T10:13:28.578332Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.578638Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m running deferred system for asset load on asset AssetId<bevy_asset::folder::LoadedFolder>{ index: 0, generation: 0}
+[2m2024-12-03T10:13:28.578679Z[0m [34mDEBUG[0m [2mstratmat::ecs[0m[2m:[0m deferred system checking asset events...
+[2m2024-12-03T10:13:28.578821Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' loaded with contraband
+[2m2024-12-03T10:13:28.578865Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m contraband: ["arenas/savage/pandaemonium/p9s.arena.ron", "arenas/ultimate/tea/p1.arena.ron", "arenas/ultimate/fru/i1.arena.ron", "arenas/ultimate/fru/p3.arena.ron", "arenas/ultimate/fru/p1.arena.ron", "arenas/ultimate/fru/p4.arena.ron", "arenas/ultimate/fru/p2.arena.ron", "arenas/ultimate/fru/p5.arena.ron"]
+[2m2024-12-03T10:13:28.580081Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing Assets
+[2m2024-12-03T10:13:28.581319Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Asset arenas.index did not finish processing. Clearing state for that asset
+[2m2024-12-03T10:13:28.583149Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<bevy_asset::folder::LoadedFolder>{ index: 0, generation: 0} } on path 'Some(arenas)'
+[2m2024-12-03T10:13:28.583160Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 1, generation: 0} } on path 'Some(arenas/savage/pandaemonium/p9s.arena.ron)'
+[2m2024-12-03T10:13:28.583294Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 2, generation: 0} } on path 'Some(arenas/ultimate/fru/i1.arena.ron)'
+[2m2024-12-03T10:13:28.583332Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 3, generation: 0} } on path 'Some(arenas/ultimate/fru/p3.arena.ron)'
+[2m2024-12-03T10:13:28.583358Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 4, generation: 0} } on path 'Some(arenas/ultimate/fru/p1.arena.ron)'
+[2m2024-12-03T10:13:28.583384Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 5, generation: 0} } on path 'Some(arenas/ultimate/fru/p4.arena.ron)'
+[2m2024-12-03T10:13:28.583408Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 6, generation: 0} } on path 'Some(arenas/ultimate/fru/p2.arena.ron)'
+[2m2024-12-03T10:13:28.583433Z[0m [32m INFO[0m [2mstratmat::debug[0m[2m:[0m asset event Added { id: AssetId<stratmat::arena::Arena>{ index: 7, generation: 0} } on path 'Some(arenas/ultimate/fru/p5.arena.ron)'
+[2m2024-12-03T10:13:28.613924Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/savage/pandaemonium/p9s.arena.ron
+[2m2024-12-03T10:13:28.614406Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/tea/p1.arena.ron
+[2m2024-12-03T10:13:28.614412Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/savage/pandaemonium/p9s.arena.ron"
+[2m2024-12-03T10:13:28.614733Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p1.arena.ron
+[2m2024-12-03T10:13:28.614789Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p2.arena.ron
+[2m2024-12-03T10:13:28.614843Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p3.arena.ron
+[2m2024-12-03T10:13:28.614936Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p5.arena.ron
+[2m2024-12-03T10:13:28.615006Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/i1.arena.ron
+[2m2024-12-03T10:13:28.615147Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p1.arena.ron"
+[2m2024-12-03T10:13:28.615238Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas/ultimate/fru/p4.arena.ron
+[2m2024-12-03T10:13:28.615616Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p3.arena.ron"
+[2m2024-12-03T10:13:28.615764Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/tea/p1.arena.ron"
+[2m2024-12-03T10:13:28.615810Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p2.arena.ron"
+[2m2024-12-03T10:13:28.615839Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p5.arena.ron"
+[2m2024-12-03T10:13:28.615958Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p10s.webp
+[2m2024-12-03T10:13:28.616000Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p11s.webp
+[2m2024-12-03T10:13:28.616128Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/i1.arena.ron"
+[2m2024-12-03T10:13:28.616158Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p12s/p1.webp
+[2m2024-12-03T10:13:28.616209Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p12s/p2.webp
+[2m2024-12-03T10:13:28.616221Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "arenas/ultimate/fru/p4.arena.ron"
+[2m2024-12-03T10:13:28.616445Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/savage/pandaemonium/p9s.webp
+[2m2024-12-03T10:13:28.616484Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p10s.webp"
+[2m2024-12-03T10:13:28.616602Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p12s/p2.webp"
+[2m2024-12-03T10:13:28.616852Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p11s.webp"
+[2m2024-12-03T10:13:28.616909Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p1.png
+[2m2024-12-03T10:13:28.616961Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p2.png
+[2m2024-12-03T10:13:28.616976Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p12s/p1.webp"
+[2m2024-12-03T10:13:28.617028Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p3.png
+[2m2024-12-03T10:13:28.617051Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/savage/pandaemonium/p9s.webp"
+[2m2024-12-03T10:13:28.617081Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/tea/p4.png
+[2m2024-12-03T10:13:28.617339Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p1.png
+[2m2024-12-03T10:13:28.617361Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p3.png
+[2m2024-12-03T10:13:28.617436Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p5.png
+[2m2024-12-03T10:13:28.617548Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/i1.png
+[2m2024-12-03T10:13:28.617690Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing sprites/arenas/ultimate/fru/p2.png
+[2m2024-12-03T10:13:28.660590Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p5.png"
+[2m2024-12-03T10:13:28.662926Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p3.png"
+[2m2024-12-03T10:13:28.669584Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p1.png"
+[2m2024-12-03T10:13:28.673418Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p4.png"
+[2m2024-12-03T10:13:28.675717Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p1.png"
+[2m2024-12-03T10:13:28.678442Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p3.png"
+[2m2024-12-03T10:13:28.679266Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/p2.png"
+[2m2024-12-03T10:13:28.682936Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_1.png
+[2m2024-12-03T10:13:28.683010Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_2.png
+[2m2024-12-03T10:13:28.683117Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_3.png
+[2m2024-12-03T10:13:28.683184Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_4.png
+[2m2024-12-03T10:13:28.683222Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_a.png
+[2m2024-12-03T10:13:28.683281Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_b.png
+[2m2024-12-03T10:13:28.683330Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_c.png
+[2m2024-12-03T10:13:28.683441Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing waymarks/way_d.png
+[2m2024-12-03T10:13:28.683553Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_1.png"
+[2m2024-12-03T10:13:28.683711Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_3.png"
+[2m2024-12-03T10:13:28.683776Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_a.png"
+[2m2024-12-03T10:13:28.683831Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_4.png"
+[2m2024-12-03T10:13:28.685328Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_c.png"
+[2m2024-12-03T10:13:28.685456Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_d.png"
+[2m2024-12-03T10:13:28.685722Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Processing arenas.index
+[2m2024-12-03T10:13:28.690981Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/tea/p2.png"
+[2m2024-12-03T10:13:28.691308Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_b.png"
+[2m2024-12-03T10:13:28.695547Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' checking for contraband
+[2m2024-12-03T10:13:28.695605Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' has the contraband
+[2m2024-12-03T10:13:28.695626Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "waymarks/way_2.png"
+thread '<unnamed>' panicked at src/asset/mod.rs:55:22:
+assets must be TypePath
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[2m2024-12-03T10:13:28.697379Z[0m [34mDEBUG[0m [2mbevy_asset::processor[0m[2m:[0m Skipping processing (unchanged) "sprites/arenas/ultimate/fru/i1.png"
+[2m2024-12-03T10:13:29.116820Z[0m [32m INFO[0m [2mbevy_asset::server[0m[2m:[0m Reloading arenas.index because it has changed
+[2m2024-12-03T10:13:29.117065Z[0m [31mERROR[0m [2mbevy_asset::server[0m[2m:[0m Path not found: arenas.index
+[2m2024-12-03T10:13:29.117164Z[0m [31mERROR[0m [2mbevy_asset::server[0m[2m:[0m Path not found: arenas.index

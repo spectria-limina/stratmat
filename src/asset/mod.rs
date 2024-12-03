@@ -1,31 +1,184 @@
+use std::any::TypeId;
 use std::string::FromUtf8Error;
 use std::sync::{Arc, Mutex};
 
-use bevy::asset::processor::LoadTransformAndSave;
+use bevy::asset::processor::{AssetProcessor, LoadTransformAndSave};
 use bevy::asset::saver::AssetSaver;
 use bevy::asset::transformer::IdentityAssetTransformer;
-use bevy::asset::{AssetLoader, AsyncWriteExt, LoadDirectError, LoadedFolder, LoadedUntypedAsset};
+use bevy::asset::{AssetLoader, AsyncWriteExt, LoadDirectError, LoadedFolder};
 use bevy::prelude::*;
-use bevy::tasks::futures_lite::io::BufReader;
-use bevy::tasks::futures_lite::{io, AsyncBufReadExt, FutureExt, StreamExt};
+use bevy::reflect::TypeRegistryArc;
+use bevy::tasks::futures_lite::io;
 use bevy::tasks::poll_once;
 use bevy::utils::HashMap;
+use ron::de::SpannedError;
+use ron::ser::to_string_pretty;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::arena::Arena;
 use crate::ecs::{trigger_all_events, AssetCommandsExt};
 use crate::future::OnceTardis;
 
-#[derive(Asset, Clone, Debug, TypePath)]
+/// Saves a LoadedFolder as list of its contents in a NUL-separated list of paths.
+#[derive(Debug, Clone)]
+pub struct IndexSaver(TypeRegistryArc);
+
+// dial the gate, daniel
+#[derive(Serialize, Deserialize)]
+struct Address {
+    path: String,
+    ty: String,
+}
+
+impl AssetSaver for IndexSaver {
+    type Asset = FolderIndex;
+    type Settings = ();
+    type OutputLoader = IndexLoader;
+    type Error = IndexSaverError;
+
+    async fn save(
+        &self,
+        writer: &mut bevy::asset::io::Writer,
+        asset: bevy::asset::saver::SavedAsset<'_, Self::Asset>,
+        _settings: &Self::Settings,
+    ) -> Result<<Self::OutputLoader as AssetLoader>::Settings, Self::Error> {
+        let mut cartouche = vec![];
+        for h in asset.handles.iter() {
+            let Some(path) = h.path() else {
+                return Err(IndexSaverError::NoPath);
+            };
+            debug!("storing path {:?} with type {:?}", path, h.type_id());
+            debug!("type of Arena: {:?}", TypeId::of::<Arena>());
+            cartouche.push(Address {
+                path: path.to_string(),
+                ty: self
+                    .0
+                    .read()
+                    .get(h.type_id())
+                    .expect("assets must be registered")
+                    .type_info()
+                    .type_path()
+                    .to_string(),
+            });
+        }
+        let ron = to_string_pretty(&cartouche, default())?;
+        writer.write_all(ron.as_bytes()).await?;
+        Ok(())
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum IndexSaverError {
+    #[error("no path to asset")]
+    NoPath,
+    #[error("too many chevrons? {0}")]
+    Chevrons(#[from] ron::Error),
+    #[error("io error: {0}")]
+    Io(#[from] io::Error),
+}
+
+#[derive(Debug, Clone)]
+pub struct IndexLoader(TypeRegistryArc);
+
+impl AssetLoader for IndexLoader {
+    type Asset = FolderIndex;
+    type Settings = ();
+    type Error = IndexLoaderError;
+
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        _settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        debug!("oh. hey. it's me.");
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes).await?;
+        let cartouche: Vec<Address> = ron::de::from_bytes(&bytes)?;
+        let mut index = FolderIndex { handles: vec![] };
+        for Address { path, ty: ty_path } in cartouche {
+            debug!("you might be wondering how I got here: {:?}", path);
+            // Okay so this is majorly cursed.
+            //
+            // We are in an async context, so we are free to "immediately" load all the
+            // assets in the folder, which will cause our operation to not fully complete
+            // until they're all loaded, but that's fine because the caller can deal with
+            // that (e.g. by loading this folder async in the background).
+            //
+            // However, if we use NestedLoader::immediate(), we immediately get handed a
+            // ErasedLoadedAsset, which is a very useless type to us. To actually produce a
+            // LoadedFolder, we need a list of UntypedHandles. And without direct access to
+            // the AssetServer, we can't just generate a new UntypedHandle from the path.
+            //
+            // So our only choice is to use NestedLoader::deferred() instead. This, however,
+            // does not actually start loading the asset. It instead gives a
+            // LoadedUntypedAsset, a misnomer if I ever saw one, which is a Handle to the
+            // UntypedHandle that will be created if anyone ever bothers trying to actually
+            // load the asset. I have no idea why this double indirection is necessary.
+            // Probably to do with allocation or something. I don't know.
+            //
+            // This LoadedUntypedAsset is not, however, useless. It is a pathway to an
+            // UntypedHandle, and the key to unlock it is to attempt to load the
+            // LoadedUntypedAsset.  However, this time we actually *do* want to "block" (by
+            // which I mean await on) the loading so that we can use it to make our nice
+            // UntypedHandle. Thus, we need to load it in immediate mode.
+            //
+            // And just our luck, when you load an asset in immediate mode with a NestedLoader,
+            // that is the one case, outside asset processing, where end user code can actually
+            // cause an asset to be loaded without its dependencies.
+            //
+            // So at least we know that this won't cause the normal dependency loading process
+            // to make us finish loading the underlying assets before we return. But will some
+            // other part of the sprawling, incomprehensible network of futures cause just such
+            // a thing to happen?
+            //
+            // we may never know
+            //
+            // but strings don't work, because we really need to give our callers
+            // handles so that their assets don't fall off the face of the earth.
+            // and double-indirection handles won't work for when we *aren't* using
+            // the most cthnoian asset preprocessing system ever designed.
+            //
+            // so we have no choice but... reflection.
+            // truly the bane of trans girls everywhere.
+            let ty = self
+                .0
+                .read()
+                .get_with_type_path(&ty_path)
+                .ok_or(IndexLoaderError::NoReflection)?
+                .type_id();
+            let loader = load_context.loader().with_dynamic_type(ty);
+            index.handles.push(loader.load(path));
+        }
+        debug!("but i've already run out of things to talk to you about");
+        Ok(index)
+    }
+}
+#[derive(Error, Debug)]
+pub enum IndexLoaderError {
+    #[error("io error: {0}")]
+    Io(#[from] io::Error),
+    #[error("non-UTF-8 asset path: {}", String::from_utf8_lossy(.0.as_bytes()))]
+    NonUtf8Path(#[from] FromUtf8Error),
+    #[error("loading asset or maybe loading something in context idk: {0}")]
+    Load(#[from] LoadDirectError),
+    #[error("bad cereal: {0}")]
+    DeCereal(#[from] SpannedError),
+    #[error("you're a vampire")]
+    NoReflection,
+}
+
+#[derive(Asset, TypePath, Clone, Debug)]
 pub struct FolderIndex {
     #[dependency]
     pub handles: Vec<UntypedHandle>,
 }
 
-// This is the most disgusting, dirty hack.
+// IndexLoader is cursed. But what if it could be worse?
 //
-// Important: This comment makes more sense, and is probably even funnier, if you
-// read it AFTER the one in IndexLoader. IndexLoader is cursed. But
-// IndexPseudoLoader is an eldritch horror.
+// IndexPseudoLoader is an eldritch horror. If you thought the commentary was
+// getting unhinged above... think again.
 //
 // We want to get at the asset on the AssetServer. But we don't have access to it.
 // We can't try to load the folder. That will fail because it's a directory.
@@ -117,7 +270,10 @@ pub struct FolderIndex {
 // slowing down. Caught in the throes of an interstellar deadlock, because of the
 // folder loader getting blocked on asset processing which was waiting on the folder to
 // finish loading, what could he possibly do to escape?
-
+//
+// Yes, it's true, our beloved hero has come up against the greatest foe of all: bedtime.
+// Time will only tell ifhe manages to escape, but you will have to read on and see for
+// yourself.
 #[derive(Clone, Default, Resource)]
 struct TardisFleet(Arc<Mutex<HashMap<String, OnceTardis<Vec<UntypedHandle>>>>>);
 
@@ -141,6 +297,7 @@ impl AssetLoader for IndexPseudoLoader {
         let folder = file.strip_suffix(".index").unwrap();
         // This likes to throw errors, but it's okay.
         // It establishes the dependency anyway.
+        // That's all it's here for, actually.
         load_context.load::<LoadedFolder>(folder);
         let tardis = (|| -> Result<_, IndexPseudoLoaderError> {
             let mut bad_wolf = self
@@ -150,9 +307,10 @@ impl AssetLoader for IndexPseudoLoader {
                 .map_err(|_| IndexPseudoLoaderError::TimeyWimey)?;
             Ok(bad_wolf.entry(file.clone()).or_default().clone())
         })()?;
-        info!("phone box '{}' awaiting contraband", file);
-        if let Some(handles) = poll_once(&tardis).await {
-            Ok(FolderIndex { handles })
+        info!("phone box '{}' checking for contraband", file);
+        if let Some(paths) = poll_once(&tardis).await {
+            info!("phone box '{}' has the contraband", file);
+            Ok(FolderIndex { handles: paths })
         } else {
             Err(IndexPseudoLoaderError::Stasis)
         }
@@ -196,7 +354,8 @@ pub fn load_folder_index(
         asset_id,
         move |In((asset_id, file)): In<(AssetId<LoadedFolder>, String)>,
               folders: Res<Assets<LoadedFolder>>,
-              fleet: Res<TardisFleet>| {
+              fleet: Res<TardisFleet>,
+              processor: Res<AssetProcessor>| {
             let folder = folders
                 .get(asset_id)
                 .expect("our portal should keep the asset in tact");
@@ -204,126 +363,22 @@ pub fn load_folder_index(
             let mut boxen = fleet.0.lock().expect("no time collapse today please :(");
             let phone_box = boxen.entry(file.clone()).or_default();
             phone_box.set(folder.handles.clone());
-            info!("phone box '{}' loaded with contraband", file)
+            info!("phone box '{}' loaded with contraband", file);
+            debug!(
+                "contraband: {:?}",
+                folder
+                    .handles
+                    .iter()
+                    .map(|h| h.path().expect("yo").to_string())
+                    .collect::<Vec<_>>()
+            );
+            // Now for the pièce de résistance... just as soon as I find my screwdriver.
+            AssetProcessor::start(processor);
+            // Let's do the time warp again!
         },
         (asset_id, file),
     );
     handle
-}
-
-/// Saves a LoadedFolder as list of its contents in a NUL-separated list of paths.
-#[derive(Debug, Copy, Clone, Default)]
-pub struct IndexSaver;
-
-impl AssetSaver for IndexSaver {
-    type Asset = FolderIndex;
-    type Settings = ();
-    type OutputLoader = IndexLoader;
-    type Error = IndexSaverError;
-
-    async fn save(
-        &self,
-        writer: &mut bevy::asset::io::Writer,
-        asset: bevy::asset::saver::SavedAsset<'_, Self::Asset>,
-        _settings: &Self::Settings,
-    ) -> Result<<Self::OutputLoader as AssetLoader>::Settings, Self::Error> {
-        for handle in &asset.handles {
-            let path = handle.path().ok_or(IndexSaverError::NoPath)?.to_string();
-            writer.write_all(path.as_bytes()).await?;
-            writer.write_all(b"\0").await?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum IndexSaverError {
-    #[error("no path to asset")]
-    NoPath,
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
-}
-
-#[derive(Debug, Copy, Clone, Default)]
-pub struct IndexLoader;
-
-impl AssetLoader for IndexLoader {
-    type Asset = FolderIndex;
-    type Settings = ();
-    type Error = IndexLoaderError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn bevy::asset::io::Reader,
-        _settings: &Self::Settings,
-        load_context: &mut bevy::asset::LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut paths = BufReader::new(reader).split(0);
-        let mut handles = vec![];
-        while let Some(path) = paths.next().await {
-            let path = String::from_utf8(path?)?;
-            // Okay so this is majorly cursed.
-            //
-            // We are in an async context, so we are free to "immediately" load all the
-            // assets in the folder, which will cause our operation to not fully complete
-            // until they're all loaded, but that's fine because the caller can deal with
-            // that (e.g. by loading this folder async in the background).
-            //
-            // However, if we use NestedLoader::immediate(), we immediately get handed a
-            // ErasedLoadedAsset, which is a very useless type to us. To actually produce a
-            // LoadedFolder, we need a list of UntypedHandles. And without direct access to
-            // the AssetServer, we can't just generate a new UntypedHandle from the path.
-            //
-            // So our only choice is to use NestedLoader::deferred() instead. This, however,
-            // does not actually start loading the asset. It instead gives a
-            // LoadedUntypedAsset, a misnomer if I ever saw one, which is a Handle to the
-            // UntypedHandle that will be created if anyone ever bothers trying to actually
-            // load the asset. I have no idea why this double indirection is necessary.
-            // Maybe something to do with async. I'm really not sure.
-            //
-            // This LoadedUntypedAsset is not, however, useless. It is a pathway to an
-            // UntypedHandle, and the key to unlock it is to attempt to load the
-            // LoadedUntypedAsset.  However, this time we actually *do* want to "block" (by
-            // which I mean await on) the loading so that we can use it to make our nice
-            // UntypedHandle. Thus, we need to load it in immediate mode.
-            //
-            // And just our luck, when you load an asset in immediate mode with a NestedLoader,
-            // that is the one case, outside asset processing, where end user code can actually
-            // cause an asset to be loaded without its dependencies.
-            //
-            // So at least we know that this won't cause the normal dependency loading process
-            // to make us finish loading the underlying assets before we return. But will some
-            // other part of the sprawling, incomprehensible network of futures cause just such
-            // a thing to happen?
-            //
-            // we may never know
-            let loader = load_context.loader().with_unknown_type().deferred();
-            let outer_handle = loader.load(path);
-            let loader = load_context.loader().with_static_type().immediate();
-            let handle = loader
-                .load::<LoadedUntypedAsset>(
-                    outer_handle
-                        .path()
-                        .expect("we just loaded this asset it better have a path"),
-                )
-                // Fun fact: the result of this await is a LoadedAsset<LoadedUntypedAsset>.
-                .await?
-                .take()
-                .handle;
-            handles.push(handle);
-        }
-        Ok(FolderIndex { handles })
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum IndexLoaderError {
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
-    #[error("non-UTF-8 asset path: {}", String::from_utf8_lossy(.0.as_bytes()))]
-    NonUtf8Path(#[from] FromUtf8Error),
-    #[error("loading asset or maybe loading something in context idk: {0}")]
-    Load(#[from] LoadDirectError),
 }
 
 pub type FolderIndexer =
@@ -334,13 +389,22 @@ pub struct FolderIndexingPlugin;
 impl Plugin for FolderIndexingPlugin {
     fn build(&self, app: &mut App) {
         let fleet = TardisFleet::default();
+        let dmv = app
+            .world()
+            .get_resource::<AppTypeRegistry>()
+            .expect("everybody has to go to the dmv sometime")
+            .0
+            .clone();
+
         app.init_asset::<FolderIndex>()
             .insert_resource(fleet.clone())
             .init_resource::<StatueGarden<Handle<LoadedFolder>>>()
             .register_asset_loader(IndexPseudoLoader { fleet })
-            // .register_asset_loader(IndexLoader)
-            .register_asset_processor(FolderIndexer::new(default(), default()))
-            //.set_default_asset_processor::<FolderIndexer>("index")
+            .register_asset_loader(IndexLoader(dmv.clone()))
+            .register_asset_processor(FolderIndexer::new(default(), IndexSaver(dmv)))
+            .set_default_asset_processor::<FolderIndexer>("index")
             .add_systems(PreUpdate, trigger_all_events::<AssetEvent<LoadedFolder>>);
     }
 }
+
+// ps still better documented than bevy_asset

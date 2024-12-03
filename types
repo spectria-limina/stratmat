@@ -1,0 +1,41 @@
+    Blocking waiting for file lock on build directory
+   Compiling stratmat v0.1.0 (/home/alercah/games/ffxiv/stratmat)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.33s
+     Running `target/debug/stratmat`
+[2m2024-12-03T15:22:38.047549Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m scouting for contraband for 'arenas.index' in 'arenas'
+[2m2024-12-03T15:22:38.047735Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m Arena registered: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.083575Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m spawning new arena with asset ID AssetId<stratmat::arena::Arena>{ index: 0, generation: 0} from path 'Some(arenas/ultimate/tea/p1.arena.ron)'
+[2m2024-12-03T15:22:38.096806Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' checking for contraband
+[2m2024-12-03T15:22:38.218378Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m finishing spawning arena
+[2m2024-12-03T15:22:38.219808Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' loaded with contraband
+[2m2024-12-03T15:22:38.219849Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m contraband: ["arenas/savage/pandaemonium/p9s.arena.ron", "arenas/ultimate/tea/p1.arena.ron", "arenas/ultimate/fru/i1.arena.ron", "arenas/ultimate/fru/p3.arena.ron", "arenas/ultimate/fru/p1.arena.ron", "arenas/ultimate/fru/p4.arena.ron", "arenas/ultimate/fru/p2.arena.ron", "arenas/ultimate/fru/p5.arena.ron"]
+[2m2024-12-03T15:22:38.280570Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' checking for contraband
+[2m2024-12-03T15:22:38.280606Z[0m [32m INFO[0m [2mstratmat::asset[0m[2m:[0m phone box 'arenas.index' has the contraband
+[2m2024-12-03T15:22:38.280631Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/savage/pandaemonium/p9s.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280645Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280660Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/tea/p1.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280672Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280681Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/fru/i1.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280695Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280705Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/fru/p3.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280715Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280724Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/fru/p1.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280734Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280757Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/fru/p4.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280771Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280782Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/fru/p2.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280790Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280797Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m storing path arenas/ultimate/fru/p5.arena.ron with type TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.280872Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m type of Arena: TypeId(0x122fb5ec3126767a4eac0a71b4dfdbfb)
+[2m2024-12-03T15:22:38.776354Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m oh. hey. it's me.
+[2m2024-12-03T15:22:38.776588Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/savage/pandaemonium/p9s.arena.ron"
+[2m2024-12-03T15:22:38.776657Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/tea/p1.arena.ron"
+[2m2024-12-03T15:22:38.776676Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/fru/i1.arena.ron"
+[2m2024-12-03T15:22:38.776694Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/fru/p3.arena.ron"
+[2m2024-12-03T15:22:38.776713Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/fru/p1.arena.ron"
+[2m2024-12-03T15:22:38.776726Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/fru/p4.arena.ron"
+[2m2024-12-03T15:22:38.776755Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/fru/p2.arena.ron"
+[2m2024-12-03T15:22:38.776764Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m you might be wondering how I got here: "arenas/ultimate/fru/p5.arena.ron"
+[2m2024-12-03T15:22:38.776778Z[0m [34mDEBUG[0m [2mstratmat::asset[0m[2m:[0m but i've already run out of things to talk to you about
+[2m2024-12-03T15:22:42.852241Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m spawning new arena with asset ID AssetId<stratmat::arena::Arena>{ index: 1, generation: 0} from path 'Some(arenas/savage/pandaemonium/p9s.arena.ron)'
+[2m2024-12-03T15:22:42.852300Z[0m [34mDEBUG[0m [2mstratmat::arena[0m[2m:[0m finishing spawning arena

@@ -1,4 +1,4 @@
-use std::io;
+use std::{any::TypeId, io};
 
 use avian2d::prelude::*;
 use bevy::{
@@ -247,6 +247,7 @@ impl Plugin for ArenaPlugin {
             .init_resource::<CachedArenaSpawnState>()
             .add_systems(PreUpdate, trigger_all_events::<AssetEvent<Arena>>)
             .add_systems(Startup, spawn_tea_p1);
+        debug!("Arena registered: {:?}", TypeId::of::<Arena>());
     }
 }
 
