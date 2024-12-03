@@ -4,7 +4,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 
 use bevy::utils::hashbrown::HashMap;
-use bevy_egui::egui::TextEdit;
+use bevy_egui::egui::{RichText, TextEdit};
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 
 use super::{Preset, Waymark};
@@ -40,29 +40,16 @@ impl WaymarkWindow {
             let (id, mut win) = win_q.single_mut();
 
             ui.horizontal(|ui| {
-                ui.label("Preset: ");
-                ui.add(TextEdit::singleline(&mut win.preset_name).desired_width(100.0));
+                ui.label("Preset Name: ");
+                ui.add(TextEdit::singleline(&mut win.preset_name).desired_width(80.0));
             });
             ui.horizontal(|ui| {
                 if ui.button("Import").clicked() {
-                    if let Some(contents) = clipboard.get_contents() {
-                        match serde_json::from_str::<Preset>(&contents) {
-                            Ok(preset) => {
-                                win.preset_name = preset.name.clone();
-                                commands.run_system_cached(Waymark::despawn_all);
-                                Waymark::spawn_from_preset(&mut commands, preset);
-                                info!(
-                                    "Imported waymark preset '{}' from the clipboard",
-                                    win.preset_name
-                                );
-                            }
-                            Err(e) => {
-                                info!("Unable to import waymark preset: {}", e);
-                            }
-                        }
-                    } else {
-                        info!("Unable to import waymark preset: clipboard is empty")
-                    }
+                    Self::import_from_clipboard(
+                        &mut win.preset_name,
+                        &mut clipboard,
+                        &mut commands,
+                    );
                 }
                 if ui.button("Export").clicked() {
                     commands.run_system_cached(Self::export_to_clipboard);
@@ -71,6 +58,8 @@ impl WaymarkWindow {
                     commands.run_system_cached(Waymark::despawn_all);
                 }
             });
+            #[cfg(target_arch = "wasm32")]
+            ui.label(RichText::new("To paste, press Ctrl-C then click Import.").italics());
 
             let spawners: HashMap<_, _> = spawner_q
                 .iter_mut()
@@ -93,6 +82,37 @@ impl WaymarkWindow {
             });
             state.apply(world);
         });
+    }
+
+    fn import_from_clipboard(
+        preset_name: &mut String,
+        clipboard: &mut EguiClipboard,
+        commands: &mut Commands,
+    ) {
+        let Some(contents) = clipboard.get_contents() else {
+            info!("Unable to import waymarks: clipboard unavailable");
+            return;
+        };
+
+        if contents.is_empty() {
+            info!("Unable to import waymarks: clipboard is empty (or unavailable)");
+            return;
+        }
+
+        match serde_json::from_str::<Preset>(&contents) {
+            Ok(preset) => {
+                *preset_name = preset.name.clone();
+                commands.run_system_cached(Waymark::despawn_all);
+                Waymark::spawn_from_preset(commands, preset);
+                info!(
+                    "Imported waymark preset '{}' from the clipboard",
+                    preset_name
+                );
+            }
+            Err(e) => {
+                info!("Unable to import waymarks: invalid preset: {}", e);
+            }
+        }
     }
 
     /// [System] that exports the currently-spawned waymarks to the clipboard.

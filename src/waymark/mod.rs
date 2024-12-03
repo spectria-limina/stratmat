@@ -74,6 +74,7 @@ pub struct PresetEntry {
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[derive(Component, Reflect, Serialize, Deserialize)]
 #[derive(IntEnum, Sequence)]
+#[require(Transform, Visibility, Collider, CollidingEntities, AlphaScale)]
 pub enum Waymark {
     A = 0,
     B = 1,
@@ -183,35 +184,6 @@ impl Waymark {
     }
 }
 
-#[derive(Bundle)]
-struct WaymarkBundle {
-    name: Name,
-    waymark: Waymark,
-    transform: Transform,
-    visibility: Visibility,
-    collider: Collider,
-    colliding: CollidingEntities,
-    alpha: AlphaScale,
-}
-
-impl WaymarkBundle {
-    fn new(waymark: Waymark) -> Self {
-        Self {
-            name: Name::new(waymark.name()),
-            waymark,
-            transform: default(),
-            visibility: default(),
-            collider: if waymark.is_square() {
-                Collider::rectangle(WAYMARK_SIZE, WAYMARK_SIZE)
-            } else {
-                Collider::circle(WAYMARK_SIZE / 2.0)
-            },
-            colliding: default(),
-            alpha: default(),
-        }
-    }
-}
-
 struct InsertWaymark {
     waymark: Waymark,
     entry: Option<PresetEntry>,
@@ -228,7 +200,6 @@ impl EntityCommand for InsertWaymark {
             let mut arena_q = world.query::<&ArenaBackground>();
             match arena_q.get_single(world) {
                 Ok(arena) => {
-                    debug!("positioning waymark {waymark:?} when arena loaded");
                     world.run_system_when_asset_loaded_with(
                         arena.handle.id(),
                         set_position_from_preset,
@@ -244,8 +215,17 @@ impl EntityCommand for InsertWaymark {
         let Ok(mut entity) = world.get_entity_mut(id) else {
             return;
         };
-        entity.insert(WaymarkBundle::new(waymark));
+        entity.insert((
+            Name::new(waymark.name()),
+            waymark,
+            if waymark.is_square() {
+                Collider::rectangle(WAYMARK_SIZE, WAYMARK_SIZE)
+            } else {
+                Collider::circle(WAYMARK_SIZE / 2.0)
+            },
+        ));
         make_draggable_world(&mut entity);
+
         entity.with_children(|parent| {
             parent.spawn((
                 Name::new("Waymark Image"),
@@ -317,6 +297,12 @@ fn set_position_from_preset(
     let Ok(mut entity) = world.get_entity_mut(id) else {
         return;
     };
+    let (x, y) = (entry.x - offset.x, offset.y - entry.z);
+    debug!(
+        "arena loaded, repositioning waymark {} to {:?}",
+        entry.id,
+        (x, y),
+    );
     entity.insert(Transform::from_xyz(
         entry.x - offset.x,
         // The entry's Z axis is our negative Y axis.
@@ -325,8 +311,7 @@ fn set_position_from_preset(
     ));
 }
 
-/// [`EntityCommand`] to insert a waymark's entities.
-///
+//
 /// If a [`PresetEntry`] is provided, it will be used to position the waymark.
 pub fn insert_waymark(waymark: Waymark, entry: Option<PresetEntry>) -> impl EntityCommand {
     InsertWaymark { waymark, entry }

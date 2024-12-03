@@ -79,7 +79,11 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
                     primary_window: Some(primary_window),
                     ..default()
                 })
-                .set(log_plugin),
+                .set(log_plugin)
+                .set(AssetPlugin {
+                    meta_check: bevy::asset::AssetMetaCheck::Never,
+                    ..default()
+                }),
         )
         .add_plugins(EguiPlugin)
         .add_plugins(Shape2dPlugin::default())
@@ -157,6 +161,8 @@ fn main() -> eyre::Result<()> {
 fn main() -> Result<(), JsValue> {
     use convert_case::{Case, Casing};
     use web_sys::console;
+    console::log_1(&"stratmat init: initializing...".into());
+
     let selector = option_env!("STRATMAT_CANVAS").unwrap_or_else(|| "#stratmat");
     let matches = web_sys::window()
         .unwrap()
@@ -164,18 +170,19 @@ fn main() -> Result<(), JsValue> {
         .unwrap()
         .query_selector_all(selector)?;
 
-    console::log_1(&format!("stratmat init: found {} canvases", matches.length()).into());
+    #[cfg(debug_assertions)]
+    console::log_1(&format!("stratmat init: found {} canvas(es)", matches.length()).into());
     let args = match matches.length() {
         0 => Args::parse(),
         1 => {
-            console::log_1(&"stratmat init: loading arguments from data attributes".into());
             let canvas: web_sys::HtmlCanvasElement =
                 matches.get(0).unwrap().dyn_into().map_err(|elem| {
                     format!("stratmat requires a <canvas>, not a <{}>", elem.node_name())
                 })?;
             let dataset = canvas.dataset();
             let keys = js_sys::Reflect::own_keys(&dataset)?;
-            let mut args = vec![];
+            // Arg 0 is the "process name"
+            let mut args = vec!["".to_owned()];
             for key in keys.iter() {
                 if let Some(name) = key
                     .as_string()
@@ -188,7 +195,7 @@ fn main() -> Result<(), JsValue> {
                 }
             }
             console::log_1(&format!("stratmat init: args: {:?}", args).into());
-            Args::parse_from(args)
+            Args::try_parse_from(args).map_err(|e| format!("invalid arguments: {e}"))?
         }
         _ => {
             return Err("multiple elements match selector '{CANVAS}'".into());
