@@ -2,7 +2,7 @@ use std::io;
 
 use avian2d::prelude::*;
 use bevy::{
-    asset::{AssetLoader, LoadedFolder, ParseAssetPathError, VisitAssetDependencies},
+    asset::{AssetLoader, ParseAssetPathError},
     ecs::system::{SystemParam, SystemState},
     prelude::*,
     render::camera::ScalingMode,
@@ -18,6 +18,7 @@ use crate::{
     Layer,
 };
 
+pub mod folder;
 pub mod menu;
 
 /// A list of all the supported maps, used to hardcode asset paths.
@@ -234,46 +235,6 @@ pub fn despawn_all_arenas(world: &mut World) {
         world.despawn(id);
     }
 }
-
-/// A [`Resource`] containing a folder of arenas.
-#[derive(Resource, Clone, Debug)]
-pub struct ArenaFolder(Handle<LoadedFolder>);
-
-impl FromWorld for ArenaFolder {
-    fn from_world(world: &mut World) -> Self {
-        Self(world.resource::<AssetServer>().load_folder("arenas"))
-    }
-}
-
-/// A [`SystemParam`] for accessing the loaded [`ArenaFolder`].
-#[derive(SystemParam)]
-pub struct Arenas<'w, 's> {
-    folder: Res<'w, ArenaFolder>,
-    loaded_folders: Res<'w, Assets<LoadedFolder>>,
-    arenas: Res<'w, Assets<Arena>>,
-    asset_server: Res<'w, AssetServer>,
-    commands: Commands<'w, 's>,
-}
-
-impl Arenas<'_, '_> {
-    pub fn get(&self) -> Option<impl Iterator<Item = (AssetId<Arena>, &Arena)>> {
-        let id = self.folder.0.id();
-
-        if !self.asset_server.is_loaded_with_dependencies(id) {
-            // Folder not loaded yet.
-            return None;
-        }
-        let folder = self.loaded_folders.get(id).unwrap();
-        let mut res = vec![];
-        folder.visit_dependencies(&mut |id| {
-            let id = id.typed::<Arena>();
-            let arena = self.arenas.get(id).unwrap();
-            res.push((id, arena));
-        });
-        Some(res.into_iter())
-    }
-}
-
 #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ArenaPlugin;
 
@@ -282,7 +243,7 @@ impl Plugin for ArenaPlugin {
         app.init_asset::<Arena>()
             .register_type::<Arena>()
             .init_asset_loader::<ArenaLoader>()
-            .init_resource::<ArenaFolder>()
+            .init_resource::<folder::ArenaFolder>()
             .init_resource::<CachedArenaSpawnState>()
             .add_systems(PreUpdate, trigger_all_events::<AssetEvent<Arena>>)
             .add_systems(Startup, spawn_tea_p1);

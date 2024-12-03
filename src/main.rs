@@ -13,10 +13,12 @@ use waymark::WaymarkPlugin;
 mod testing;
 
 mod arena;
+mod asset;
 mod color;
 mod cursor;
 mod debug;
 mod ecs;
+mod future;
 mod hitbox;
 mod spawner;
 mod waymark;
@@ -57,15 +59,22 @@ fn main() -> eyre::Result<()> {
 
     let mut app = App::new();
     app.insert_resource(args.clone())
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Stratmat".into(),
-                fit_canvas_to_parent: true,
-                prevent_default_event_handling: false,
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Stratmat".into(),
+                        fit_canvas_to_parent: true,
+                        prevent_default_event_handling: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    mode: AssetMode::Processed,
+                    ..default()
+                }),
+        )
         .add_plugins(EguiPlugin)
         .add_plugins(Shape2dPlugin::default())
         .add_plugins(
@@ -75,6 +84,7 @@ fn main() -> eyre::Result<()> {
                                           .disable::<SleepingPlugin>(),
                                        */
         )
+        .add_plugins(asset::FolderIndexingPlugin)
         .add_plugins(arena::plugin())
         .add_plugins(color::plugin())
         .add_plugins(cursor::plugin())
@@ -105,6 +115,11 @@ fn main() -> eyre::Result<()> {
     }
     if args.log_asset_events {
         app.add_systems(PostUpdate, debug::log_asset_events::<arena::Arena>);
+        app.add_systems(
+            PostUpdate,
+            debug::log_asset_events::<bevy::asset::LoadedFolder>,
+        );
+        app.add_systems(PostUpdate, debug::log_asset_events::<asset::FolderIndex>);
     }
     if args.log_collision_events {
         app.add_systems(PostUpdate, debug::log_events::<Collision>);

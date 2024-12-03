@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
-use super::{despawn_all_arenas, spawn_arena, Arenas};
+use super::{despawn_all_arenas, folder::Arenas, spawn_arena};
 
 #[derive(Component, Debug)]
 pub struct ArenaMenu {}
@@ -22,7 +22,6 @@ impl ArenaMenu {
                         Some(iter) => {
                             for (id, arena) in iter {
                                 if ui.button(arena.short_name.clone()).clicked() {
-                                    debug!("changing arenas by request");
                                     commands.run_system_cached(despawn_all_arenas);
                                     commands.run_system_cached_with(
                                         spawn_arena,
