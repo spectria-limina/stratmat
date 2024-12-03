@@ -54,13 +54,13 @@ jobs:
     - name: Build
       run: cargo build --release --target wasm32-unknown-unknown
     - name: Copy Assets
-      run: mkdir -p public/app && { cp -r assets imported_assets public/static/app || true; }
+      run: mkdir -p public/app && cp -r assets public/static/app
     - name: Run Bindgen
       run: wasm-bindgen --target web --out-dir public/static/app --out-name stratmat target/wasm32-unknown-unknown/release/stratmat.wasm
     - name: Deploy to GitHub Pages
+      uses: crazy-max/ghaction-github-pages@v4.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      uses: crazy-max/ghaction-github-pages@v4.1.0
       with:
         build_dir: public
         fqdn: stratmat.dynamis.gg
