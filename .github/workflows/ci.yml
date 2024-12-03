@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Install Target
+      run: rustup target add wasm32-unknown-unknown
     - name: Build
       run: cargo build --verbose --target wasm32-unknown-unknown
     - name: Test
@@ -32,6 +34,8 @@ jobs:
     needs: build-wasm
     steps:
     - uses: actions/checkout@v4
+    - name: Install Target
+      run: rustup target add wasm32-unknown-unknown
     - name: Install Bindgen
       uses: jetli/wasm-bindgen-action@v0.2.0
     - name: Build
