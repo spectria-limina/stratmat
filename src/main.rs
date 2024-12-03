@@ -1,13 +1,18 @@
 #![allow(dead_code)]
 
+use std::path::{Path, PathBuf};
+
 use avian2d::prelude::*;
-use bevy::prelude::*;
 use bevy::winit::WinitSettings;
+use bevy::{log::LogPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_vector_shapes::prelude::*;
 use clap::{ArgAction, Parser as _};
 use waymark::WaymarkPlugin;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 #[cfg(test)]
 mod testing;
@@ -31,7 +36,6 @@ pub enum Layer {
     ///
     /// See `mod` [`cursor`].
     DragSurface,
-    /// Entities on this layer are
     /// Entities on this layer are currently being dragged.
     Dragged,
 }
@@ -50,34 +54,33 @@ struct Args {
     #[clap(long, env = "STRATMAT_LOG_COLLISION_EVENTS", action = ArgAction::Set, default_value_t = false)]
     /// Enable debug logging of collisions events
     log_collision_events: bool,
-    #[cfg(target_arch = "wasm32")]
-    #[clap(long, env = "STRATMAT_CANVAS_ID", actions = ArgAction::Set, default_value_t = None)]
-    canvas_id: Option<String>,
+    #[clap(long, short)]
+    asset_root: Option<PathBuf>,
+    #[clap(long, short)]
+    log_filter: Option<String>,
 }
 
-fn main() -> eyre::Result<()> {
-    let args = Args::parse();
+fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
     let mut app = App::new();
 
-    #[cfg(not(target_arch = "wasm32"))]
-    let primary_window = Window {
-        title: "Stratmat".into(),
-        ..default()
-    };
-    #[cfg(target_arch = "wasm32")]
-    let primary_window = Window {
-        title: "Stratmat".into(),
-        canvas_id: args.canvas_id,
-        fit_canvas_to_parent: true,
-        prevent_default_event_handling: false,
-        ..default()
-    };
+    if let Some(ref path) = args.asset_root {
+        set_root_asset_path(&mut app, path);
+    }
+
+    let mut log_plugin = LogPlugin::default();
+    if let Some(ref filter) = args.log_filter {
+        log_plugin.filter = filter.clone();
+    }
 
     app.insert_resource(args.clone())
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(primary_window),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(primary_window),
+                    ..default()
+                })
+                .set(log_plugin),
+        )
         .add_plugins(EguiPlugin)
         .add_plugins(Shape2dPlugin::default())
         .add_plugins(
@@ -95,19 +98,6 @@ fn main() -> eyre::Result<()> {
         .add_plugins(arena::menu::ArenaMenuPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera);
-    /*
-    .add_systems(Startup, |mut commands: Commands| {
-        let mut entity = commands.spawn_empty();
-        insert_hitbox(
-            &mut entity,
-            Hitbox::new(
-                HitboxKind::Directional,
-                bevy::color::palettes::css::SALMON.into(),
-                10.0,
-            ),
-        );
-    });
-    */
 
     if args.debug_inspector {
         app.add_plugins(WorldInspectorPlugin::new());
@@ -128,6 +118,90 @@ fn main() -> eyre::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn set_root_asset_path(app: &mut App, path: &Path) {
+    use bevy::asset::io::{file::FileAssetReader, AssetSource, AssetSourceId};
+    let path = path.to_owned();
+    app.register_asset_source(
+        AssetSourceId::Default,
+        AssetSource::build().with_reader(move || Box::new(FileAssetReader::new(path.clone()))),
+    );
+}
+
+#[cfg(target_arch = "wasm32")]
+fn set_root_asset_path(app: &mut App, path: &Path) {
+    use bevy::asset::io::{wasm::HttpWasmAssetReader, AssetSource, AssetSourceId};
+    let path = path.to_owned();
+    app.register_asset_source(
+        AssetSourceId::Default,
+        AssetSource::build().with_reader(move || Box::new(HttpWasmAssetReader::new(path.clone()))),
+    );
+}
+
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, OrthographicProjection::default_2d()));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn main() -> eyre::Result<()> {
+    let primary_window = Window {
+        title: "Stratmat".into(),
+        ..default()
+    };
+    start(Args::parse(), primary_window)
+}
+
+// on the web. So work around that a bit.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(main)]
+fn main() -> Result<(), JsValue> {
+    use convert_case::{Case, Casing};
+    use web_sys::console;
+    let selector = option_env!("STRATMAT_CANVAS").unwrap_or_else(|| "#stratmat");
+    let matches = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .query_selector_all(selector)?;
+
+    console::log_1(&format!("stratmat init: found {} canvases", matches.length()).into());
+    let args = match matches.length() {
+        0 => Args::parse(),
+        1 => {
+            console::log_1(&"stratmat init: loading arguments from data attributes".into());
+            let canvas: web_sys::HtmlCanvasElement =
+                matches.get(0).unwrap().dyn_into().map_err(|elem| {
+                    format!("stratmat requires a <canvas>, not a <{}>", elem.node_name())
+                })?;
+            let dataset = canvas.dataset();
+            let keys = js_sys::Reflect::own_keys(&dataset)?;
+            let mut args = vec![];
+            for key in keys.iter() {
+                if let Some(name) = key
+                    .as_string()
+                    .unwrap()
+                    .to_case(Case::Kebab)
+                    .strip_prefix("stratmat-")
+                {
+                    args.push(format!("--{name}"));
+                    args.push(js_sys::Reflect::get(&dataset, &key)?.as_string().unwrap());
+                }
+            }
+            console::log_1(&format!("stratmat init: args: {:?}", args).into());
+            Args::parse_from(args)
+        }
+        _ => {
+            return Err("multiple elements match selector '{CANVAS}'".into());
+        }
+    };
+
+    let primary_window = Window {
+        title: "Stratmat".into(),
+        canvas: Some(selector.to_string()),
+        fit_canvas_to_parent: true,
+        prevent_default_event_handling: false,
+        ..default()
+    };
+
+    start(args, primary_window).map_err(|e| JsValue::from_str(&format!("{e}")))
 }

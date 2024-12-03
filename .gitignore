@@ -13,4 +13,5 @@
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-/public/app
+/public/static/app
+/public/static/assets

@@ -1802,6 +1802,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert_case"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4396,12 +4405,14 @@ dependencies = [
  "bevy_vector_shapes",
  "chrono",
  "clap",
+ "convert_case",
  "derive_more",
  "enum-iterator",
  "eyre",
  "float_eq",
  "int-enum",
  "itertools",
+ "js-sys",
  "log",
  "parry2d",
  "ron",
@@ -4409,6 +4420,8 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.3",
  "tracing",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

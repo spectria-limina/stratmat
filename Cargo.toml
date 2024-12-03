@@ -58,6 +58,12 @@ serde_json = "1.0.133"
 thiserror = "2.0.3"
 tracing = "0.1.41"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+convert_case = "0.6.0"
+js-sys = "0.3.74"
+wasm-bindgen = "0.2.97"
+web-sys = { version = "0.3.74", features = ["HtmlElement", "DomStringMap"] }
+
 # Enable a small amount of optimization in debug mode
 [profile.dev]
 opt-level = 1
