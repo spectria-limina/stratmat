@@ -1,0 +1,28 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose --target wasm32-unknown-unknown
+    - name: Mkdir
+      run: mkdir serve/app
+    - name: Copy Assets
+      run: cp -r assets imported_assets serve/app || true
+    - name: Bindgen
+      uses: jetli/wasm-bindgen-action@v0.2.0
+    - name: Deploy
+      uses: ptienchuan/deploy-github-pages-action@1.0.0
+      with:
+        source-directory: serve
+      env:
+        GITHUB_TOKEN {{ secrets.GITHUB_TOKEN }}
