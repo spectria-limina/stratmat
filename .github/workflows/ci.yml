@@ -10,15 +10,39 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-x86:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
-    - name: Build wasm
-      run: cargo build --verbose --target wasm32-unknown-unknown
     - name: Test
       run: cargo test --verbose
-    - name: Test wasm
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose --target wasm32-unknown-unknown
+    - name: Test
       run: cargo test --verbose --target wasm32-unknown-unknown
+  build-deploy-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: build-wasm
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Bindgen
+      uses: jetli/wasm-bindgen-action@v0.2.0
+    - name: Build
+      run: cargo build --release --target wasm32-unknown-unknown
+    - name: Copy Assets
+      run: mkdir -p serve/app && { cp -r assets imported_assets serve/static/app || true; }
+    - name: Run Bindgen
+      run: wasm-bindgen --target web --out-dir serve/static/app --out-name stratmat target/wasm32-unknown-unknown/release/stratmat.wasm
+    - name: Deploy
+      uses: ptienchuan/deploy-github-pages-action@1.0.0
+      with:
+        source-directory: serve
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
