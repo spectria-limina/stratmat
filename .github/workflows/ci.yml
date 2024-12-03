@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "cargo"
     - name: Build
       run: cargo build --verbose
     - name: Test
@@ -22,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "cargo"
     - name: Install Target
       run: rustup target add wasm32-unknown-unknown
     - name: Build
@@ -34,6 +40,9 @@ jobs:
     needs: build-wasm
     steps:
     - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "cargo"
     - name: Install Target
       run: rustup target add wasm32-unknown-unknown
     - name: Install Bindgen
