@@ -50,20 +50,32 @@ struct Args {
     #[clap(long, env = "STRATMAT_LOG_COLLISION_EVENTS", action = ArgAction::Set, default_value_t = false)]
     /// Enable debug logging of collisions events
     log_collision_events: bool,
+    #[cfg(target_arch = "wasm32")]
+    #[clap(long, env = "STRATMAT_CANVAS_ID", actions = ArgAction::Set, default_value_t = None)]
+    canvas_id: Option<String>,
 }
 
 fn main() -> eyre::Result<()> {
     let args = Args::parse();
-
     let mut app = App::new();
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let primary_window = Window {
+        title: "Stratmat".into(),
+        ..default()
+    };
+    #[cfg(target_arch = "wasm32")]
+    let primary_window = Window {
+        title: "Stratmat".into(),
+        canvas_id: args.canvas_id,
+        fit_canvas_to_parent: true,
+        prevent_default_event_handling: false,
+        ..default()
+    };
+
     app.insert_resource(args.clone())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Stratmat".into(),
-                fit_canvas_to_parent: true,
-                prevent_default_event_handling: false,
-                ..default()
-            }),
+            primary_window: Some(primary_window),
             ..default()
         }))
         .add_plugins(EguiPlugin)
