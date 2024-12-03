@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-x86:
+  build-test-x86:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       run: cargo build --verbose
     #- name: Test
     #  run: cargo test --verbose
-  build-wasm:
+  build-test-wasm:
     runs-on: ubuntu-latest
     env: 
       RUSTFLAGS: "--cfg=web_sys_unstable_apis"
@@ -36,10 +36,9 @@ jobs:
       run: cargo build --verbose --target wasm32-unknown-unknown
     #- name: Test
     #  run: cargo test --verbose --target wasm32-unknown-unknown
-  build-deploy-release:
+  build-release-wasm:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: build-wasm
     env: 
       RUSTFLAGS: "--cfg=web_sys_unstable_apis"
     steps:
@@ -59,8 +58,25 @@ jobs:
       uses: NiklasEi/wasm-opt-action@v2
       with:
         file: public/static/app/stratmat_bgwasm
-    - name: Deploy Assets
+    - name: Copy Assets to public/
       run: cp -r assets public/static/app
+    - name: Upload Release Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-package
+        path: public
+  deploy-gh-pages:
+    needs: 
+    - build-release-wasm
+    - build-test-wasm
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Download Release Package
+      uses: actions/download-artiact@v4
+      with:
+        path: public
+        name: release-package
     - name: Deploy to GitHub Pages
       uses: crazy-max/ghaction-github-pages@v4.1.0
       env:
