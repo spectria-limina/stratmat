@@ -32,7 +32,6 @@ bevy-inspector-egui = { version = "0.28.0", default-features = false, features=[
     "egui_clipboard",
     "egui_open_url",
 ] }
-bevy-trait-query = "0.6.0"
 bevy_egui = "0.31.1"
 bevy_vector_shapes = "0.9.2"
 avian2d = { version = "0.1.2", features = ["serialize", "debug-plugin"] }
@@ -70,4 +69,3 @@ opt-level = 3
 [patch.crates-io]
 # These crates haven't yet released with 0.15 support.
 avian2d = { git = "https://github.com/Jondolf/avian.git" }
-bevy-trait-query = { git = "https://github.com/JoJoJet/bevy-trait-query.git" }
