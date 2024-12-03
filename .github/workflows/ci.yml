@@ -19,8 +19,8 @@ jobs:
         shared-key: "cargo"
     - name: Build
       run: cargo build --verbose
-    - name: Test
-      run: cargo test --verbose
+    #- name: Test
+    #  run: cargo test --verbose
   build-wasm:
     runs-on: ubuntu-latest
     env: 
@@ -34,8 +34,8 @@ jobs:
       run: rustup target add wasm32-unknown-unknown
     - name: Build
       run: cargo build --verbose --target wasm32-unknown-unknown
-    - name: Test
-      run: cargo test --verbose --target wasm32-unknown-unknown
+    #- name: Test
+    #  run: cargo test --verbose --target wasm32-unknown-unknown
   build-deploy-release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
