@@ -1,8 +1,11 @@
-use std::io;
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 use avian2d::prelude::*;
 use bevy::{
-    asset::{AssetLoader, LoadedFolder, ParseAssetPathError, VisitAssetDependencies},
+    asset::{AssetLoader, ParseAssetPathError, VisitAssetDependencies},
     ecs::system::{SystemParam, SystemState},
     prelude::*,
     render::camera::ScalingMode,
@@ -13,27 +16,29 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use crate::{
-    ecs::{trigger_all_events, AssetCommandsExt},
+    asset::{
+        lifecycle::{AssetHookExt, InitExt},
+        listing::{AssetListing, ListingExt},
+    },
     waymark::Waymark,
     Layer,
 };
 
 pub mod menu;
 
-/// A list of all the supported maps, used to hardcode asset paths.
-///
-/// TODO: Generate the list dynamically?
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Map {
-    TeaP1,
-}
+/// The file extension of `Arena` files.
+const EXTENSION: &str = "arena.ron";
+/// The path, relative to the assets directory, to the directory where `Arena` files are stored.
+const DIR: &str = "arenas";
 
-impl Map {
-    pub fn asset_path(self) -> &'static str {
-        match self {
-            Map::TeaP1 => "arenas/ultimate/tea/p1.arena.ron",
-        }
-    }
+/// Get the asset path for an arena, given its path minus the
+/// constant directory and extension parts.
+pub fn asset_path(arena: impl AsRef<Path>) -> PathBuf {
+    let mut path = PathBuf::new();
+    path.push(DIR);
+    path.push(arena);
+    path.set_extension(EXTENSION);
+    path
 }
 
 /// Quick and dirty enum to support arena collision shapes until something better comes along.
@@ -113,7 +118,7 @@ impl AssetLoader for ArenaLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["arena.ron"]
+        &[EXTENSION]
     }
 }
 
@@ -177,7 +182,7 @@ pub fn spawn_arena(In(handle): In<Handle<Arena>>, world: &mut World) {
             handle: handle.clone(),
         })
         .id();
-    world.run_system_when_asset_loaded_with(&handle, finish_spawn_arena, id);
+    world.on_asset_loaded_with(&handle, finish_spawn_arena, id);
 }
 
 #[derive(SystemParam)]
@@ -199,7 +204,6 @@ impl FromWorld for CachedArenaSpawnState {
 
 /// Finish the post-asset-load spawning of an arena.
 fn finish_spawn_arena(In(id): In<Entity>, world: &mut World) {
-    debug!("finishing spawning arena");
     world.resource_scope(|world, mut state: Mut<CachedArenaSpawnState>| {
         let ArenaSpawnState {
             arena_q,
@@ -237,35 +241,35 @@ pub fn despawn_all_arenas(world: &mut World) {
 
 /// A [`Resource`] containing a folder of arenas.
 #[derive(Resource, Clone, Debug)]
-pub struct ArenaFolder(Handle<LoadedFolder>);
+pub struct ArenasHandle(Handle<AssetListing<Arena>>);
 
-impl FromWorld for ArenaFolder {
+impl FromWorld for ArenasHandle {
     fn from_world(world: &mut World) -> Self {
-        Self(world.resource::<AssetServer>().load_folder("arenas"))
+        Self(world.resource::<AssetServer>().load("arenas.listing"))
     }
 }
 
 /// A [`SystemParam`] for accessing the loaded [`ArenaFolder`].
 #[derive(SystemParam)]
 pub struct Arenas<'w, 's> {
-    folder: Res<'w, ArenaFolder>,
-    loaded_folders: Res<'w, Assets<LoadedFolder>>,
+    handle: Res<'w, ArenasHandle>,
+    listings: Res<'w, Assets<AssetListing<Arena>>>,
     arenas: Res<'w, Assets<Arena>>,
     asset_server: Res<'w, AssetServer>,
     commands: Commands<'w, 's>,
 }
 
 impl Arenas<'_, '_> {
-    pub fn get(&self) -> Option<impl Iterator<Item = (AssetId<Arena>, &Arena)>> {
-        let id = self.folder.0.id();
+    pub fn get_all(&self) -> Option<impl Iterator<Item = (AssetId<Arena>, &Arena)>> {
+        let id = self.handle.0.id();
 
         if !self.asset_server.is_loaded_with_dependencies(id) {
             // Folder not loaded yet.
             return None;
         }
-        let folder = self.loaded_folders.get(id).unwrap();
+        let listing = self.listings.get(id).unwrap();
         let mut res = vec![];
-        folder.visit_dependencies(&mut |id| {
+        listing.visit_dependencies(&mut |id| {
             let id = id.typed::<Arena>();
             let arena = self.arenas.get(id).unwrap();
             res.push((id, arena));
@@ -274,25 +278,25 @@ impl Arenas<'_, '_> {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Copy)]
 pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
-        app.init_asset::<Arena>()
+        app.init_asset_with_lifecycle::<Arena>()
+            .init_asset_listing::<Arena>()
             .register_type::<Arena>()
             .init_asset_loader::<ArenaLoader>()
-            .init_resource::<ArenaFolder>()
+            .init_resource::<ArenasHandle>()
             .init_resource::<CachedArenaSpawnState>()
-            .add_systems(PreUpdate, trigger_all_events::<AssetEvent<Arena>>)
-            .add_systems(Startup, spawn_tea_p1);
+            .add_systems(PostStartup, spawn_default_arena);
     }
 }
 
-fn spawn_tea_p1(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.run_system_cached_with(
         spawn_arena,
-        asset_server.load::<Arena>(Map::TeaP1.asset_path()),
+        asset_server.load::<Arena>(asset_path("ultimate/fru/p1")),
     );
 
     let waymarks = r#"{

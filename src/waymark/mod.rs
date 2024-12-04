@@ -15,9 +15,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::arena::{Arena, ArenaBackground};
+use crate::asset::lifecycle::AssetHookExt;
 use crate::color::AlphaScale;
 use crate::cursor::make_draggable_world;
-use crate::ecs::AssetCommandsExt;
 use crate::spawner::Spawnable;
 
 pub mod window;
@@ -200,7 +200,7 @@ impl EntityCommand for InsertWaymark {
             let mut arena_q = world.query::<&ArenaBackground>();
             match arena_q.get_single(world) {
                 Ok(arena) => {
-                    world.run_system_when_asset_loaded_with(
+                    world.on_asset_loaded_with(
                         arena.handle.id(),
                         set_position_from_preset,
                         (id, entry, arena.handle.clone()),
@@ -339,4 +339,8 @@ pub struct WaymarkPlugin;
 
 impl Plugin for WaymarkPlugin {
     fn build(&self, _app: &mut App) {}
+}
+
+pub fn plugin() -> WaymarkPlugin {
+    WaymarkPlugin
 }

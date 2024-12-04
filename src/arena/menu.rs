@@ -18,11 +18,11 @@ impl ArenaMenu {
         for mut _menu in &mut q {
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
-                    ui.menu_button("Arenas", |ui| match arenas.get() {
+                    ui.menu_button("Arenas", |ui| match arenas.get_all() {
                         Some(iter) => {
                             for (id, arena) in iter {
                                 if ui.button(arena.short_name.clone()).clicked() {
-                                    debug!("changing arenas by request");
+                                    debug!("Loading new arena: {}", arena.short_name);
                                     commands.run_system_cached(despawn_all_arenas);
                                     commands.run_system_cached_with(
                                         spawn_arena,
@@ -51,4 +51,8 @@ impl Plugin for ArenaMenuPlugin {
                 commands.spawn(ArenaMenu {});
             });
     }
+}
+
+pub fn plugin() -> ArenaMenuPlugin {
+    ArenaMenuPlugin
 }

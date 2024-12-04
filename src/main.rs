@@ -9,7 +9,6 @@ use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_vector_shapes::prelude::*;
 use clap::{ArgAction, Parser as _};
-use waymark::WaymarkPlugin;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -18,6 +17,7 @@ use wasm_bindgen::prelude::*;
 mod testing;
 
 mod arena;
+mod asset;
 mod color;
 mod cursor;
 mod debug;
@@ -94,12 +94,13 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
                                           .disable::<SleepingPlugin>(),
                                        */
         )
-        .add_plugins(arena::plugin())
+        .add_plugins(asset::lifecycle::plugin())
         .add_plugins(color::plugin())
         .add_plugins(cursor::plugin())
-        .add_plugins(WaymarkPlugin)
-        .add_plugins(waymark::window::WaymarkWindowPlugin::default())
-        .add_plugins(arena::menu::ArenaMenuPlugin)
+        .add_plugins(waymark::plugin())
+        .add_plugins(waymark::window::plugin())
+        .add_plugins(arena::plugin())
+        .add_plugins(arena::menu::plugin())
         .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera);
 

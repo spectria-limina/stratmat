@@ -4,7 +4,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 
 use bevy::utils::hashbrown::HashMap;
-use bevy_egui::egui::{RichText, TextEdit};
+use bevy_egui::egui::TextEdit;
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 
 use super::{Preset, Waymark};
@@ -59,7 +59,10 @@ impl WaymarkWindow {
                 }
             });
             #[cfg(target_arch = "wasm32")]
-            ui.label(RichText::new("To paste, press Ctrl-C then click Import.").italics());
+            ui.label(
+                bevy_egui::egui::RichText::new("To paste, press Ctrl-C then click Import.")
+                    .italics(),
+            );
 
             let spawners: HashMap<_, _> = spawner_q
                 .iter_mut()
@@ -166,7 +169,7 @@ impl WaymarkWindow {
 
 /// Plugin for the waymark window.
 #[derive(Default, Copy, Clone, Debug)]
-pub struct WaymarkWindowPlugin {}
+pub struct WaymarkWindowPlugin;
 
 impl Plugin for WaymarkWindowPlugin {
     fn build(&self, app: &mut App) {
@@ -174,4 +177,8 @@ impl Plugin for WaymarkWindowPlugin {
             .add_systems(Update, WaymarkWindow::draw)
             .add_systems(Startup, WaymarkWindow::setup);
     }
+}
+
+pub fn plugin() -> WaymarkWindowPlugin {
+    WaymarkWindowPlugin
 }
