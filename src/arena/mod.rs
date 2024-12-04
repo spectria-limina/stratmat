@@ -237,7 +237,7 @@ pub struct ArenasHandle(Handle<AssetListing<Arena>>);
 
 impl FromWorld for ArenasHandle {
     fn from_world(world: &mut World) -> Self {
-        Self(world.resource::<AssetServer>().load("arenas.listing"))
+        Self(world.resource::<AssetServer>().load("arenas/.listing"))
     }
 }
 
