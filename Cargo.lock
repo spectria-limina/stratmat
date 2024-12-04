@@ -367,7 +367,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 [[package]]
 name = "avian2d"
 version = "0.1.2"
-source = "git+https://github.com/Jondolf/avian.git#52cbcecce0fd05a65005ab6935ebeb231373c2c6"
+source = "git+https://github.com/Jondolf/avian.git?rev=52cbcec#52cbcecce0fd05a65005ab6935ebeb231373c2c6"
 dependencies = [
  "avian_derive",
  "bevy",
@@ -386,7 +386,7 @@ dependencies = [
 [[package]]
 name = "avian_derive"
 version = "0.1.0"
-source = "git+https://github.com/Jondolf/avian.git#52cbcecce0fd05a65005ab6935ebeb231373c2c6"
+source = "git+https://github.com/Jondolf/avian.git?rev=52cbcec#52cbcecce0fd05a65005ab6935ebeb231373c2c6"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
