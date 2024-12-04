@@ -6,7 +6,7 @@ use std::{
 use avian2d::prelude::*;
 use bevy::{
     asset::{AssetLoader, ParseAssetPathError, VisitAssetDependencies},
-    ecs::system::{SystemParam, SystemState},
+    ecs::system::SystemParam,
     prelude::*,
     render::camera::ScalingMode,
 };
@@ -20,7 +20,7 @@ use crate::{
         lifecycle::{AssetHookExt, InitExt},
         listing::{AssetListing, ListingExt},
     },
-    waymark::Waymark,
+    waymark::{Preset, Waymark},
     Layer,
 };
 
@@ -168,67 +168,59 @@ impl ArenaBackgroundBundle {
     }
 }
 
+/// This resource represents the global coordinate offset for
+/// game coordinates. It is updated whenever an arena is spawned.
+///
+/// It does not implement Default because (0,0) is probably the
+/// wrong offset.
+#[derive(Resource, Copy, Clone, Debug)]
+pub struct GameCoordOffset(pub Vec2);
+
 /// Spawn an arena entity.
 ///
-/// This will defer most of the work until the arena is loaded.
-pub fn spawn_arena(In(handle): In<Handle<Arena>>, world: &mut World) {
-    let path = world.resource::<AssetServer>().get_path(&handle);
+/// This will defer most of the work until the arena asset is loaded.
+pub fn spawn_arena(In(handle): In<Handle<Arena>>, mut commands: Commands) {
     debug!(
-        "spawning new arena with asset ID {} from path '{path:?}'",
-        handle.id()
+        "spawning new arena with asset ID {} from path '{:?}'",
+        handle.id(),
+        handle.path(),
     );
-    let id = world
+    let id = commands
         .spawn(ArenaBackground {
             handle: handle.clone(),
         })
         .id();
-    world.on_asset_loaded_with(&handle, finish_spawn_arena, id);
-}
-
-#[derive(SystemParam)]
-struct ArenaSpawnState<'w, 's> {
-    arena_q: Query<'w, 's, &'static ArenaBackground>,
-    camera_q: Query<'w, 's, &'static mut OrthographicProjection, With<Camera2d>>,
-    arenas: Res<'w, Assets<Arena>>,
-    asset_server: Res<'w, AssetServer>,
-}
-
-#[derive(Resource)]
-struct CachedArenaSpawnState(SystemState<ArenaSpawnState<'static, 'static>>);
-
-impl FromWorld for CachedArenaSpawnState {
-    fn from_world(world: &mut World) -> Self {
-        Self(SystemState::new(world))
-    }
+    commands.on_asset_loaded_with(&handle, finish_spawn_arena, id);
 }
 
 /// Finish the post-asset-load spawning of an arena.
-fn finish_spawn_arena(In(id): In<Entity>, world: &mut World) {
-    world.resource_scope(|world, mut state: Mut<CachedArenaSpawnState>| {
-        let ArenaSpawnState {
-            arena_q,
-            mut camera_q,
-            arenas,
-            asset_server,
-        } = state.0.get_mut(world);
-
-        let Ok(background) = arena_q.get(id) else {
-            // The entity was despawned or the ArenaBackground removed, so abort.
-            return;
-        };
-        let Some(arena) = arenas.get(&background.handle) else {
-            warn!("finish_spawn_arena called with asset not loaded!");
-            return;
-        };
-        // FIXME: Single-camera assumption.
-        camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
-            min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
-            min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
-        };
-        let background = asset_server.load(&arena.background_path);
-        let bundle = ArenaBackgroundBundle::new(arena, background);
-        world.entity_mut(id).insert(bundle);
-    });
+///
+/// This includes resetting the camera and updating the [`GameCoordOffset`].
+fn finish_spawn_arena(
+    In(id): In<Entity>,
+    arena_q: Query<&'static ArenaBackground>,
+    mut camera_q: Query<&'static mut OrthographicProjection, With<Camera2d>>,
+    arenas: Res<Assets<Arena>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+) {
+    let Ok(background) = arena_q.get(id) else {
+        // The entity was despawned or the ArenaBackground removed, so abort.
+        return;
+    };
+    let Some(arena) = arenas.get(&background.handle) else {
+        warn!("finish_spawn_arena called with asset not loaded!");
+        return;
+    };
+    // FIXME: Single-camera assumption.
+    camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
+        min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
+        min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
+    };
+    let background = asset_server.load(&arena.background_path);
+    let bundle = ArenaBackgroundBundle::new(arena, background);
+    commands.entity(id).insert(bundle);
+    commands.insert_resource(GameCoordOffset(arena.offset));
 }
 
 /// Despawn all arenas.
@@ -288,16 +280,13 @@ impl Plugin for ArenaPlugin {
             .register_type::<Arena>()
             .init_asset_loader::<ArenaLoader>()
             .init_resource::<ArenasHandle>()
-            .init_resource::<CachedArenaSpawnState>()
             .add_systems(PostStartup, spawn_default_arena);
     }
 }
 
 fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.run_system_cached_with(
-        spawn_arena,
-        asset_server.load::<Arena>(asset_path("ultimate/fru/p1")),
-    );
+    let handle = asset_server.load::<Arena>(asset_path("ultimate/fru/p1"));
+    commands.run_system_cached_with(spawn_arena, handle.clone());
 
     let waymarks = r#"{
   "Name":"TEA",
@@ -311,8 +300,12 @@ fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
   "Three":{"X":107.8,"Y":0.0,"Z":107.8,"ID":6,"Active":true},
   "Four":{"X":107.8,"Y":0.0,"Z":100.0,"ID":7,"Active":true}
 }"#;
-
-    Waymark::spawn_from_preset(&mut commands, serde_json::de::from_str(waymarks).unwrap());
+    let preset: Preset = serde_json::de::from_str(waymarks).unwrap();
+    commands.on_asset_loaded_with(
+        &handle,
+        |In(preset), mut commands: Commands| Waymark::spawn_from_preset(&mut commands, preset),
+        preset,
+    );
 }
 
 pub fn plugin() -> ArenaPlugin {

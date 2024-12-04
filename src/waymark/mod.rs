@@ -14,8 +14,7 @@ use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::arena::{Arena, ArenaBackground};
-use crate::asset::lifecycle::AssetHookExt;
+use crate::arena::GameCoordOffset;
 use crate::color::AlphaScale;
 use crate::cursor::make_draggable_world;
 use crate::spawner::Spawnable;
@@ -186,35 +185,40 @@ impl Waymark {
 
 struct InsertWaymark {
     waymark: Waymark,
-    entry: Option<PresetEntry>,
+    preset_entry: Option<PresetEntry>,
 }
 
 impl EntityCommand for InsertWaymark {
     fn apply(self, id: Entity, world: &mut World) {
-        let InsertWaymark { waymark, entry } = self;
-        debug!("inserting waymark {waymark:?} on entity {id:?} with preset {entry:?}",);
+        let InsertWaymark {
+            waymark,
+            preset_entry,
+        } = self;
+        debug!("inserting waymark {waymark:?} on entity {id:?} with preset {preset_entry:?}");
         let asset_server = world.resource::<AssetServer>();
         let image = waymark.asset_handle(asset_server);
-
-        if let Some(entry) = entry {
-            let mut arena_q = world.query::<&ArenaBackground>();
-            match arena_q.get_single(world) {
-                Ok(arena) => {
-                    world.on_asset_loaded_with(
-                        arena.handle.id(),
-                        set_position_from_preset,
-                        (id, entry, arena.handle.clone()),
-                    );
-                }
-                Err(e) => {
-                    error!("Unable to position waymark by preset because there is no arena: {e}");
-                }
-            }
-        }
+        let offset = world.get_resource().copied();
 
         let Ok(mut entity) = world.get_entity_mut(id) else {
             return;
         };
+
+        if let Some(entry) = preset_entry {
+            if let Some(GameCoordOffset(offset)) = offset {
+                let (x, y) = (entry.x - offset.x, offset.y - entry.z);
+                debug!("world coords: {:?}", (x, y),);
+                entity.insert(Transform::from_xyz(
+                    entry.x - offset.x,
+                    // The entry's Z axis is our negative Y axis.
+                    offset.y - entry.z,
+                    0.0,
+                ));
+            } else {
+                error!("Unable to spawn waymark because GameCoordOffset is not available.");
+                return;
+            }
+        }
+
         entity.insert((
             Name::new(waymark.name()),
             waymark,
@@ -284,37 +288,12 @@ impl EntityCommand for InsertWaymark {
     }
 }
 
-// Call this only if we are positive the asset indicated by the handle exists.
-fn set_position_from_preset(
-    In((id, entry, handle)): In<(Entity, PresetEntry, Handle<Arena>)>,
-    world: &mut World,
-) {
-    let offset = world
-        .resource::<Assets<Arena>>()
-        .get(&handle)
-        .unwrap()
-        .offset;
-    let Ok(mut entity) = world.get_entity_mut(id) else {
-        return;
-    };
-    let (x, y) = (entry.x - offset.x, offset.y - entry.z);
-    debug!(
-        "arena loaded, repositioning waymark {} to {:?}",
-        entry.id,
-        (x, y),
-    );
-    entity.insert(Transform::from_xyz(
-        entry.x - offset.x,
-        // The entry's Z axis is our negative Y axis.
-        offset.y - entry.z,
-        0.0,
-    ));
-}
-
-//
 /// If a [`PresetEntry`] is provided, it will be used to position the waymark.
 pub fn insert_waymark(waymark: Waymark, entry: Option<PresetEntry>) -> impl EntityCommand {
-    InsertWaymark { waymark, entry }
+    InsertWaymark {
+        waymark,
+        preset_entry: entry,
+    }
 }
 
 impl Spawnable for Waymark {
