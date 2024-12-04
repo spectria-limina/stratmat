@@ -79,7 +79,7 @@ strip = true
 
 [profile.release-size]
 inherits = "release"
-opt-level = "z"
+opt-level = "s"
 
 [patch.crates-io]
 # These crates haven't yet released with 0.15 support.
