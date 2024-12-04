@@ -53,7 +53,7 @@ jobs:
     - name: Build
       run: cargo build --profile release-size --target wasm32-unknown-unknown
     - name: Run Bindgen
-      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat target/wasm32-unknown-unknown/release/stratmat.wasm
+      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat target/wasm32-unknown-unknown/release-size/stratmat.wasm
     - name: Optimise Wasm
       uses: NiklasEi/wasm-opt-action@v2
       with:

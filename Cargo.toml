@@ -74,11 +74,11 @@ opt-level = 3
 
 [profile.release]
 codegen-units = 1
-lot = "fat"
+lto = "fat"
 strip = true
 
-[profile.size]
-inherits = "release-size"
+[profile.release-size]
+inherits = "release"
 opt-level = "z"
 
 [patch.crates-io]
