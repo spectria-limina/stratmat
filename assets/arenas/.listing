@@ -1,8 +1,43 @@
-arenas/savage/pandaemonium/p9s.arena.ron
-arenas/ultimate/fru/i1.arena.ron
-arenas/ultimate/fru/p1.arena.ron
-arenas/ultimate/fru/p2.arena.ron
-arenas/ultimate/fru/p3.arena.ron
-arenas/ultimate/fru/p4.arena.ron
-arenas/ultimate/fru/p5.arena.ron
-arenas/ultimate/tea/p1.arena.ron
+{
+  "name": "Arenas",
+  "subdirs": {
+    "savage": {
+      "name": "Savage",
+      "subdirs": {
+        "pandaemonium": {
+          "name": "Pandæmonium",
+          "subdirs": {
+            "anabaseios": {
+              "name": "Anabaseios",
+              "contents": [
+                "p9s.arena.ron"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "ultimate": {
+      "name": "Ultimate",
+      "subdirs": {
+        "tea": {
+          "name": "The Epic of Alexander",
+          "contents": [
+            "p1.arena.ron"
+          ]
+        },
+        "fru": {
+          "name": "Futures Rewritten",
+          "contents": [
+            "p1.arena.ron",
+            "p2.arena.ron",
+            "p3.arena.ron",
+            "p5.arena.ron",
+            "i1.arena.ron",
+            "p4.arena.ron"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ use bevy_egui::egui::TextEdit;
 use bevy_egui::{egui, EguiClipboard, EguiContexts};
 
 use super::{Preset, Waymark};
-use crate::arena::{Arena, ArenaBackground};
+use crate::arena::Arena;
 use crate::spawner::{Spawner, SpawnerBundle, SpawnerPlugin, SpawnerWidget};
 use crate::widget::{self, egui_context};
 
@@ -122,11 +122,9 @@ impl WaymarkWindow {
     pub fn export_to_clipboard(
         win_q: Query<&WaymarkWindow>,
         waymarks_q: Query<(&Waymark, &Transform)>,
-        arena_q: Query<&ArenaBackground>,
-        arenas: Res<Assets<Arena>>,
+        arena: Single<&Arena>,
         mut clipboard: ResMut<EguiClipboard>,
     ) {
-        let arena = arenas.get(&arena_q.single().handle).unwrap();
         let preset = Preset {
             name: win_q.single().preset_name.clone(),
             map_id: arena.map_id,

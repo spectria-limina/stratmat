@@ -111,7 +111,7 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
         app.add_plugins(PhysicsDebugPlugin::default());
     }
     if args.log_asset_events {
-        app.add_systems(PostUpdate, debug::log_asset_events::<arena::Arena>);
+        app.add_systems(PostUpdate, debug::log_asset_events::<arena::ArenaMeta>);
     }
     if args.log_collision_events {
         app.add_systems(PostUpdate, debug::log_events::<Collision>);

@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
-use super::{despawn_all_arenas, spawn_arena, Arenas};
+use crate::asset::lifecycle::GlobalAsset;
+
+use super::{despawn_all_arenas, spawn_arena, ArenaListing, ArenaMeta};
 
 #[derive(Component, Debug)]
 pub struct ArenaMenu {}
@@ -9,8 +11,8 @@ pub struct ArenaMenu {}
 impl ArenaMenu {
     pub fn show(
         mut q: Query<&mut ArenaMenu>,
-        arenas: Arenas,
-        asset_server: Res<AssetServer>,
+        arenas: Option<Single<&GlobalAsset<ArenaListing>>>,
+        assets: Res<Assets<ArenaMeta>>,
         mut contexts: EguiContexts,
         mut commands: Commands,
     ) {
@@ -18,26 +20,38 @@ impl ArenaMenu {
         for mut _menu in &mut q {
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
-                    ui.menu_button("Arenas", |ui| match arenas.get_all() {
-                        Some(iter) => {
-                            for (id, arena) in iter {
-                                if ui.button(arena.short_name.clone()).clicked() {
-                                    debug!("Loading new arena: {}", arena.short_name);
-                                    commands.run_system_cached(despawn_all_arenas);
-                                    commands.run_system_cached_with(
-                                        spawn_arena,
-                                        asset_server.get_id_handle(id).unwrap(),
-                                    );
-                                }
-                            }
-                        }
-                        None => {
-                            ui.disable();
-                        }
-                    })
+                    if let Some(ref listing) = arenas {
+                        Self::submenu(ui, listing, &assets, &mut commands);
+                    }
                 });
             });
         }
+    }
+
+    fn submenu(
+        ui: &mut egui::Ui,
+        listing: &ArenaListing,
+        assets: &Assets<ArenaMeta>,
+        commands: &mut Commands,
+    ) {
+        ui.menu_button(listing.name.clone(), |ui| {
+            for subdir in &listing.subdirs {
+                Self::submenu(ui, subdir, assets, commands);
+            }
+            if !listing.subdirs.is_empty() && !listing.contents.is_empty() {
+                ui.separator();
+            }
+            for handle in &listing.contents {
+                let Some(arena) = assets.get(handle) else {
+                    error!("arena listing's contents not fully loaded");
+                    continue;
+                };
+                if ui.button(arena.short_name.clone()).clicked() {
+                    commands.run_system_cached(despawn_all_arenas);
+                    commands.run_system_cached_with(spawn_arena, arena.clone());
+                }
+            }
+        });
     }
 }
 

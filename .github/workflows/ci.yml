@@ -58,8 +58,8 @@ jobs:
       uses: NiklasEi/wasm-opt-action@v2
       with:
         file: public/static/app/stratmat_bgwasm
-    - name: Generate Listings
-      run: tools/generate_asset_listings.sh
+    - name: Tataru
+      run: cargo run --package tataru -- --all
     - name: Copy Assets to public/
       run: cp -r assets public/static/app
     - name: Upload Release Package

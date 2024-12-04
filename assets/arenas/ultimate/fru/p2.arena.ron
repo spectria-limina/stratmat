@@ -1,6 +1,6 @@
 (
-    name: "Futures Rewritten (Ultimate) — Phase 2: Usurper of Frost",
-    short_name: "FRU P2",
+    name: "Futures Rewritten (Ultimate) — Phase 2 — Usurper of Frost",
+    short_name: "Phase 2 — Usurper of Frost",
     map_id: 1006,
     background_path: "/sprites/arenas/ultimate/fru/p2.png",
     size: Vec2(40.0, 40.0),

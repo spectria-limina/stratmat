@@ -1,6 +1,6 @@
 (
-    name: "The Epic of Alexander (Ultimate) — Phase 1: Living Liquid",
-    short_name: "TEA",
+    name: "The Epic of Alexander (Ultimate) — Phase 1 — Living Liquid",
+    short_name: "Phase 1 — Living Liquid",
     map_id: 693,
     background_path: "/sprites/arenas/ultimate/tea/p1.png",
     size: Vec2(40.0, 40.0),

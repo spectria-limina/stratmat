@@ -3036,6 +3036,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "map-macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb950a42259642e5a3483115aca87eebed2a64886993463af9c9739c205b8d3a"
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4396,7 +4402,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stratmat"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "avian2d",
  "bevy",
@@ -4418,6 +4424,7 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
+ "tataru",
  "thiserror 2.0.4",
  "tracing",
  "wasm-bindgen",
@@ -4505,6 +4512,19 @@ dependencies = [
  "num-traits",
  "serde",
  "slotmap",
+]
+
+[[package]]
+name = "tataru"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "eyre",
+ "map-macro",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

@@ -1,11 +1,25 @@
 [package]
 name = "stratmat"
-version = "0.1.0"
+version.workspace = true
+authors.workspace = true
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace.package]
+version = "0.2.0"
+authors = ["Alexis 'spectria.limina' Hunt"]
+
+[workspace.dependencies]
+clap = { version = "4.5.21", features = ["derive", "env"] }
+eyre = "0.6.12"
+map-macro = "0.3.0"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
+tataru = { path = "tools/tataru" }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
 
 [dependencies]
+avian2d = { version = "0.1.2", features = ["serialize", "debug-plugin"] }
 bevy = { version = "0.15.0", default-features = false, features = [
     "animation",
     "bevy_animation",
@@ -34,14 +48,13 @@ bevy-inspector-egui = { version = "0.28.0", default-features = false, features=[
 ] }
 bevy_egui = "0.31.1"
 bevy_vector_shapes = "0.9.2"
-avian2d = { version = "0.1.2", features = ["serialize", "debug-plugin"] }
 chrono = "0.4.38"
-clap = { version = "4.5.21", features = ["derive", "env"] }
+clap.workspace = true
 derive_more = { version = "1.0.0", default-features = false, features = [
     "from",
 ] }
 enum-iterator = "2.1.0"
-eyre = "0.6.12"
+eyre.workspace = true
 float_eq = "1.0.1"
 int-enum = "1.1.2"
 itertools = "0.13.0"
@@ -53,10 +66,11 @@ parry2d = { version = "0.17.4", features = [
     "serde-serialize",
 ] }
 ron = "0.8.1"
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = "1.0.133"
+serde.workspace = true
+serde_json.workspace = true
+tataru.workspace = true
 thiserror = "2.0.3"
-tracing = "0.1.41"
+tracing.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 convert_case = "0.6.0"

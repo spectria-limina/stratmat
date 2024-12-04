@@ -7,4 +7,4 @@
 #
 # To enable this hook, rename this file to "pre-commit".
 
-tools/generate_asset_listings.sh
+cargo run -q --package tataru -- --all
