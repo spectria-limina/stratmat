@@ -1,0 +1,15 @@
+[package]
+name = "tataru"
+description = "Asset manager utility for Stratmat"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+
+[dependencies]
+clap.workspace = true
+eyre.workspace = true
+map-macro.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
