@@ -20,21 +20,21 @@
     "ultimate": {
       "name": "Ultimate",
       "subdirs": {
+        "fru": {
+          "name": "Futures Rewritten",
+          "contents": [
+            "i1.arena.ron",
+            "p1.arena.ron",
+            "p2.arena.ron",
+            "p3.arena.ron",
+            "p4.arena.ron",
+            "p5.arena.ron"
+          ]
+        },
         "tea": {
           "name": "The Epic of Alexander",
           "contents": [
             "p1.arena.ron"
-          ]
-        },
-        "fru": {
-          "name": "Futures Rewritten",
-          "contents": [
-            "p1.arena.ron",
-            "p2.arena.ron",
-            "p3.arena.ron",
-            "p5.arena.ron",
-            "i1.arena.ron",
-            "p4.arena.ron"
           ]
         }
       }

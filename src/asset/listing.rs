@@ -38,7 +38,7 @@ impl<A: Asset> AssetListing<A> {
     }
 
     fn load_from_tataru(
-        mut listing: tataru::Listing,
+        listing: tataru::Listing,
         path: &Path,
         load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> AssetListing<A> {
@@ -46,7 +46,7 @@ impl<A: Asset> AssetListing<A> {
             name: listing.name,
             contents: listing
                 .contents
-                .drain(..)
+                .into_iter()
                 .map(|name| {
                     let path = path.join(name);
                     debug!("Loading listing asset {}", path.display());
@@ -55,7 +55,7 @@ impl<A: Asset> AssetListing<A> {
                 .collect(),
             subdirs: listing
                 .subdirs
-                .drain()
+                .into_iter()
                 .map(|(name, subdir)| {
                     Self::load_from_tataru(subdir, &path.join(name), load_context)
                 })

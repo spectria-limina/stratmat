@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::{self, read_dir},
     io,
     path::{Path, PathBuf},
@@ -22,8 +22,8 @@ pub static KNOWN_DIRS: LazyLock<HashMap<PathBuf, String>> = LazyLock::new(|| {
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct Listing {
     pub name: String,
-    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
-    pub subdirs: HashMap<String, Listing>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
+    pub subdirs: BTreeMap<String, Listing>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub contents: Vec<String>,
 }
@@ -93,5 +93,6 @@ pub fn generate_listing(
             out.subdirs.insert(entry_name, subdir);
         }
     }
+    out.contents.sort();
     Ok(out)
 }
