@@ -4427,6 +4427,7 @@ dependencies = [
  "tataru",
  "thiserror 2.0.4",
  "tracing",
+ "uuid",
  "wasm-bindgen",
  "web-sys",
 ]

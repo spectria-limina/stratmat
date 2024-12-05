@@ -3,7 +3,7 @@ use bevy::{
     ecs::query::QuerySingleError,
     input::{mouse::MouseButtonInput, ButtonState},
     prelude::*,
-    window::PrimaryWindow,
+    window::{PrimaryWindow, WindowEvent},
 };
 use itertools::Itertools;
 
@@ -81,8 +81,7 @@ impl MockDrag {
         mut q: Query<(Entity, &MockDrag, Option<&mut MockDragState>)>,
         win_q: Query<Entity, With<PrimaryWindow>>,
         mut commands: Commands,
-        mut cursor_ev: EventWriter<CursorMoved>,
-        mut button_ev: EventWriter<MouseButtonInput>,
+        mut window_ev: EventWriter<WindowEvent>,
     ) {
         let win = win_q.single();
         match q.get_single_mut() {
@@ -93,40 +92,40 @@ impl MockDrag {
                     pos: drag.start_pos,
                     ..default()
                 });
-                cursor_ev.send(CursorMoved {
+                window_ev.send(WindowEvent::CursorMoved(CursorMoved {
                     window: win,
                     position: drag.start_pos,
                     delta: None,
-                });
+                }));
                 debug!("beginning mock drag at {}", drag.start_pos);
             }
             Ok((id, drag, Some(ref mut state))) => {
                 if state.tick == 0.0 {
-                    button_ev.send(MouseButtonInput {
+                    window_ev.send(WindowEvent::MouseButtonInput(MouseButtonInput {
                         window: win,
                         button: drag.button,
                         state: ButtonState::Pressed,
-                    });
+                    }));
                     state.tick += 1.0;
                     return;
                 }
                 if state.tick / drag.duration >= 1.0 + 0.0001 {
-                    button_ev.send(MouseButtonInput {
+                    window_ev.send(WindowEvent::MouseButtonInput(MouseButtonInput {
                         window: win,
                         button: drag.button,
                         state: ButtonState::Released,
-                    });
+                    }));
                     debug!("ending mock drag");
                     commands.entity(id).despawn();
                     return;
                 }
                 let progress = f32::min(state.tick / drag.duration, 1.0);
                 let pos = drag.start_pos.lerp(drag.end_pos, progress);
-                cursor_ev.send(CursorMoved {
+                window_ev.send(WindowEvent::CursorMoved(CursorMoved {
                     window: win,
                     position: pos,
                     delta: Some(pos - state.pos),
-                });
+                }));
                 state.tick += 1.0;
                 state.pos = pos;
                 debug!("continuing mock drag to {}", pos);
@@ -135,6 +134,24 @@ impl MockDrag {
                 panic!("can only process one MockDrag at a time: {s}")
             }
             Err(QuerySingleError::NoEntities(_)) => {}
+        }
+    }
+}
+
+pub fn forward_window_events(
+    mut reader: EventReader<WindowEvent>,
+    mut cursor_moved: EventWriter<CursorMoved>,
+    mut mouse_button_input: EventWriter<MouseButtonInput>,
+) {
+    for ev in reader.read() {
+        match ev {
+            WindowEvent::CursorMoved(ev) => {
+                cursor_moved.send(ev.clone());
+            }
+            WindowEvent::MouseButtonInput(ev) => {
+                mouse_button_input.send(*ev);
+            }
+            _ => {}
         }
     }
 }

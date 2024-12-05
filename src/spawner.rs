@@ -216,10 +216,13 @@ mod test {
     use crate::widget::egui_context;
     use crate::{testing::*, widget};
 
+    use avian2d::PhysicsPlugins;
     use bevy::app::ScheduleRunnerPlugin;
+    use bevy::input::mouse::MouseButtonInput;
+    use bevy::picking::pointer::PointerInput;
     use bevy::render::settings::{RenderCreation, WgpuSettings};
     use bevy::render::RenderPlugin;
-    use bevy::window::PrimaryWindow;
+    use bevy::window::{PrimaryWindow, WindowEvent};
     use bevy::winit::WinitPlugin;
     use bevy_egui::EguiPlugin;
     use bevy_egui::{egui, EguiContexts};
@@ -258,7 +261,7 @@ mod test {
             .observe(Spawner::<Waymark>::start_drag);
         commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
             Vec2::ZERO,
-            Vec2::splat(100.0),
+            Vec2::splat(200.0),
         )));
     }
 
@@ -280,6 +283,8 @@ mod test {
         .add_plugins(ScheduleRunnerPlugin {
             run_mode: bevy::app::RunMode::Loop { wait: None },
         })
+        .add_plugins(PhysicsPlugins::default())
+        .add_systems(PreUpdate, forward_window_events)
         .add_plugins(EguiPlugin)
         .add_plugins(crate::cursor::plugin())
         .add_plugins(SpawnerPlugin::<Waymark>::default())
@@ -301,7 +306,6 @@ mod test {
     }
 
     #[test]
-    #[ignore = "broken since 0.15 for some reason: the drag ain't draggin'"]
     fn spawner_drag() {
         let (mut app, _) = test_app();
 
@@ -314,12 +318,15 @@ mod test {
             button: MouseButton::Left,
             duration: 10.0,
         });
-        app.add_systems(Update, MockDrag::update)
+        app.add_systems(First, MockDrag::update)
             .add_observer(observe_debug::<Pointer<DragStart>>)
             .add_observer(observe_debug::<Pointer<Drag>>)
             .add_observer(observe_debug::<Pointer<DragEnd>>)
+            .add_systems(Update, log_debug::<WindowEvent>)
             .add_systems(Update, log_debug::<CursorMoved>)
-            .add_systems(Update, log_debug::<bevy::input::mouse::MouseButtonInput>)
+            .add_systems(Update, log_debug::<MouseButtonInput>)
+            .add_systems(Update, log_debug::<PointerHits>)
+            .add_systems(Update, log_debug::<PointerInput>)
             .add_systems(First, || {
                 debug!("new tick");
             });
