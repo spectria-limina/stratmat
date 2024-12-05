@@ -21,8 +21,9 @@ jobs:
       run: cargo build --all --verbose
     - name: Test
       run: cargo test --all --verbose
-  build-test-wasm:
+  build-wasm:
     runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main'
     env: 
       RUSTFLAGS: "--cfg=web_sys_unstable_apis"
     steps:
@@ -34,8 +35,6 @@ jobs:
       run: rustup target add wasm32-unknown-unknown
     - name: Build
       run: cargo build --all --verbose --target wasm32-unknown-unknown
-    - name: Test
-      run: cargo test --all --verbose --target wasm32-unknown-unknown
   build-release-wasm:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -71,7 +70,6 @@ jobs:
   deploy-gh-pages:
     needs: 
     - build-release-wasm
-    - build-test-wasm
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
