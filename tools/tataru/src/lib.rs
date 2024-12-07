@@ -15,7 +15,7 @@ pub const DIRNAME_FILE_NAME: &str = ".dirname";
 pub const LISTING_FILE_NAME: &str = ".listing";
 pub static KNOWN_DIRS: LazyLock<HashMap<PathBuf, String>> = LazyLock::new(|| {
     hash_map! {
-        Path::new("assets/arenas").into() => ".arena.ron".into(),
+        Path::new("arenas").into() => ".arena.ron".into(),
     }
 });
 

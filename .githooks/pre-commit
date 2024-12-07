@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/usr/bin/bash
 #
 # An example hook script to verify what is about to be committed.
 # Called by "git commit" with no arguments.  The hook should
@@ -7,4 +7,68 @@
 #
 # To enable this hook, rename this file to "pre-commit".
 
-cargo run -q --package tataru -- --all
+set -e
+
+export RUST_LOG=warn
+QUIET="--quiet"
+VERBOSE=""
+ACTION=check
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -vv|--verbose=2)
+      VERBOSE="--verbose"
+      set -x
+      ;&
+    -v|--verbose)
+      export RUST_LOG=info
+      QUIET=""
+      VERBOSE="--verbose"
+      shift # past value
+      ;;
+    -u|--update)
+      ACTION=update
+      shift
+      ;;
+    -d|--no-cleanup)
+      NO_CLEANUP=true
+      shift
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      echo "No positional args accepted"
+      exit 1
+      ;;
+  esac
+done
+
+case $ACTION in
+  check)
+    TEMP=$(mktemp -d)
+    cargo run $QUIET -p tataru -- --all --out "$TEMP/assets"
+    if [ -v GIT_INDEX_FILE ]; then
+        export GIT_INDEX_FILE=$(realpath $GIT_INDEX_FILE)
+    fi
+    git --work-tree="$TEMP" diff --exit-code $QUIET -- "assets/**/.listing" || (
+        echo >&2 "ERROR: Listing files in assets/ need update."
+        echo >&2 "       Run Tataru: 'cargo run -p tataru -- --all && git add -- assets/**/.listing'."
+        echo >&2 "       Or just run '.githooks/pre-commit -u -v'."
+        echo >&2 "       Run '.githooks/pre-commit -v' for more info."
+        exit 1
+    ) && (
+        echo >&2 "All listing files in assets/ match"
+    )
+
+    if [ $NO_CLEANUP ]; then
+        echo >&2 "Leaving dirty files in $TEMP"
+    else
+        rm -r "$TEMP" || true
+    fi
+  ;;
+  update)
+    cargo run -p tataru $QUIET -- --all && git add $VERBOSE -- assets/**/.listing
+  ;;
+esac
