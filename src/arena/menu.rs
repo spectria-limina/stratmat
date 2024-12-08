@@ -1,7 +1,10 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::{
+    egui::{self, RichText},
+    EguiContexts,
+};
 
-use crate::asset::lifecycle::GlobalAsset;
+use crate::asset::lifecycle::OptionalGlobalAsset;
 
 use super::{despawn_all_arenas, spawn_arena, ArenaListing, ArenaMeta};
 
@@ -11,7 +14,7 @@ pub struct ArenaMenu {}
 impl ArenaMenu {
     pub fn show(
         mut q: Query<&mut ArenaMenu>,
-        arenas: Option<Single<&GlobalAsset<ArenaListing>>>,
+        arenas: OptionalGlobalAsset<ArenaListing>,
         assets: Res<Assets<ArenaMeta>>,
         mut contexts: EguiContexts,
         mut commands: Commands,
@@ -20,8 +23,12 @@ impl ArenaMenu {
         for mut _menu in &mut q {
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
-                    if let Some(ref listing) = arenas {
+                    if let Some(ref listing) = arenas.option() {
                         Self::submenu(ui, listing, &assets, &mut commands);
+                    } else {
+                        ui.menu_button("Arenas", |ui| {
+                            ui.label(RichText::new("Loading...").italics())
+                        });
                     }
                 });
             });
