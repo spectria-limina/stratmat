@@ -89,14 +89,14 @@ impl Waymark {
     /// Produces the asset path for the image with the letter or number of the waymark.
     pub fn asset_path(self) -> &'static str {
         match self {
-            Waymark::One => "waymarks/way_1.png",
-            Waymark::Two => "waymarks/way_2.png",
-            Waymark::Three => "waymarks/way_3.png",
-            Waymark::Four => "waymarks/way_4.png",
-            Waymark::A => "waymarks/way_a.png",
-            Waymark::B => "waymarks/way_b.png",
-            Waymark::C => "waymarks/way_c.png",
-            Waymark::D => "waymarks/way_d.png",
+            Waymark::One => "sprites/waymarks/way_1.png",
+            Waymark::Two => "sprites/waymarks/way_2.png",
+            Waymark::Three => "sprites/waymarks/way_3.png",
+            Waymark::Four => "sprites/waymarks/way_4.png",
+            Waymark::A => "sprites/waymarks/way_a.png",
+            Waymark::B => "sprites/waymarks/way_b.png",
+            Waymark::C => "sprites/waymarks/way_c.png",
+            Waymark::D => "sprites/waymarks/way_d.png",
         }
     }
 
