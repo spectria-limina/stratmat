@@ -4420,7 +4420,6 @@ dependencies = [
  "itertools",
  "js-sys",
  "log",
- "parry2d",
  "ron",
  "serde",
  "serde_json",
