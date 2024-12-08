@@ -3,7 +3,8 @@
 use std::fmt::Debug;
 
 use avian2d::prelude::*;
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
+use itertools::Itertools as _;
 
 use crate::color::AlphaScale;
 use crate::Layer;
@@ -48,12 +49,26 @@ pub fn on_drag(
     event: Trigger<Pointer<Drag>>,
     mut q: Query<&mut Transform>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
+    primary_win_id: Single<Entity, With<PrimaryWindow>>,
 ) {
     trace!("drag_listener");
     let Ok(mut transform) = q.get_mut(event.entity()) else {
         return;
     };
-    let (camera, camera_transform) = camera_q.single();
+    let Some((camera, camera_transform)) = camera_q
+        .iter()
+        .filter(|(cam, _)| {
+            cam.target
+                .normalize(Some(*primary_win_id))
+                .expect("Target normalization shouldn't fail")
+                == event.pointer_location.target
+        })
+        .at_most_one()
+        .expect("Shouldn't have two cameras for a single window.")
+    else {
+        error!("Pointer dragged over RenderTarget:{:?} without a camera. Unable to compute translation.", event.pointer_location.target);
+        return;
+    };
 
     let new_pos_viewport = event.pointer_location.position;
     let old_pos_viewport = new_pos_viewport - event.delta;

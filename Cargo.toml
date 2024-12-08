@@ -47,6 +47,7 @@ bevy-inspector-egui = { version = "0.28.0", default-features = false, features=[
     "egui_open_url",
 ] }
 bevy_egui = "0.31.1"
+bevy_mod_debugdump = "0.12.0"
 bevy_vector_shapes = "0.9.2"
 chrono = "0.4.38"
 clap.workspace = true
@@ -99,3 +100,4 @@ opt-level = "z"
 [patch.crates-io]
 # These crates haven't yet released with 0.15 support.
 avian2d = { git = "https://github.com/Jondolf/avian.git", rev = "52cbcec" }
+bevy_render = { git = "https://github.com/spectria-limina/bevy.git", branch = "multicanvas" }

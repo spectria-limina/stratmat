@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use avian2d::prelude::*;
+use bevy::render::RenderPlugin;
 use bevy::winit::WinitSettings;
 use bevy::{log::LogPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
@@ -11,7 +12,7 @@ use bevy_vector_shapes::prelude::*;
 use clap::{ArgAction, Parser as _};
 
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
+use {wasm_bindgen::prelude::*, web_sys::HtmlCanvasElement};
 
 #[cfg(test)]
 mod testing;
@@ -58,18 +59,27 @@ struct Args {
     asset_root: Option<PathBuf>,
     #[clap(long, short)]
     log_filter: Option<String>,
+    #[cfg(target_arch = "wasm32")]
+    #[clap(long, action = ArgAction::Set, default_value_t = false)]
+    offscreen_canvas: bool,
 }
 
 fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
     let mut app = App::new();
 
     if let Some(ref path) = args.asset_root {
-        set_root_asset_path(&mut app, path);
+        target_setup(&mut app, path);
     }
 
     let mut log_plugin = LogPlugin::default();
     if let Some(ref filter) = args.log_filter {
         log_plugin.filter = filter.clone();
+    }
+
+    let mut render_plugin = RenderPlugin::default();
+    #[cfg(target_arch = "wasm32")]
+    if args.offscreen_canvas {
+        render_plugin.offscreen_canvas = true;
     }
 
     app.insert_resource(args.clone())
@@ -83,7 +93,8 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
                 .set(AssetPlugin {
                     meta_check: bevy::asset::AssetMetaCheck::Never,
                     ..default()
-                }),
+                })
+                .set(render_plugin),
         )
         .add_plugins(EguiPlugin)
         .add_plugins(Shape2dPlugin::default())
@@ -101,8 +112,7 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
         .add_plugins(waymark::window::plugin())
         .add_plugins(arena::plugin())
         .add_plugins(arena::menu::plugin())
-        .insert_resource(WinitSettings::desktop_app())
-        .add_systems(Startup, spawn_camera);
+        .insert_resource(WinitSettings::desktop_app());
 
     if args.debug_inspector {
         app.add_plugins(WorldInspectorPlugin::new());
@@ -119,33 +129,19 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
         app.add_systems(PostUpdate, debug::log_events::<CollisionEnded>);
     }
 
+    app.world_mut().spawn((
+        Name::new("Primary Camera"),
+        PrimaryCamera,
+        Camera2d,
+        OrthographicProjection::default_2d(),
+    ));
+
     app.run();
     Ok(())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn set_root_asset_path(app: &mut App, path: &Path) {
-    use bevy::asset::io::{file::FileAssetReader, AssetSource, AssetSourceId};
-    let path = path.to_owned();
-    app.register_asset_source(
-        AssetSourceId::Default,
-        AssetSource::build().with_reader(move || Box::new(FileAssetReader::new(path.clone()))),
-    );
-}
-
-#[cfg(target_arch = "wasm32")]
-fn set_root_asset_path(app: &mut App, path: &Path) {
-    use bevy::asset::io::{wasm::HttpWasmAssetReader, AssetSource, AssetSourceId};
-    let path = path.to_owned();
-    app.register_asset_source(
-        AssetSourceId::Default,
-        AssetSource::build().with_reader(move || Box::new(HttpWasmAssetReader::new(path.clone()))),
-    );
-}
-
-fn spawn_camera(mut commands: Commands) {
-    commands.spawn((Camera2d, OrthographicProjection::default_2d()));
-}
+#[derive(Component, Reflect, Debug, Copy, Clone)]
+struct PrimaryCamera;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eyre::Result<()> {
@@ -156,10 +152,21 @@ fn main() -> eyre::Result<()> {
     start(Args::parse(), primary_window)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn target_setup(app: &mut App, path: &Path) {
+    use bevy::asset::io::{file::FileAssetReader, AssetSource, AssetSourceId};
+    let path = path.to_owned();
+    app.register_asset_source(
+        AssetSourceId::Default,
+        AssetSource::build().with_reader(move || Box::new(FileAssetReader::new(path.clone()))),
+    );
+}
+
 // on the web. So work around that a bit.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(main)]
 fn main() -> Result<(), JsValue> {
+    use bevy::window::WindowResolution;
     use convert_case::{Case, Casing};
     use web_sys::console;
     console::log_1(&"stratmat init: initializing...".into());
@@ -171,15 +178,17 @@ fn main() -> Result<(), JsValue> {
         .unwrap()
         .query_selector_all(selector)?;
 
+    let mut resolution = WindowResolution::default();
+
     #[cfg(debug_assertions)]
     console::log_1(&format!("stratmat init: found {} canvas(es)", matches.length()).into());
     let args = match matches.length() {
         0 => Args::parse(),
         1 => {
-            let canvas: web_sys::HtmlCanvasElement =
-                matches.get(0).unwrap().dyn_into().map_err(|elem| {
-                    format!("stratmat requires a <canvas>, not a <{}>", elem.node_name())
-                })?;
+            let canvas: HtmlCanvasElement = matches.get(0).unwrap().dyn_into().map_err(|elem| {
+                format!("stratmat requires a <canvas>, not a <{}>", elem.node_name())
+            })?;
+            resolution.set_physical_resolution(canvas.width(), canvas.height());
             let dataset = canvas.dataset();
             let keys = js_sys::Reflect::own_keys(&dataset)?;
             // Arg 0 is the "process name"
@@ -206,10 +215,79 @@ fn main() -> Result<(), JsValue> {
     let primary_window = Window {
         title: "Stratmat".into(),
         canvas: Some(selector.to_string()),
-        fit_canvas_to_parent: true,
+        fit_canvas_to_parent: false,
         prevent_default_event_handling: false,
         ..default()
     };
 
     start(args, primary_window).map_err(|e| JsValue::from_str(&format!("{e}")))
+}
+
+#[cfg(target_arch = "wasm32")]
+fn target_setup(app: &mut App, path: &Path) {
+    use bevy::asset::io::{wasm::HttpWasmAssetReader, AssetSource, AssetSourceId};
+    let path = path.to_owned();
+    app.register_asset_source(
+        AssetSourceId::Default,
+        AssetSource::build().with_reader(move || Box::new(HttpWasmAssetReader::new(path.clone()))),
+    );
+    app.add_systems(PostUpdate, add_extra_canvas);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn add_extra_canvas(
+    q: Query<&Window>,
+    camera_q: Query<(&Camera, &OrthographicProjection)>,
+    arena: Option<Single<(), With<arena::Arena>>>,
+    mut commands: Commands,
+) {
+    use bevy::{
+        render::camera::RenderTarget,
+        window::{WindowRef, WindowResolution},
+    };
+
+    // Wait until the arena spawns to get the projection.
+    if arena.is_none() {
+        return;
+    }
+
+    const EXTRA_SELECTOR: &str = "#stratmat-extra";
+    let Ok(Some(node)) = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .query_selector(EXTRA_SELECTOR)
+    else {
+        return;
+    };
+
+    let Some(canvas): Option<&HtmlCanvasElement> = node.dyn_ref() else {
+        return;
+    };
+
+    if !q.iter().any(|w| w.canvas == Some(EXTRA_SELECTOR.into())) {
+        info!(
+            "Second canvas detected. Creating new {}x{} window and spawning new camera.",
+            canvas.width(),
+            canvas.height()
+        );
+
+        let window_id = commands
+            .spawn(Window {
+                canvas: Some(EXTRA_SELECTOR.into()),
+                fit_canvas_to_parent: false,
+                prevent_default_event_handling: false,
+                resolution: WindowResolution::new(canvas.width() as f32, canvas.height() as f32),
+                ..default()
+            })
+            .id();
+
+        let (cam, proj) = camera_q.single();
+        let (mut cam, mut proj) = (cam.clone(), proj.clone());
+        cam.target = RenderTarget::Window(WindowRef::Entity(window_id));
+        proj.scale /= 2.0;
+        proj.viewport_origin = Vec2::new(0.25, 0.85);
+
+        commands.spawn((Name::new("Secondary Camera"), Camera2d, cam, proj));
+    }
 }

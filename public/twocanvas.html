@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Stratmat Sandbox</title>
+    <style>
+        .box {
+          border: 3px rgb(154, 200, 245) dashed; 
+          padding: 1em;
+          margin: 1em;
+          display: inline-block;
+          max-height: 750px !important;
+          max-width: 1000px !important;
+        }
+
+        canvas {
+          height: 100%;
+          width: 100%;
+          max-height: 750px !important;
+          max-width: 1000px !important;
+        }
+
+        .smol {
+          max-height: 300px !important;
+          max-width: 300px !important;
+        }
+        .smol canvas {
+          max-height: 300px !important;
+          max-width: 300px !important;
+          min-height: 300px !important;
+          min-width: 300px !important;
+        }
+    </style>
+</head>
+<body style="background-color: black">
+  <main>
+    <div class="box">
+        <canvas id="stratmat"
+          data-stratmat-asset-root="/static/app/assets/"
+          data-stratmat-debug-inspector="false"
+          data-stratmat-offscreen-canvas="true"
+          ></canvas>
+    </div>
+    <div class="box smol">
+        <canvas id="stratmat-extra"></canvas>
+    </div>
+    <br>
+  </main>
+  <script type="module">
+    import init from "/static/app/stratmat.js"
+
+    init().catch((error) => {
+      if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
+        throw error;
+      }
+    });
+  </script>
+</body>
+</html>

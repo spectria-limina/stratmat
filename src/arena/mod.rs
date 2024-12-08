@@ -20,7 +20,7 @@ use crate::{
         listing::{AssetListing, ListingExt},
     },
     waymark::{Preset, Waymark},
-    Layer,
+    Layer, PrimaryCamera,
 };
 
 pub mod menu;
@@ -153,12 +153,11 @@ pub struct GameCoordOffset(pub Vec2);
 /// This includes resetting the camera and updating the [`GameCoordOffset`].
 fn spawn_arena(
     In(arena): In<ArenaMeta>,
-    mut camera_q: Query<&'static mut OrthographicProjection, With<Camera2d>>,
+    mut camera_q: Query<&'static mut OrthographicProjection, With<PrimaryCamera>>,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
 ) {
     info!("Spawning new arena: {}", arena.name);
-    // FIXME: Single-camera assumption.
     camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
         min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
         min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
