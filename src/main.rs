@@ -19,8 +19,8 @@ mod testing;
 mod arena;
 mod asset;
 mod color;
-mod cursor;
 mod debug;
+mod drag;
 mod ecs;
 mod hitbox;
 mod spawner;
@@ -96,7 +96,7 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
         )
         .add_plugins(asset::lifecycle::plugin())
         .add_plugins(color::plugin())
-        .add_plugins(cursor::plugin())
+        .add_plugins(drag::plugin())
         .add_plugins(waymark::plugin())
         .add_plugins(waymark::window::plugin())
         .add_plugins(arena::plugin())

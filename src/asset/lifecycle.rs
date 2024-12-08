@@ -1,4 +1,4 @@
-use std::{any::type_name, marker::PhantomData, ops::Deref};
+use std::{any::type_name, marker::PhantomData, ops::Deref, panic::Location};
 
 use bevy::{
     asset::AssetPath,
@@ -179,6 +179,7 @@ fn asset_loaded_run_impl<I, M, S, A>(
         let id = world
             .spawn(OnLoadedHook {
                 target: handle.clone(),
+                caller: Location::caller(),
                 command: Some(Box::new(move |commands: &mut Commands| {
                     commands.queue(move |world: &mut World| {
                         if let Err(e) = world.run_system_cached_with(system, input) {
@@ -203,6 +204,7 @@ type DynCommand = Box<dyn FnOnce(&mut Commands) + Send + Sync>;
 #[derive(Component, TypePath)]
 pub struct OnLoadedHook<A: Asset> {
     target: Handle<A>,
+    caller: &'static Location<'static>,
     command: Option<DynCommand>,
 }
 
@@ -230,7 +232,8 @@ pub fn handle_on_loaded<A: Asset>(world: &mut World) {
                 for (hook_id, mut hook) in &mut q {
                     if id == hook.target.id() {
                         debug!(
-                            "firing OnLoad hook {hook_id} targeting {}",
+                            "{}: firing OnLoad hook {hook_id} targeting {}",
+                            hook.caller,
                             hook.target.id()
                         );
                         if hook.command.is_some() {
@@ -244,7 +247,10 @@ pub fn handle_on_loaded<A: Asset>(world: &mut World) {
             AssetEvent::Removed { id } => {
                 for (hook_id, hook) in &q {
                     if id == hook.target.id() {
-                        warn!("Asset {} removed before on_loaded hook could fire", id);
+                        warn!(
+                            "{}: asset {} removed before on_loaded hook could fire",
+                            hook.caller, id
+                        );
                         commands.entity(hook_id).despawn();
                     }
                 }

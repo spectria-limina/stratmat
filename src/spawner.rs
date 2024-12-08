@@ -102,7 +102,7 @@ impl<T: Spawnable> Spawner<T> {
         spawner.target.insert(&mut entity);
         entity.insert(Transform::from_translation(translation));
         // Forward to the general dragging implementation.
-        commands.run_system_cached_with(crate::cursor::start_drag, id);
+        commands.run_system_cached_with(crate::drag::start_drag, id);
     }
 }
 
@@ -197,6 +197,10 @@ impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
     }
 }
 
+pub fn plugin<T: Spawnable>() -> SpawnerPlugin<T> {
+    default()
+}
+
 // TODO: Put this somewhere better lol.
 fn log_debug<E: std::fmt::Debug + Event>(mut events: EventReader<E>) {
     for ev in events.read() {
@@ -211,10 +215,9 @@ fn observe_debug<E: std::fmt::Debug + Event>(ev: Trigger<E>) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::spawner::SpawnerBundle;
     use crate::waymark::Waymark;
     use crate::widget::egui_context;
-    use crate::{testing::*, widget};
+    use crate::{drag, testing::*, widget};
 
     use avian2d::PhysicsPlugins;
     use bevy::app::ScheduleRunnerPlugin;
@@ -286,8 +289,8 @@ mod test {
         .add_plugins(PhysicsPlugins::default())
         .add_systems(PreUpdate, forward_window_events)
         .add_plugins(EguiPlugin)
-        .add_plugins(crate::cursor::plugin())
-        .add_plugins(SpawnerPlugin::<Waymark>::default())
+        .add_plugins(drag::plugin())
+        .add_plugins(super::plugin::<Waymark>())
         .add_systems(Startup, add_test_camera)
         .add_systems(Startup, spawn_test_entities)
         .add_systems(Update, draw_test_win::<Waymark>)

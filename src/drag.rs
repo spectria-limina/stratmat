@@ -3,6 +3,8 @@
 use std::fmt::Debug;
 
 use avian2d::prelude::*;
+use bevy::ecs::component::ComponentId;
+use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
 
 use crate::color::AlphaScale;
@@ -115,12 +117,17 @@ pub fn on_drag_end(
 }
 
 #[derive(Component, Copy, Clone, Default, Debug)]
-#[require(Collider)]
+#[require(Collider, CollidingEntities, Transform, AlphaScale)]
+#[component(on_add = Draggable::add_observers)]
+#[component(on_remove = Draggable::remove_observers)]
 /// Marker component for draggable entities.
 ///
-/// Do not insert this directly; use `make_draggable` instead.
-/// Otherwise the necessary event listeners will not be installed.
+/// Will automatically add the necessary hooks when added to an entity.
 pub struct Draggable;
+
+/// Marker component for drag observer hooks added by [`Draggable`].
+#[derive(Component, Copy, Clone, Default, Debug)]
+pub struct DragHook;
 
 /// Marker component for entities currently being dragged.
 #[derive(Component, Copy, Clone, Default, Debug)]
@@ -135,17 +142,27 @@ pub struct Dragged;
 #[component(storage = "SparseSet")]
 pub struct OutOfBounds;
 
-pub fn make_draggable(entity: &mut EntityCommands) {
-    entity.insert(Draggable);
-    entity.observe(on_drag_start);
-    entity.observe(on_drag);
-    entity.observe(on_drag_end);
-}
-pub fn make_draggable_world(entity: &mut EntityWorldMut) {
-    entity.insert(Draggable);
-    entity.observe(on_drag_start);
-    entity.observe(on_drag);
-    entity.observe(on_drag_end);
+impl Draggable {
+    pub fn add_observers(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        debug!("Adding drag hooks to {id:?}");
+        let mut commands = world.commands();
+        let mut entity = commands.entity(id);
+        entity.observe(on_drag_start).insert(DragHook);
+        entity.observe(on_drag).insert(DragHook);
+        entity.observe(on_drag_end).insert(DragHook);
+    }
+
+    pub fn remove_observers(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        debug!("Removing drag hooks from {id:?}");
+        world.commands().run_system_cached_with(
+            |In(id): In<Entity>, q: Query<&Children, With<DragHook>>, mut commands: Commands| {
+                for hook in q.iter_descendants(id) {
+                    commands.entity(hook).despawn();
+                }
+            },
+            id,
+        );
+    }
 }
 
 /// Marker component for entities with OOB alpha scaling applied,
@@ -186,9 +203,9 @@ fn remove_oob_alpha(
 }
 
 /// Plugin for cursor features.
-pub struct CursorPlugin;
+pub struct DragPlugin;
 
-impl Plugin for CursorPlugin {
+impl Plugin for DragPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, drag_update_oob)
             .add_systems(
@@ -202,6 +219,6 @@ impl Plugin for CursorPlugin {
     }
 }
 
-pub fn plugin() -> CursorPlugin {
-    CursorPlugin
+pub fn plugin() -> DragPlugin {
+    DragPlugin
 }

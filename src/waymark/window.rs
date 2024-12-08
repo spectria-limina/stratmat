@@ -9,7 +9,7 @@ use bevy_egui::{egui, EguiClipboard, EguiContexts};
 
 use super::{Preset, Waymark};
 use crate::arena::Arena;
-use crate::spawner::{Spawner, SpawnerBundle, SpawnerPlugin, SpawnerWidget};
+use crate::spawner::{self, Spawner, SpawnerBundle, SpawnerWidget};
 use crate::widget::{self, egui_context};
 
 /// The size of waymark spawner, in pixels.
@@ -171,7 +171,7 @@ pub struct WaymarkWindowPlugin;
 
 impl Plugin for WaymarkWindowPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SpawnerPlugin::<Waymark>::default())
+        app.add_plugins(spawner::plugin::<Waymark>())
             .add_systems(Update, WaymarkWindow::draw)
             .add_systems(Startup, WaymarkWindow::setup);
     }

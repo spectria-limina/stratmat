@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::arena::GameCoordOffset;
 use crate::color::AlphaScale;
-use crate::cursor::make_draggable_world;
+use crate::drag::Draggable;
 use crate::spawner::Spawnable;
 
 pub mod window;
@@ -73,7 +73,7 @@ pub struct PresetEntry {
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[derive(Component, Reflect, Serialize, Deserialize)]
 #[derive(IntEnum, Sequence)]
-#[require(Transform, Visibility, Collider, CollidingEntities, AlphaScale)]
+#[require(Draggable, Visibility, Collider)]
 pub enum Waymark {
     A = 0,
     B = 1,
@@ -228,7 +228,6 @@ impl EntityCommand for InsertWaymark {
                 Collider::circle(WAYMARK_SIZE / 2.0)
             },
         ));
-        make_draggable_world(&mut entity);
 
         entity.with_children(|parent| {
             parent.spawn((
