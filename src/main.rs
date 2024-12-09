@@ -23,6 +23,7 @@ mod debug;
 mod drag;
 mod ecs;
 mod hitbox;
+mod player;
 mod spawner;
 mod waymark;
 mod widget;
@@ -94,14 +95,16 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
                                           .disable::<SleepingPlugin>(),
                                        */
         )
+        .insert_resource(WinitSettings::desktop_app())
         .add_plugins(asset::lifecycle::plugin())
+        .add_plugins(arena::menu::plugin())
+        .add_plugins(arena::plugin())
         .add_plugins(color::plugin())
         .add_plugins(drag::plugin())
+        .add_plugins(player::plugin())
+        .add_plugins(player::window::plugin())
         .add_plugins(waymark::plugin())
         .add_plugins(waymark::window::plugin())
-        .add_plugins(arena::plugin())
-        .add_plugins(arena::menu::plugin())
-        .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, spawn_camera);
 
     if args.debug_inspector {

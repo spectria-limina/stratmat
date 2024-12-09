@@ -2,7 +2,11 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 
 use bevy::{
-    ecs::system::{EntityCommands, SystemParam, SystemState},
+    ecs::{
+        component::ComponentId,
+        system::{EntityCommands, SystemParam, SystemState},
+        world::DeferredWorld,
+    },
     picking::{
         backend::{HitData, PointerHits},
         pointer::PointerId,
@@ -11,12 +15,15 @@ use bevy::{
 };
 use bevy_egui::{
     egui::{self, Ui},
-    EguiContexts,
+    EguiUserTextures,
 };
 use itertools::Itertools;
 use std::fmt::Debug;
 
-use crate::widget::WidgetSystem;
+use crate::{
+    ecs::{EntityExts, EntityExtsOf},
+    widget::WidgetSystem,
+};
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
 const SPAWNER_ALPHA: u8 = 230;
@@ -36,16 +43,55 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 ///
 /// Rendered using egui, not the normal logic.
 #[derive(Debug, Clone, Component)]
+#[component(on_add = Spawner::<Target>::on_add)]
+#[component(on_remove = Spawner::<Target>::on_remove)]
 pub struct Spawner<Target: Spawnable> {
     pub target: Target,
-    pub texture_id: egui::TextureId,
+    pub image: Handle<Image>,
     pub size: Vec2,
     pub enabled: bool,
 }
 
-impl<T: Spawnable> Spawner<T> {
+#[derive(Debug, Copy, Clone, Component)]
+pub struct SpawnerTextureId(egui::TextureId);
+
+impl<Target: Spawnable> Spawner<Target> {
+    pub fn new(target: Target, image: Handle<Image>, size: Vec2) -> Self {
+        Self {
+            target,
+            image,
+            size,
+            enabled: true,
+        }
+    }
+
+    pub fn on_add(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        let spawner = world
+            .get_mut::<Self>(id)
+            .expect("I was just added!")
+            .clone();
+        let texture_id = world
+            .resource_mut::<EguiUserTextures>()
+            .add_image(spawner.image);
+        let mut commands = world.commands();
+        let mut entity = commands.entity(id);
+
+        entity
+            .insert_if_new(Name::new(format!(
+                "Spawner for {}",
+                spawner.target.spawner_name(),
+            )))
+            .insert(SpawnerTextureId(texture_id))
+            .of::<Self>()
+            .observe(Self::start_drag);
+    }
+
+    pub fn on_remove(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        world.commands().entity(id).of::<Self>().despawn_observers();
+    }
+
     // TODO: TEST TEST TEST
-    pub fn update_enabled_state(mut q: Query<&mut Spawner<T>>, target_q: Query<&T>) {
+    pub fn update_enabled_state(mut q: Query<&mut Spawner<Target>>, target_q: Query<&Target>) {
         for mut spawner in &mut q {
             spawner.enabled = !target_q.iter().contains(&spawner.target);
         }
@@ -60,7 +106,7 @@ impl<T: Spawnable> Spawner<T> {
     /// Panics if there is more than one camera.
     pub fn start_drag(
         ev: Trigger<Pointer<DragStart>>,
-        spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
+        spawner_q: Query<(&Spawner<Target>, Option<&Parent>)>,
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
@@ -75,11 +121,7 @@ impl<T: Spawnable> Spawner<T> {
             return;
         }
 
-        let mut new_spawner = commands.spawn(SpawnerBundle {
-            name: Name::new(format!("Spawner for {}", spawner.target.spawner_name())),
-            spawner: spawner.clone(),
-        });
-        new_spawner.observe(Self::start_drag);
+        let mut new_spawner = commands.spawn(spawner.clone());
         if let Some(parent) = parent {
             new_spawner.set_parent(parent.get());
         }
@@ -96,7 +138,7 @@ impl<T: Spawnable> Spawner<T> {
         );
 
         let mut entity = commands.entity(id);
-        entity.remove::<SpawnerBundle<T>>();
+        entity.remove::<Self>();
         // We might be parented to the window/another widget.
         entity.remove_parent();
         spawner.target.insert(&mut entity);
@@ -109,7 +151,7 @@ impl<T: Spawnable> Spawner<T> {
 #[derive(SystemParam)]
 
 pub struct SpawnerWidget<'w, 's, Target: Spawnable> {
-    spawner_q: Query<'w, 's, &'static Spawner<Target>>,
+    spawner_q: Query<'w, 's, (&'static Spawner<Target>, &'static SpawnerTextureId)>,
     target_q: Query<'w, 's, &'static Target>,
     pointer_ev: EventWriter<'w, PointerHits>,
 }
@@ -126,10 +168,10 @@ impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
         (): (),
     ) -> Self::Out {
         let mut state = state.get_mut(world);
-        let spawner = state.spawner_q.get(id).unwrap();
+        let (spawner, texture_id) = state.spawner_q.get(id).unwrap();
         let resp = ui.add(
             egui::Image::new((
-                spawner.texture_id,
+                texture_id.0,
                 egui::Vec2::new(spawner.size.x, spawner.size.y),
             ))
             .tint(egui::Color32::from_white_alpha(if spawner.enabled {
@@ -151,27 +193,6 @@ impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
         }
 
         resp
-    }
-}
-
-/// Bundle of components for a [Spawner].
-#[derive(Bundle)]
-pub struct SpawnerBundle<T: Spawnable> {
-    pub name: Name,
-    pub spawner: Spawner<T>,
-}
-
-impl<T: Spawnable> SpawnerBundle<T> {
-    pub fn new(entity: T, texture: Handle<Image>, size: Vec2, contexts: &mut EguiContexts) -> Self {
-        Self {
-            name: Name::new(format!("Spawner for {}", entity.spawner_name())),
-            spawner: Spawner {
-                target: entity,
-                texture_id: contexts.add_image(texture),
-                enabled: true,
-                size,
-            },
-        }
     }
 }
 
@@ -227,8 +248,8 @@ mod test {
     use bevy::render::RenderPlugin;
     use bevy::window::{PrimaryWindow, WindowEvent};
     use bevy::winit::WinitPlugin;
+    use bevy_egui::egui;
     use bevy_egui::EguiPlugin;
-    use bevy_egui::{egui, EguiContexts};
 
     use float_eq::assert_float_eq;
 
@@ -249,19 +270,12 @@ mod test {
             });
     }
 
-    fn spawn_test_entities(
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        mut contexts: EguiContexts,
-    ) {
-        commands
-            .spawn(SpawnerBundle::new(
-                Waymark::A,
-                asset_server.load(Waymark::A.asset_path()),
-                Vec2::splat(SPAWNER_SIZE),
-                &mut contexts,
-            ))
-            .observe(Spawner::<Waymark>::start_drag);
+    fn spawn_test_entities(mut commands: Commands, asset_server: Res<AssetServer>) {
+        commands.spawn(Spawner::new(
+            Waymark::A,
+            asset_server.load(Waymark::A.asset_path()),
+            Vec2::splat(SPAWNER_SIZE),
+        ));
         commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
             Vec2::ZERO,
             Vec2::splat(200.0),

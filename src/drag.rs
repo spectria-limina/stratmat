@@ -8,6 +8,7 @@ use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
 
 use crate::color::AlphaScale;
+use crate::ecs::{EntityExts, EntityExtsOf};
 use crate::Layer;
 
 /// The factor to apply to a sprite's alpha channel when it is dragged out of bounds.
@@ -125,10 +126,6 @@ pub fn on_drag_end(
 /// Will automatically add the necessary hooks when added to an entity.
 pub struct Draggable;
 
-/// Marker component for drag observer hooks added by [`Draggable`].
-#[derive(Component, Copy, Clone, Default, Debug)]
-pub struct DragHook;
-
 /// Marker component for entities currently being dragged.
 #[derive(Component, Copy, Clone, Default, Debug)]
 #[component(storage = "SparseSet")]
@@ -147,21 +144,15 @@ impl Draggable {
         debug!("Adding drag hooks to {id:?}");
         let mut commands = world.commands();
         let mut entity = commands.entity(id);
-        entity.observe(on_drag_start).insert(DragHook);
-        entity.observe(on_drag).insert(DragHook);
-        entity.observe(on_drag_end).insert(DragHook);
+        let mut of = entity.of::<Self>();
+        of.observe(on_drag_start);
+        of.observe(on_drag);
+        of.observe(on_drag_end);
     }
 
     pub fn remove_observers(mut world: DeferredWorld, id: Entity, _: ComponentId) {
         debug!("Removing drag hooks from {id:?}");
-        world.commands().run_system_cached_with(
-            |In(id): In<Entity>, q: Query<&Children, With<DragHook>>, mut commands: Commands| {
-                for hook in q.iter_descendants(id) {
-                    commands.entity(hook).despawn();
-                }
-            },
-            id,
-        );
+        world.commands().entity(id).of::<Self>().despawn_observers();
     }
 }
 
