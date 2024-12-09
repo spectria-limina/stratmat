@@ -12,7 +12,7 @@ use crate::widget::egui_context;
 
 /// The size of waymark spawner, in pixels.
 const PLAYER_SPAWNER_SIZE: f32 = 35.0;
-const PLAYER_SPAWNER_SEP: f32 = 8.0;
+const PLAYER_SPAWNER_SEP: f32 = 10.0;
 
 /// A window with controls to manipulate the waymarks.
 #[derive(Debug, Default, Copy, Clone, Component, Reflect)]
@@ -22,7 +22,7 @@ impl PlayerWindow {
     /// [System] that draws the waymark window and handles events.
     ///
     /// Will panic if there is more than one camera.
-    pub fn draw(world: &mut World) {
+    pub fn show(world: &mut World) {
         let ctx = egui_context(world);
         let mut state = SystemState::<(
             Query<Entity, With<PlayerWindow>>,
@@ -43,19 +43,15 @@ impl PlayerWindow {
                 .collect::<Vec<_>>();
             spawners.sort_by_key(|(_, spawner)| spawner.target.job);
 
-            ui.with_layout(
-                egui::Layout::left_to_right(egui::Align::Min)
-                    .with_main_wrap(true)
-                    .with_main_align(egui::Align::Center),
-                |ui| {
-                    ui.style_mut().spacing.item_spacing = [PLAYER_SPAWNER_SEP; 2].into();
-                    for (id, _) in spawners {
-                        world
-                            .entity_mut(id)
-                            .run_instanced_with(Spawner::<PlayerSprite>::show, ui);
-                    }
-                },
+            let panel = crate::spawner::panel::SpawnerPanel::<PlayerSprite>::new(
+                Vec2::splat(PLAYER_SPAWNER_SEP),
+                spawners.into_iter().map(|(id, _)| id),
             );
+            world.entity_mut(win_id).run_instanced_with(
+                crate::spawner::panel::SpawnerPanel::<PlayerSprite>::show,
+                (ui, panel),
+            );
+
             state.apply(world);
         });
     }
@@ -94,7 +90,7 @@ pub struct WaymarkWindowPlugin;
 impl Plugin for WaymarkWindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(spawner::plugin::<PlayerSprite>())
-            .add_systems(Update, PlayerWindow::draw)
+            .add_systems(Update, PlayerWindow::show)
             .add_systems(Startup, PlayerWindow::setup);
     }
 }

@@ -14,7 +14,7 @@ use crate::widget::egui_context;
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
-const WAYMARK_SPAWNER_SEP: f32 = 8.0;
+const WAYMARK_SPAWNER_SEP: f32 = 5.0;
 
 /// A window with controls to manipulate the waymarks.
 #[derive(Debug, Default, Clone, Component, Reflect)]
@@ -26,7 +26,7 @@ impl WaymarkWindow {
     /// [System] that draws the waymark window and handles events.
     ///
     /// Will panic if there is more than one camera.
-    pub fn draw(world: &mut World) {
+    pub fn show(world: &mut World) {
         let ctx = egui_context(world);
         let mut state = SystemState::<(
             Query<(Entity, &mut WaymarkWindow)>,
@@ -77,19 +77,15 @@ impl WaymarkWindow {
                 .collect::<Vec<_>>();
             spawners.sort_by_key(|(_, spawner)| spawner.target);
 
-            ui.with_layout(
-                egui::Layout::left_to_right(egui::Align::Min)
-                    .with_main_wrap(true)
-                    .with_main_align(egui::Align::Center),
-                |ui| {
-                    ui.style_mut().spacing.item_spacing = [WAYMARK_SPAWNER_SEP; 2].into();
-                    for (id, _) in spawners {
-                        world
-                            .entity_mut(id)
-                            .run_instanced_with(Spawner::<Waymark>::show, ui);
-                    }
-                },
+            let panel = crate::spawner::panel::SpawnerPanel::<Waymark>::new(
+                Vec2::splat(WAYMARK_SPAWNER_SEP),
+                spawners.into_iter().map(|(id, _)| id),
             );
+            world.entity_mut(win_id).run_instanced_with(
+                crate::spawner::panel::SpawnerPanel::<Waymark>::show,
+                (ui, panel),
+            );
+
             state.apply(world);
         });
     }
@@ -172,7 +168,7 @@ pub struct WaymarkWindowPlugin;
 impl Plugin for WaymarkWindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(spawner::plugin::<Waymark>())
-            .add_systems(Update, WaymarkWindow::draw)
+            .add_systems(Update, WaymarkWindow::show)
             .add_systems(Startup, WaymarkWindow::setup);
     }
 }

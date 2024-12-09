@@ -18,6 +18,8 @@ use crate::{
     widget::Widget,
 };
 
+pub mod panel;
+
 /// The alpha (out of 255) of an enabled waymark spawner widget.
 const SPAWNER_ALPHA: u8 = 230;
 /// The alpha (out of 255) of a disabled waymark spawner widget.

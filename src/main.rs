@@ -13,9 +13,6 @@ use clap::{ArgAction, Parser as _};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-#[cfg(test)]
-mod testing;
-
 mod arena;
 mod asset;
 mod color;
@@ -27,6 +24,18 @@ mod player;
 mod spawner;
 mod waymark;
 mod widget;
+
+#[cfg(test)]
+mod testing;
+
+mod exts {
+    #[allow(unused_imports)]
+    pub use crate::{
+        asset::lifecycle::{AssetHookExt as _, LifecycleExts as _},
+        asset::listing::ListingExt as _,
+        ecs::{EntityExts as _, EntityWorldExts as _},
+    };
+}
 
 /// Collision layers.
 #[derive(PhysicsLayer, Default)]
