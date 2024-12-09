@@ -6,8 +6,9 @@ use bevy_egui::egui;
 
 use super::job::Job;
 use super::PlayerSprite;
-use crate::spawner::{self, Spawner, SpawnerWidget};
-use crate::widget::{self, egui_context};
+use crate::ecs::EntityWorldExts;
+use crate::spawner::{self, Spawner};
+use crate::widget::egui_context;
 
 /// The size of waymark spawner, in pixels.
 const PLAYER_SPAWNER_SIZE: f32 = 35.0;
@@ -49,7 +50,9 @@ impl PlayerWindow {
                 |ui| {
                     ui.style_mut().spacing.item_spacing = [PLAYER_SPAWNER_SEP; 2].into();
                     for (id, _) in spawners {
-                        widget::show::<SpawnerWidget<PlayerSprite>>(world, ui, id);
+                        world
+                            .entity_mut(id)
+                            .run_instanced_with(Spawner::<PlayerSprite>::show, ui);
                     }
                 },
             );

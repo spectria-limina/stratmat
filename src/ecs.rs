@@ -23,7 +23,7 @@ impl<C: Component> ChildFor<C> {
     }
 }
 
-pub trait HasEntityCommands<'w> {
+pub trait EntityScope<'w> {
     fn id(&self) -> Entity;
     fn insert<B: Bundle>(&mut self, bundle: B) -> &mut Self;
 
@@ -35,7 +35,7 @@ pub trait HasEntityCommands<'w> {
     fn commands(&mut self) -> Commands;
 }
 
-impl<'w> HasEntityCommands<'w> for EntityCommands<'w> {
+impl<'w> EntityScope<'w> for EntityCommands<'w> {
     fn id(&self) -> Entity {
         self.id()
     }
@@ -56,7 +56,7 @@ impl<'w> HasEntityCommands<'w> for EntityCommands<'w> {
         self.commands()
     }
 }
-impl<'w> HasEntityCommands<'w> for EntityWorldMut<'w> {
+impl<'w> EntityScope<'w> for EntityWorldMut<'w> {
     fn id(&self) -> Entity {
         self.id()
     }
@@ -79,12 +79,12 @@ impl<'w> HasEntityCommands<'w> for EntityWorldMut<'w> {
     }
 }
 
-pub struct EntityCommandsOf<'a, 'w: 'a, E: HasEntityCommands<'w>, C: Component> {
+pub struct EntityCommandsOf<'a, 'w: 'a, E: EntityScope<'w>, C: Component> {
     entity: &'a mut E,
     _c: Invariant<C>,
     _w: Invariant<Lifetime<'w>>,
 }
-impl<'a, 'w: 'a, C: Component, E: HasEntityCommands<'w>> EntityCommandsOf<'a, 'w, E, C> {
+impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> EntityCommandsOf<'a, 'w, E, C> {
     pub fn new(entity: &'a mut E) -> Self {
         Self {
             entity,
@@ -93,7 +93,7 @@ impl<'a, 'w: 'a, C: Component, E: HasEntityCommands<'w>> EntityCommandsOf<'a, 'w
         }
     }
 }
-impl<'a, 'w: 'a, C: Component, E: HasEntityCommands<'w>> From<&'a mut E>
+impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> From<&'a mut E>
     for EntityCommandsOf<'a, 'w, E, C>
 {
     fn from(entity: &'a mut E) -> Self {
@@ -112,9 +112,7 @@ pub trait EntityExtsOf<'w, C: Component> {
     fn despawn_children(&mut self) -> &mut Self;
 }
 
-impl<'w, C: Component, E: HasEntityCommands<'w>> EntityExtsOf<'w, C>
-    for EntityCommandsOf<'_, 'w, E, C>
-{
+impl<'w, C: Component, E: EntityScope<'w>> EntityExtsOf<'w, C> for EntityCommandsOf<'_, 'w, E, C> {
     type Unscoped = E;
 
     fn observe<V, B, M>(&mut self, system: impl IntoObserverSystem<V, B, M>) -> &mut Self::Unscoped
@@ -160,31 +158,73 @@ impl<'w> EntityExts<'w> for EntityCommands<'w> {
     }
 }
 
-#[track_caller]
-/// Panics if id is not in the world.
-pub fn run_instanced<'a, A, I, O, M, S>(world: &mut World, system: S, target: Entity, args: A) -> O
-where
-    A: 'a,
-    I: SystemInput<Inner<'a> = (Entity, A)>,
-    S: IntoSystem<I, O, M>,
-{
-    if !world
-        .entity(target)
-        .contains::<InstancedSystem<<S as IntoSystem<I, O, M>>::System>>()
+impl<'w> EntityExts<'w> for EntityWorldMut<'w> {
+    type Of<'a, C: Component>
+        = EntityCommandsOf<'a, 'w, EntityWorldMut<'w>, C>
+    where
+        Self: 'a,
+        'w: 'a;
+
+    fn of<'a, C: Component>(&'a mut self) -> Self::Of<'a, C>
+    where
+        'w: 'a,
     {
-        let mut sys = S::into_system(system);
-        sys.initialize(world);
-        world.entity_mut(target).insert(InstancedSystem(Some(sys)));
+        Self::Of::from(self)
     }
-    let mut sys = world
-        .get_mut::<InstancedSystem<<S as IntoSystem<I, O, M>>::System>>(target)
-        .unwrap()
-        .take()
-        .unwrap_or_else(|| panic!("System is reentrant"));
-    let out = sys.run((target, args), world);
-    sys.apply_deferred(world);
-    world.entity_mut(target).insert(InstancedSystem(Some(sys)));
-    out
+}
+
+pub trait EntityWorldExts<'w> {
+    fn run_instanced<'a, I, O, M, S>(&mut self, system: S) -> O
+    where
+        I: SystemInput<Inner<'a> = (Entity, ())>,
+        S: IntoSystem<I, O, M>;
+
+    fn run_instanced_with<'a, A, I, O, M, S>(&mut self, system: S, args: A) -> O
+    where
+        A: 'a,
+        I: SystemInput<Inner<'a> = (Entity, A)>,
+        S: IntoSystem<I, O, M>;
+}
+
+impl<'w> EntityWorldExts<'w> for EntityWorldMut<'w> {
+    #[track_caller]
+    /// Panics if id is not in the world.
+    fn run_instanced_with<'a, A, I, O, M, S>(&mut self, system: S, args: A) -> O
+    where
+        A: 'a,
+        I: SystemInput<Inner<'a> = (Entity, A)>,
+        S: IntoSystem<I, O, M>,
+    {
+        let target = self.id();
+        self.world_scope(move |world: &mut World| {
+            if !world
+                .entity(target)
+                .contains::<InstancedSystem<<S as IntoSystem<I, O, M>>::System>>()
+            {
+                let mut sys = S::into_system(system);
+                sys.initialize(world);
+                world.entity_mut(target).insert(InstancedSystem(Some(sys)));
+            }
+            let mut sys = world
+                .get_mut::<InstancedSystem<<S as IntoSystem<I, O, M>>::System>>(target)
+                .unwrap()
+                .take()
+                .unwrap_or_else(|| panic!("System is reentrant"));
+            let out = sys.run((target, args), world);
+            sys.apply_deferred(world);
+            world.entity_mut(target).insert(InstancedSystem(Some(sys)));
+            out
+        })
+    }
+    #[track_caller]
+    /// Panics if id is not in the world.
+    fn run_instanced<'a, I, O, M, S>(&mut self, system: S) -> O
+    where
+        I: SystemInput<Inner<'a> = (Entity, ())>,
+        S: IntoSystem<I, O, M>,
+    {
+        self.run_instanced_with(system, ())
+    }
 }
 
 #[derive(Component, Deref, DerefMut, Resource, Debug, Copy, Clone)]

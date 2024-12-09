@@ -8,9 +8,9 @@ use bevy_egui::{egui, EguiClipboard};
 
 use super::{Preset, Waymark};
 use crate::arena::Arena;
-use crate::ecs::run_instanced;
-use crate::spawner::{self, Spawner, SpawnerWidget};
-use crate::widget::{self, egui_context};
+use crate::ecs::EntityWorldExts;
+use crate::spawner::{self, Spawner};
+use crate::widget::egui_context;
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
@@ -84,7 +84,9 @@ impl WaymarkWindow {
                 |ui| {
                     ui.style_mut().spacing.item_spacing = [WAYMARK_SPAWNER_SEP; 2].into();
                     for (id, _) in spawners {
-                        run_instanced(world, SpawnerWidget::<Waymark>::show, id, ui);
+                        world
+                            .entity_mut(id)
+                            .run_instanced_with(Spawner::<Waymark>::show, ui);
                     }
                 },
             );

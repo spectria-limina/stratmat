@@ -2,27 +2,20 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 
 use bevy::{
-    ecs::{
-        component::ComponentId,
-        system::{EntityCommands, SystemParam, SystemState},
-        world::DeferredWorld,
-    },
+    ecs::{component::ComponentId, system::EntityCommands, world::DeferredWorld},
     picking::{
         backend::{HitData, PointerHits},
         pointer::PointerId,
     },
     prelude::*,
 };
-use bevy_egui::{
-    egui::{self, Ui, Widget},
-    EguiUserTextures,
-};
+use bevy_egui::{self, egui, EguiUserTextures};
 use itertools::Itertools;
 use std::fmt::Debug;
 
 use crate::{
     ecs::{EntityExts, EntityExtsOf},
-    widget::WidgetSystem,
+    widget::Widget,
 };
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
@@ -146,16 +139,7 @@ impl<Target: Spawnable> Spawner<Target> {
         // Forward to the general dragging implementation.
         commands.run_system_cached_with(crate::drag::start_drag, id);
     }
-}
 
-#[derive(SystemParam)]
-
-pub struct SpawnerWidget<'w, 's, Target: Spawnable> {
-    spawner_q: Query<'w, 's, (&'static Spawner<Target>, &'static SpawnerTextureId)>,
-    pointer_ev: EventWriter<'w, PointerHits>,
-}
-
-impl<'w, 's, Target: Spawnable> SpawnerWidget<'w, 's, Target> {
     pub fn show(
         Widget { id, ui }: Widget,
         spawner_q: Query<(&Spawner<Target>, &SpawnerTextureId)>,
@@ -178,46 +162,6 @@ impl<'w, 's, Target: Spawnable> SpawnerWidget<'w, 's, Target> {
         if resp.hovered() {
             let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
             pointer_ev.send(PointerHits::new(
-                PointerId::Mouse,
-                vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
-                // egui is at depth 1_000_000, we need to be in front of that.
-                1_000_001.0,
-            ));
-        }
-
-        resp
-    }
-}
-
-impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {
-    type In = ();
-    type Out = egui::Response;
-
-    fn run_with(
-        world: &mut World,
-        state: &mut SystemState<Self>,
-        ui: &mut Ui,
-        id: Entity,
-        (): (),
-    ) -> Self::Out {
-        let mut state = state.get_mut(world);
-        let (spawner, texture_id) = state.spawner_q.get(id).unwrap();
-        let resp = ui.add(
-            egui::Image::new((
-                texture_id.0,
-                egui::Vec2::new(spawner.size.x, spawner.size.y),
-            ))
-            .tint(egui::Color32::from_white_alpha(if spawner.enabled {
-                SPAWNER_ALPHA
-            } else {
-                SPAWNER_DISABLED_ALPHA
-            }))
-            .sense(egui::Sense::drag()),
-        );
-
-        if resp.hovered() {
-            let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
-            state.pointer_ev.send(PointerHits::new(
                 PointerId::Mouse,
                 vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
                 // egui is at depth 1_000_000, we need to be in front of that.
@@ -269,9 +213,10 @@ fn observe_debug<E: std::fmt::Debug + Event>(ev: Trigger<E>) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ecs::EntityWorldExts;
     use crate::waymark::Waymark;
     use crate::widget::egui_context;
-    use crate::{drag, testing::*, widget};
+    use crate::{drag, testing::*};
 
     use avian2d::PhysicsPlugins;
     use bevy::app::ScheduleRunnerPlugin;
@@ -299,7 +244,9 @@ mod test {
             .show(&ctx, |ui| {
                 let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
                 let id = q.single(world);
-                widget::show::<SpawnerWidget<Waymark>>(world, ui, id);
+                world
+                    .entity_mut(id)
+                    .run_instanced_with(Spawner::<Waymark>::show, ui);
             });
     }
 
