@@ -14,7 +14,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::{
-    egui::{self, Ui},
+    egui::{self, Ui, Widget},
     EguiUserTextures,
 };
 use itertools::Itertools;
@@ -87,7 +87,7 @@ impl<Target: Spawnable> Spawner<Target> {
     }
 
     pub fn on_remove(mut world: DeferredWorld, id: Entity, _: ComponentId) {
-        world.commands().entity(id).of::<Self>().despawn_observers();
+        world.commands().entity(id).of::<Self>().despawn_children();
     }
 
     // TODO: TEST TEST TEST
@@ -152,8 +152,41 @@ impl<Target: Spawnable> Spawner<Target> {
 
 pub struct SpawnerWidget<'w, 's, Target: Spawnable> {
     spawner_q: Query<'w, 's, (&'static Spawner<Target>, &'static SpawnerTextureId)>,
-    target_q: Query<'w, 's, &'static Target>,
     pointer_ev: EventWriter<'w, PointerHits>,
+}
+
+impl<'w, 's, Target: Spawnable> SpawnerWidget<'w, 's, Target> {
+    pub fn show(
+        Widget { id, ui }: Widget,
+        spawner_q: Query<(&Spawner<Target>, &SpawnerTextureId)>,
+        mut pointer_ev: EventWriter<PointerHits>,
+    ) -> egui::Response {
+        let (spawner, texture_id) = spawner_q.get(id).unwrap();
+        let resp = ui.add(
+            egui::Image::new((
+                texture_id.0,
+                egui::Vec2::new(spawner.size.x, spawner.size.y),
+            ))
+            .tint(egui::Color32::from_white_alpha(if spawner.enabled {
+                SPAWNER_ALPHA
+            } else {
+                SPAWNER_DISABLED_ALPHA
+            }))
+            .sense(egui::Sense::drag()),
+        );
+
+        if resp.hovered() {
+            let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
+            pointer_ev.send(PointerHits::new(
+                PointerId::Mouse,
+                vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
+                // egui is at depth 1_000_000, we need to be in front of that.
+                1_000_001.0,
+            ));
+        }
+
+        resp
+    }
 }
 
 impl<T: Spawnable> WidgetSystem for SpawnerWidget<'_, '_, T> {

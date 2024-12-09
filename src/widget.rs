@@ -1,12 +1,33 @@
 use bevy::{
-    ecs::system::{SystemParam, SystemParamItem, SystemState},
+    ecs::{
+        component::ComponentId,
+        system::{SystemId, SystemParam, SystemParamItem, SystemState},
+        world::DeferredWorld,
+    },
     prelude::*,
-    utils::HashMap,
+    utils::{Entry, HashMap},
 };
 use bevy_egui::{
     egui::{self, Ui},
     EguiContexts,
 };
+
+/*
+pub struct Widget<'a, In: 'a> {
+    pub ui: &'a mut Ui,
+    pub id: Entity,
+    pub input: In,
+}
+
+impl SystemInput for Widget {
+    type Param<'i> = Widget<'i, In>
+    type Inner<'i> = ;
+
+    fn wrap(this: Self::Inner<'_>) -> Self::Param<'_> {
+        todo!()
+    }
+}
+    */
 
 pub trait WidgetSystem: SystemParam {
     type In;
@@ -65,23 +86,70 @@ pub fn show_with<S: 'static + WidgetSystem>(
         });
     }
     world.resource_scope(|world, mut states: Mut<StateInstances<S>>| {
-        if !states.instances.contains_key(&id) {
-            debug!(
-                "registering SystemState for Widget {id:?} of type {}",
-                std::any::type_name::<S>()
-            );
-            states.instances.insert(id, SystemState::new(world));
-        }
-        let cached_state = states.instances.get_mut(&id).unwrap();
-        let resp = S::run_with(world, cached_state, ui, id, args);
+        let mut cached_state = states.take(world, id);
+        let resp = S::run_with(world, &mut cached_state, ui, id, args);
         cached_state.apply(world);
+        states.insert(id, cached_state);
+
         resp
     })
 }
 
-/// A UI widget may have multiple instances. We need to ensure the local state of these instances is
-/// not shared. This hashmap allows us to dynamically store instance states.
+pub struct WidgetWith<'a, A> {
+    target: Entity,
+    ui: &'a mut Ui,
+    args: A,
+}
+
+pub type Widget<'a> = WidgetWith<'a, ()>;
+
+impl<'a, A> SystemInput for WidgetWith<'a, A> {
+    type Param<'i> = WidgetWith<'i, A>;
+    type Inner<'i> = (Entity, (&'i mut Ui, A));
+
+    fn wrap<'i>((target, (ui, args)): Self::Inner<'i>) -> Self::Param<'i> {
+        Self { target, ui, args }
+    }
+}
+
+/// A UI widget may have multiple instances.
+/// We need to ensure the local state of these instances is not shared.
+/// This hashmap allows us to dynamically store instance states.
 #[derive(Resource, Default)]
-struct StateInstances<T: WidgetSystem + 'static> {
-    instances: HashMap<Entity, SystemState<T>>,
+struct StateInstances<S: WidgetSystem + 'static> {
+    instances: HashMap<Entity, Instance<SystemState<S>>>,
+}
+
+enum Instance<S> {
+    Stored(S),
+    InUse,
+}
+
+impl<S: WidgetSystem + 'static> StateInstances<S> {
+    fn take(&mut self, world: &mut World, id: Entity) -> SystemState<S> {
+        match self.instances.entry(id) {
+            Entry::Occupied(mut entry) => {
+                let mut swap = Instance::InUse;
+                std::mem::swap(&mut swap, entry.get_mut());
+                match swap {
+                    Instance::Stored(s) => s,
+                    Instance::InUse => {
+                        panic!("WidgetSystem {} is re-entrant!", std::any::type_name::<S>())
+                    }
+                }
+            }
+            Entry::Vacant(entry) => {
+                debug!(
+                    "registering SystemState for Widget {id:?} of type {}",
+                    std::any::type_name::<S>()
+                );
+                entry.insert(Instance::InUse);
+                SystemState::new(world)
+            }
+        }
+    }
+
+    fn insert(&mut self, id: Entity, t: SystemState<S>) {
+        self.instances.insert(id, Instance::Stored(t));
+    }
 }

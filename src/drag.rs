@@ -152,7 +152,7 @@ impl Draggable {
 
     pub fn remove_observers(mut world: DeferredWorld, id: Entity, _: ComponentId) {
         debug!("Removing drag hooks from {id:?}");
-        world.commands().entity(id).of::<Self>().despawn_observers();
+        world.commands().entity(id).of::<Self>().despawn_children();
     }
 }
 
