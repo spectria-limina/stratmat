@@ -77,12 +77,12 @@ impl<Target: Spawnable> Spawner<Target> {
                 spawner.target.spawner_name(),
             )))
             .insert(SpawnerTextureId(texture_id))
-            .of::<Self>()
+            .on::<Self>()
             .observe(Self::start_drag);
     }
 
     pub fn on_remove(mut world: DeferredWorld, id: Entity, _: ComponentId) {
-        world.commands().entity(id).of::<Self>().despawn_children();
+        world.commands().entity(id).on::<Self>().despawn_children();
     }
 
     // TODO: TEST TEST TEST

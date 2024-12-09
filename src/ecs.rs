@@ -79,12 +79,12 @@ impl<'w> EntityScope<'w> for EntityWorldMut<'w> {
     }
 }
 
-pub struct EntityCommandsOf<'a, 'w: 'a, E: EntityScope<'w>, C: Component> {
+pub struct ScopedOn<'a, 'w: 'a, E: EntityScope<'w>, C: Component> {
     entity: &'a mut E,
     _c: Invariant<C>,
     _w: Invariant<Lifetime<'w>>,
 }
-impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> EntityCommandsOf<'a, 'w, E, C> {
+impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> ScopedOn<'a, 'w, E, C> {
     pub fn new(entity: &'a mut E) -> Self {
         Self {
             entity,
@@ -93,9 +93,7 @@ impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> EntityCommandsOf<'a, 'w, E, C
         }
     }
 }
-impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> From<&'a mut E>
-    for EntityCommandsOf<'a, 'w, E, C>
-{
+impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> From<&'a mut E> for ScopedOn<'a, 'w, E, C> {
     fn from(entity: &'a mut E) -> Self {
         Self::new(entity)
     }
@@ -112,7 +110,7 @@ pub trait EntityExtsOf<'w, C: Component> {
     fn despawn_children(&mut self) -> &mut Self;
 }
 
-impl<'w, C: Component, E: EntityScope<'w>> EntityExtsOf<'w, C> for EntityCommandsOf<'_, 'w, E, C> {
+impl<'w, C: Component, E: EntityScope<'w>> EntityExtsOf<'w, C> for ScopedOn<'_, 'w, E, C> {
     type Unscoped = E;
 
     fn observe<V, B, M>(&mut self, system: impl IntoObserverSystem<V, B, M>) -> &mut Self::Unscoped
@@ -133,43 +131,43 @@ impl<'w, C: Component, E: EntityScope<'w>> EntityExtsOf<'w, C> for EntityCommand
 }
 
 pub trait EntityExts<'w> {
-    type Of<'a, C: Component>
+    type On<'a, C: Component>
     where
         Self: 'a,
         'w: 'a;
 
-    fn of<'a, C: Component>(&'a mut self) -> Self::Of<'a, C>
+    fn on<'a, C: Component>(&'a mut self) -> Self::On<'a, C>
     where
         'w: 'a;
 }
 
 impl<'w> EntityExts<'w> for EntityCommands<'w> {
-    type Of<'a, C: Component>
-        = EntityCommandsOf<'a, 'w, EntityCommands<'w>, C>
+    type On<'a, C: Component>
+        = ScopedOn<'a, 'w, EntityCommands<'w>, C>
     where
         Self: 'a,
         'w: 'a;
 
-    fn of<'a, C: Component>(&'a mut self) -> Self::Of<'a, C>
+    fn on<'a, C: Component>(&'a mut self) -> Self::On<'a, C>
     where
         'w: 'a,
     {
-        Self::Of::from(self)
+        Self::On::from(self)
     }
 }
 
 impl<'w> EntityExts<'w> for EntityWorldMut<'w> {
-    type Of<'a, C: Component>
-        = EntityCommandsOf<'a, 'w, EntityWorldMut<'w>, C>
+    type On<'a, C: Component>
+        = ScopedOn<'a, 'w, EntityWorldMut<'w>, C>
     where
         Self: 'a,
         'w: 'a;
 
-    fn of<'a, C: Component>(&'a mut self) -> Self::Of<'a, C>
+    fn on<'a, C: Component>(&'a mut self) -> Self::On<'a, C>
     where
         'w: 'a,
     {
-        Self::Of::from(self)
+        Self::On::from(self)
     }
 }
 
