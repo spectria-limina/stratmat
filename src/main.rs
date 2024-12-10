@@ -38,6 +38,8 @@ mod exts {
 }
 
 /// Collision layers.
+
+// avian's derive macro causes this warning on nightly
 #[derive(PhysicsLayer, Default)]
 pub enum Layer {
     #[default]

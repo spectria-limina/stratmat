@@ -25,37 +25,19 @@ pub struct Widget<'a>(pub Entity, pub &'a mut Ui);
 pub struct WidgetWith<'a, A>(pub Entity, pub &'a mut Ui, pub A);
 
 impl SystemInput for Widget<'_> {
-    type Param<'i>
-        = Widget<'i>
-    where
-        Self: 'i;
-    type Inner<'i>
-        = (Entity, &'i mut Ui)
-    where
-        Self: 'i;
+    type Param<'i> = Widget<'i>;
+    type Inner<'i> = (Entity, &'i mut Ui);
 
-    fn wrap<'i>((id, ui): Self::Inner<'i>) -> Self::Param<'i>
-    where
-        Self: 'i,
-    {
+    fn wrap<'i>((id, ui): Self::Inner<'i>) -> Self::Param<'i> {
         Widget(id, ui)
     }
 }
 
 impl<A> SystemInput for WidgetWith<'_, A> {
-    type Param<'i>
-        = WidgetWith<'i, A>
-    where
-        Self: 'i;
-    type Inner<'i>
-        = (Entity, (&'i mut Ui, A))
-    where
-        Self: 'i;
+    type Param<'i> = WidgetWith<'i, A>;
+    type Inner<'i> = (Entity, (&'i mut Ui, A));
 
-    fn wrap<'i>((id, (ui, arg)): Self::Inner<'i>) -> Self::Param<'i>
-    where
-        Self: 'i,
-    {
+    fn wrap<'i>((id, (ui, arg)): Self::Inner<'i>) -> Self::Param<'i> {
         WidgetWith(id, ui, arg)
     }
 }

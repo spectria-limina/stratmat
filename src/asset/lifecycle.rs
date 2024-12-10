@@ -26,9 +26,7 @@ pub struct AssetHookTarget<'a, A: Asset> {
 impl<A: Asset> Deref for AssetHookTarget<'_, A> {
     type Target = A;
 
-    fn deref(&self) -> &Self::Target {
-        self.asset
-    }
+    fn deref(&self) -> &Self::Target { self.asset }
 }
 
 unsafe impl<'a, A: Asset> SystemParam for AssetHookTarget<'a, A> {
@@ -78,6 +76,7 @@ pub trait AssetHookExt {
     ///
     /// The system can refer to the [`AssetHookTarget`] as a parameter
     /// to access the loaded resource.
+    #[track_caller]
     fn on_asset_loaded<M, S, A>(&mut self, handle: Handle<A>, system: S)
     where
         M: 'static,
@@ -92,6 +91,7 @@ pub trait AssetHookExt {
     ///
     /// This is identical to `on_asset_loaded` but it can also be
     /// passed system input.
+    #[track_caller]
     fn on_asset_loaded_with<I, M, S, A>(
         &mut self,
         handle: Handle<A>,
@@ -108,6 +108,7 @@ pub trait AssetHookExt {
 }
 
 impl AssetHookExt for World {
+    #[track_caller]
     fn on_asset_loaded_with<I, M, S, A>(
         &mut self,
         handle: Handle<A>,
@@ -129,6 +130,7 @@ impl AssetHookExt for World {
 }
 
 impl AssetHookExt for Commands<'_, '_> {
+    #[track_caller]
     fn on_asset_loaded_with<I, M, S, A>(
         &mut self,
         handle: Handle<A>,
@@ -145,6 +147,7 @@ impl AssetHookExt for Commands<'_, '_> {
     }
 }
 
+#[track_caller]
 fn asset_loaded_run_impl<I, M, S, A>(
     In((handle, system, input)): In<(Handle<A>, S, <I as SystemInput>::Inner<'static>)>,
     world: &mut World,
@@ -334,13 +337,9 @@ unsafe impl<A: Asset> ReadOnlySystemParam for GlobalAsset<'_, A> {}
 pub struct OptionalGlobalAsset<'a, A: Asset>(Option<GlobalAsset<'a, A>>);
 
 impl<'a, A: Asset> OptionalGlobalAsset<'a, A> {
-    pub fn option(&self) -> &Option<GlobalAsset<'a, A>> {
-        self.deref()
-    }
+    pub fn option(&self) -> &Option<GlobalAsset<'a, A>> { self.deref() }
 
-    pub fn into_option(self) -> Option<GlobalAsset<'a, A>> {
-        self.into()
-    }
+    pub fn into_option(self) -> Option<GlobalAsset<'a, A>> { self.into() }
 }
 
 unsafe impl<'a, A: Asset> SystemParam for OptionalGlobalAsset<'a, A> {
@@ -381,9 +380,7 @@ impl<A: Asset> GlobalAssetPath<A> {
 pub struct GlobalAssetHandle<A: Asset>(Handle<A>);
 
 impl<'a, A: Asset> From<&'a GlobalAssetHandle<A>> for AssetId<A> {
-    fn from(value: &'a GlobalAssetHandle<A>) -> Self {
-        Self::from(&value.0)
-    }
+    fn from(value: &'a GlobalAssetHandle<A>) -> Self { Self::from(&value.0) }
 }
 
 // FIXME: This clones the asset data.
@@ -454,9 +451,7 @@ pub struct LifecycleRegistration<A> {
 }
 
 impl<A> Default for LifecycleRegistration<A> {
-    fn default() -> Self {
-        Self { _ph: PhantomData }
-    }
+    fn default() -> Self { Self { _ph: PhantomData } }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -469,6 +464,4 @@ impl Plugin for LifecyclePlugin {
     }
 }
 
-pub fn plugin() -> LifecyclePlugin {
-    LifecyclePlugin
-}
+pub fn plugin() -> LifecyclePlugin { LifecyclePlugin }

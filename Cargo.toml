@@ -58,10 +58,12 @@ derive_more = { version = "1.0.0", default-features = false, features = [
 ] }
 enum-iterator = "2.1.0"
 eyre.workspace = true
+fixedbitset = "0.5.7"
 float_eq = "1.0.1"
 int-enum = "1.1.2"
 itertools = "0.13.0"
 log = "0.4.22"
+prettytable = "0.10.0"
 ron = "0.8.1"
 serde.workspace = true
 serde_json.workspace = true
