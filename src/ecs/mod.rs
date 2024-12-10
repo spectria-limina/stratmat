@@ -1,6 +1,16 @@
-use std::marker::PhantomData;
+use std::{any::TypeId, borrow::Cow, marker::PhantomData};
 
-use bevy::{ecs::system::IntoObserverSystem, prelude::*};
+use bevy::{
+    ecs::{
+        archetype::ArchetypeComponentId,
+        component::{ComponentId, Tick},
+        query::Access,
+        schedule::InternedSystemSet,
+        system::IntoObserverSystem,
+        world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
+    },
+    prelude::*,
+};
 
 pub mod conflicts;
 pub mod nested;
@@ -234,4 +244,67 @@ impl<S> From<Cached<S>> for Option<S> {
             Cached::InUse => None,
         }
     }
+}
+
+pub struct WithName<S> {
+    sys: S,
+    name: Cow<'static, str>,
+}
+
+impl<S> WithName<S> {
+    pub fn new(sys: S, name: Cow<'static, str>) -> Self { Self { sys, name } }
+}
+
+pub fn with_name<S>(sys: S, name: &'static str) -> WithName<S> { WithName::new(sys, name.into()) }
+
+#[macro_export]
+macro_rules! named (
+    ($sys:expr) => (named!($sys, $sys));
+    ($sys:expr, $name:expr) => ($crate::ecs::with_name($sys, stringify!($name)));
+);
+#[allow(unused)]
+pub use crate::named;
+
+impl<S, I, O, M> IntoSystem<I, O, (WithName<S>, M)> for WithName<S>
+where
+    S: IntoSystem<I, O, M>,
+    I: SystemInput,
+{
+    type System = WithName<<S as IntoSystem<I, O, M>>::System>;
+
+    fn into_system(this: Self) -> Self::System {
+        WithName {
+            sys: IntoSystem::into_system(this.sys),
+            name: this.name,
+        }
+    }
+}
+
+#[rustfmt::skip]
+impl<S> System for WithName<S>
+where S: System
+{
+    type In = <S as System>::In;
+    type Out = <S as System>::Out;
+
+    // SAFETY: It's a purely forwarding implementation except for name()
+    fn name(&self) -> Cow<'static, str> { self.name.clone() }
+    fn component_access(&self) -> &Access<ComponentId> { self.sys.component_access()  }
+    fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> { self.sys.archetype_component_access()  }
+    fn is_send(&self) -> bool { self.sys.is_send()  }
+    fn is_exclusive(&self) -> bool { self.sys.is_exclusive()  }
+    fn has_deferred(&self) -> bool { self.sys.has_deferred()  }
+    unsafe fn run_unsafe(&mut self, input: SystemIn<'_, Self>, world: UnsafeWorldCell) -> Self::Out { unsafe { self.sys.run_unsafe(input, world)  } }
+    fn apply_deferred(&mut self, world: &mut World) { self.sys.apply_deferred(world)  }
+    fn queue_deferred(&mut self, world: DeferredWorld) { self.sys.queue_deferred(world)  }
+    unsafe fn validate_param_unsafe(&mut self, world: UnsafeWorldCell) -> bool { unsafe { self.sys.validate_param_unsafe(world)  } }
+    fn initialize(&mut self, world: &mut World) { self.sys.initialize(world)  }
+    fn update_archetype_component_access(&mut self, world: UnsafeWorldCell) { self.sys.update_archetype_component_access(world)  }
+    fn check_change_tick(&mut self, change_tick: Tick) { self.sys.check_change_tick(change_tick)  }
+    fn get_last_run(&self) -> Tick { self.sys.get_last_run()  }
+    fn set_last_run(&mut self, last_run: Tick) { self.sys.set_last_run(last_run)  }
+    fn type_id(&self) -> TypeId { self.sys.type_id() }
+    fn run(&mut self, input: SystemIn<'_, Self>, world: &mut World) -> Self::Out { self.sys.run(input, world) }
+    fn validate_param(&mut self, world: &World) -> bool { self.sys.validate_param(world) }
+    fn default_system_sets(&self) -> Vec<InternedSystemSet> {self.sys.default_system_sets()  }
 }

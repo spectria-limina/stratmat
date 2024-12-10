@@ -46,8 +46,9 @@ unsafe impl<'a, A: Asset> SystemParam for AssetHookTarget<'a, A> {
         world: bevy::ecs::world::unsafe_world_cell::UnsafeWorldCell<'world>,
         change_tick: bevy::ecs::component::Tick,
     ) -> Self::Item<'world, 'state> {
+        // SAFETY: Forwarding to existing impl; we called init_state correctly above.
         let AssetHookTargetState { assets, handle } =
-            AssetHookTargetState::get_param(state, system_meta, world, change_tick);
+            unsafe { AssetHookTargetState::get_param(state, system_meta, world, change_tick) };
         AssetHookTarget {
             asset: assets
                 .into_inner()
@@ -297,8 +298,9 @@ unsafe impl<'a, A: Asset> SystemParam for GlobalAsset<'a, A> {
         world: bevy::ecs::world::unsafe_world_cell::UnsafeWorldCell<'world>,
         change_tick: bevy::ecs::component::Tick,
     ) -> Self::Item<'world, 'state> {
+        // SAFETY: Forwarding to existing impl; we called init_state correctly above.
         let GlobalAssetState { assets, handle } =
-            GlobalAssetState::get_param(state, system_meta, world, change_tick);
+            unsafe { GlobalAssetState::get_param(state, system_meta, world, change_tick) };
         GlobalAsset(assets.into_inner().get(handle.id()).unwrap_or_else(|| {
             panic!(
                 "GlobalAsset<{}> param fetched but asset '{}' is not loaded",
@@ -359,10 +361,13 @@ unsafe impl<'a, A: Asset> SystemParam for OptionalGlobalAsset<'a, A> {
         world: bevy::ecs::world::unsafe_world_cell::UnsafeWorldCell<'world>,
         change_tick: bevy::ecs::component::Tick,
     ) -> Self::Item<'world, 'state> {
-        OptionalGlobalAsset(
-            GlobalAsset::validate_param(state, system_meta, world)
-                .then(|| GlobalAsset::get_param(state, system_meta, world, change_tick)),
-        )
+        // SAFETY: Forwarding to existing impl; we called init_state correctly above.
+        unsafe {
+            OptionalGlobalAsset(
+                GlobalAsset::validate_param(state, system_meta, world)
+                    .then(|| GlobalAsset::get_param(state, system_meta, world, change_tick)),
+            )
+        }
     }
 }
 unsafe impl<A: Asset> ReadOnlySystemParam for OptionalGlobalAsset<'_, A> {}

@@ -100,19 +100,7 @@ impl AccessDiags {
 
 #[track_caller]
 pub fn diagnose_conflicts(components: &Components, new: AccessDiags, prev: Vec<AccessDiags>) {
-    use prettytable::{row, Cell, Row, Table};
-    fn mk_row(
-        label: &str,
-        new: &AccessDiags,
-        prevs: &[AccessDiags],
-        f: impl Fn(&AccessDiags) -> String,
-    ) -> Row {
-        let mut row = row![r->label, c->f(new)];
-        for prev in prevs {
-            row.add_cell(Cell::new(&f(prev)).style_spec("c"));
-        }
-        row
-    }
+    use prettytable::{row, Cell, Table};
 
     let (broad, narrow): (Vec<AccessDiags>, Vec<AccessDiags>) = prev
         .into_iter()
