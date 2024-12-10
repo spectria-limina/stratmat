@@ -47,20 +47,25 @@ done
 
 case $ACTION in
   check)
+    git diff --cached -S "DO NOT COMMIT" --exit-code $QUIET || {
+        echo >&2 "ERROR: You are trying to commit 'DO NOT COMMIT'"
+        echo >&2 "Run '.githooks/pre-commit -v' or 'git diff -S ...' for more info."
+        exit 1
+    }
     TEMP=$(mktemp -d)
     cargo run $QUIET -p tataru -- --all --out "$TEMP/assets"
     if [ -v GIT_INDEX_FILE ]; then
         export GIT_INDEX_FILE=$(realpath $GIT_INDEX_FILE)
     fi
-    git --work-tree="$TEMP" diff --exit-code $QUIET -- "assets/**/.listing" || (
+    git --work-tree="$TEMP" diff --exit-code $QUIET -- "assets/**/.listing" || {
         echo >&2 "ERROR: Listing files in assets/ need update."
         echo >&2 "       Run Tataru: 'cargo run -p tataru -- --all && git add -- assets/**/.listing'."
         echo >&2 "       Or just run '.githooks/pre-commit -u -v'."
         echo >&2 "       Run '.githooks/pre-commit -v' for more info."
         exit 1
-    ) && (
+    } && {
         echo >&2 "All listing files in assets/ match"
-    )
+    }
 
     if [ $NO_CLEANUP ]; then
         echo >&2 "Leaving dirty files in $TEMP"
