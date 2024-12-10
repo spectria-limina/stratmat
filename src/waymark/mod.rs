@@ -4,20 +4,19 @@
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
 use avian2d::prelude::*;
-use bevy::color::palettes::css::{FUCHSIA, LIGHT_CYAN, RED, YELLOW};
-use bevy::prelude::*;
-use bevy::utils::HashMap;
-use bevy::window::RequestRedraw;
+use bevy::{
+    color::palettes::css::{FUCHSIA, LIGHT_CYAN, RED, YELLOW},
+    prelude::*,
+    utils::HashMap,
+    window::RequestRedraw,
+};
 use bevy_vector_shapes::prelude::*;
 use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::arena::GameCoordOffset;
-use crate::color::AlphaScale;
-use crate::drag::Draggable;
-use crate::spawner::Spawnable;
+use crate::{arena::GameCoordOffset, color::AlphaScale, drag::Draggable, spawner::Spawnable};
 
 pub mod window;
 
@@ -259,30 +258,22 @@ impl EntityCommand for InsertWaymark {
                 };
             };
 
-            spawn_shape(
-                "Waymark Stroke",
-                STROKE_OPACITY,
-                ShapeConfig {
-                    color: waymark.color(),
-                    thickness: STROKE_WIDTH,
-                    hollow: true,
-                    alpha_mode: AlphaMode::Blend.into(),
-                    transform: Transform::from_xyz(0.0, 0.0, -0.1),
-                    ..ShapeConfig::default_2d()
-                },
-            );
+            spawn_shape("Waymark Stroke", STROKE_OPACITY, ShapeConfig {
+                color: waymark.color(),
+                thickness: STROKE_WIDTH,
+                hollow: true,
+                alpha_mode: AlphaMode::Blend.into(),
+                transform: Transform::from_xyz(0.0, 0.0, -0.1),
+                ..ShapeConfig::default_2d()
+            });
 
-            spawn_shape(
-                "Waymark Fill",
-                FILL_OPACITY,
-                ShapeConfig {
-                    color: waymark.color(),
-                    hollow: false,
-                    alpha_mode: AlphaMode::Blend.into(),
-                    transform: Transform::from_xyz(0.0, 0.0, -0.2),
-                    ..ShapeConfig::default_2d()
-                },
-            );
+            spawn_shape("Waymark Fill", FILL_OPACITY, ShapeConfig {
+                color: waymark.color(),
+                hollow: false,
+                alpha_mode: AlphaMode::Blend.into(),
+                transform: Transform::from_xyz(0.0, 0.0, -0.2),
+                ..ShapeConfig::default_2d()
+            });
         });
     }
 }
@@ -298,9 +289,7 @@ pub fn insert_waymark(waymark: Waymark, entry: Option<PresetEntry>) -> impl Enti
 impl Spawnable for Waymark {
     const UNIQUE: bool = true;
 
-    fn spawner_name(&self) -> std::borrow::Cow<'static, str> {
-        self.name().into()
-    }
+    fn spawner_name(&self) -> std::borrow::Cow<'static, str> { self.name().into() }
 
     fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
         self.asset_handle(asset_server)
@@ -319,6 +308,4 @@ impl Plugin for WaymarkPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
-pub fn plugin() -> WaymarkPlugin {
-    WaymarkPlugin
-}
+pub fn plugin() -> WaymarkPlugin { WaymarkPlugin }

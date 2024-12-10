@@ -1,5 +1,4 @@
-use bevy::prelude::Alpha as _;
-use bevy::prelude::*;
+use bevy::prelude::{Alpha as _, *};
 use bevy_vector_shapes::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -13,9 +12,7 @@ use serde::{Deserialize, Serialize};
 pub struct AlphaScale(pub f32);
 
 impl Default for AlphaScale {
-    fn default() -> Self {
-        Self(1.0)
-    }
+    fn default() -> Self { Self(1.0) }
 }
 
 /// Computed alpha value.
@@ -27,9 +24,7 @@ impl Default for AlphaScale {
 pub struct ComputedAlpha(pub f32);
 
 impl Default for ComputedAlpha {
-    fn default() -> Self {
-        Self(1.0)
-    }
+    fn default() -> Self { Self(1.0) }
 }
 
 /// Plugin to register HasColor for trait query support.
@@ -123,6 +118,4 @@ fn propagate_recursive(
 }
 
 /// Produces a new plugin.
-pub fn plugin() -> ColorPlugin {
-    ColorPlugin
-}
+pub fn plugin() -> ColorPlugin { ColorPlugin }

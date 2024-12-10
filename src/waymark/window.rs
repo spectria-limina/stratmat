@@ -1,16 +1,15 @@
 //! Waymark tray and associated code.
 
-use bevy::ecs::system::SystemState;
-use bevy::prelude::*;
-
-use bevy_egui::egui::TextEdit;
-use bevy_egui::{egui, EguiClipboard};
+use bevy::{ecs::system::SystemState, prelude::*};
+use bevy_egui::{egui, egui::TextEdit, EguiClipboard};
 
 use super::{Preset, Waymark};
-use crate::arena::Arena;
-use crate::ecs::EntityWorldExts;
-use crate::spawner::{self, Spawner};
-use crate::widget::egui_context;
+use crate::{
+    arena::Arena,
+    ecs::EntityWorldExts,
+    spawner::{self, Spawner},
+    widget::egui_context,
+};
 
 /// The size of waymark spawner, in pixels.
 const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
@@ -173,6 +172,4 @@ impl Plugin for WaymarkWindowPlugin {
     }
 }
 
-pub fn plugin() -> WaymarkWindowPlugin {
-    WaymarkWindowPlugin
-}
+pub fn plugin() -> WaymarkWindowPlugin { WaymarkWindowPlugin }

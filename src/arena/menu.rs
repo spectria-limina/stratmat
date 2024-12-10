@@ -4,9 +4,8 @@ use bevy_egui::{
     EguiContexts,
 };
 
-use crate::asset::lifecycle::OptionalGlobalAsset;
-
 use super::{despawn_all_arenas, spawn_arena, ArenaListing, ArenaMeta};
+use crate::asset::lifecycle::OptionalGlobalAsset;
 
 #[derive(Component, Debug)]
 pub struct ArenaMenu {}
@@ -74,6 +73,4 @@ impl Plugin for ArenaMenuPlugin {
     }
 }
 
-pub fn plugin() -> ArenaMenuPlugin {
-    ArenaMenuPlugin
-}
+pub fn plugin() -> ArenaMenuPlugin { ArenaMenuPlugin }

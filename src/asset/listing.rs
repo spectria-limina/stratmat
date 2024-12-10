@@ -81,9 +81,7 @@ impl<A: Asset> VisitAssetDependencies for AssetListing<A> {
 pub struct ListingLoader<A>(#[debug(skip)] PhantomData<A>);
 
 impl<A> Default for ListingLoader<A> {
-    fn default() -> Self {
-        Self(default())
-    }
+    fn default() -> Self { Self(default()) }
 }
 
 impl<A: Asset> AssetLoader for ListingLoader<A> {
@@ -118,9 +116,7 @@ impl<A: Asset> AssetLoader for ListingLoader<A> {
         ))
     }
 
-    fn extensions(&self) -> &[&str] {
-        &["listing"]
-    }
+    fn extensions(&self) -> &[&str] { &["listing"] }
 }
 
 #[derive(Error, Debug)]

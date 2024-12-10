@@ -103,7 +103,5 @@ impl Job {
         }
     }
 
-    pub fn none_asset_path() -> &'static str {
-        "sprites/jobs/none.png"
-    }
+    pub fn none_asset_path() -> &'static str { "sprites/jobs/none.png" }
 }

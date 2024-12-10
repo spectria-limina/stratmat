@@ -55,19 +55,13 @@ impl Spawnable for PlayerSprite {
         asset_server.load(self.asset_path())
     }
 
-    fn insert(&self, entity: &mut EntityCommands) {
-        entity.insert((Player {}, *self));
-    }
+    fn insert(&self, entity: &mut EntityCommands) { entity.insert((Player {}, *self)); }
 }
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, PlayerSprite::update_sprites);
-    }
+    fn build(&self, app: &mut App) { app.add_systems(PostUpdate, PlayerSprite::update_sprites); }
 }
 
-pub fn plugin() -> PlayerPlugin {
-    PlayerPlugin
-}
+pub fn plugin() -> PlayerPlugin { PlayerPlugin }

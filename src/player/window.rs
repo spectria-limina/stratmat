@@ -1,14 +1,14 @@
 //! Waymark tray and associated code.
 
-use bevy::ecs::system::SystemState;
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_egui::egui;
 
-use super::job::Job;
-use super::PlayerSprite;
-use crate::ecs::EntityWorldExts;
-use crate::spawner::{self, Spawner};
-use crate::widget::egui_context;
+use super::{job::Job, PlayerSprite};
+use crate::{
+    ecs::EntityWorldExts,
+    spawner::{self, Spawner},
+    widget::egui_context,
+};
 
 /// The size of waymark spawner, in pixels.
 const PLAYER_SPAWNER_SIZE: f32 = 35.0;
@@ -95,6 +95,4 @@ impl Plugin for WaymarkWindowPlugin {
     }
 }
 
-pub fn plugin() -> WaymarkWindowPlugin {
-    WaymarkWindowPlugin
-}
+pub fn plugin() -> WaymarkWindowPlugin { WaymarkWindowPlugin }

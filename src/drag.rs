@@ -3,13 +3,16 @@
 use std::fmt::Debug;
 
 use avian2d::prelude::*;
-use bevy::ecs::component::ComponentId;
-use bevy::ecs::world::DeferredWorld;
-use bevy::prelude::*;
+use bevy::{
+    ecs::{component::ComponentId, world::DeferredWorld},
+    prelude::*,
+};
 
-use crate::color::AlphaScale;
-use crate::ecs::{EntityExts, EntityExtsOf};
-use crate::Layer;
+use crate::{
+    color::AlphaScale,
+    ecs::{EntityExts, EntityExtsOf},
+    Layer,
+};
 
 /// The factor to apply to a sprite's alpha channel when it is dragged out of bounds.
 const OOB_ALPHA_FACTOR: f32 = 0.1;
@@ -67,7 +70,11 @@ pub fn on_drag(
         .viewport_to_world_2d(camera_transform, old_pos_viewport)
         .expect("unable to map cursor position to world coordinates");
     let delta_world = new_pos_world - old_pos_world;
-    debug!("updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: {new_pos_viewport}, old_world: {}, delta_world: {delta_world}", transform.translation);
+    debug!(
+        "updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: \
+         {new_pos_viewport}, old_world: {}, delta_world: {delta_world}",
+        transform.translation
+    );
     transform.translation += delta_world.extend(0.0);
 }
 
@@ -210,6 +217,4 @@ impl Plugin for DragPlugin {
     }
 }
 
-pub fn plugin() -> DragPlugin {
-    DragPlugin
-}
+pub fn plugin() -> DragPlugin { DragPlugin }

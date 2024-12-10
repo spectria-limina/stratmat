@@ -118,9 +118,7 @@ impl AssetLoader for ArenaLoader {
         Ok(data)
     }
 
-    fn extensions(&self) -> &[&str] {
-        &[EXTENSION]
-    }
+    fn extensions(&self) -> &[&str] { &[EXTENSION] }
 }
 
 /// Component for the current arena.
@@ -233,6 +231,4 @@ fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 }
 
-pub fn plugin() -> ArenaPlugin {
-    ArenaPlugin
-}
+pub fn plugin() -> ArenaPlugin { ArenaPlugin }

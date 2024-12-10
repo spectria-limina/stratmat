@@ -44,9 +44,7 @@ impl<Arg: SystemInput> SystemInput for NestedWithArg<'_, Arg> {
     type Param<'i> = NestedWithArg<'i, ArgParam<'i, Arg>>;
     type Inner<'i> = NestedSystemArg<'i, (), Arg>;
 
-    fn wrap((ns, _, arg): Self::Inner<'_>) -> Self::Param<'_> {
-        NestedWithArg(ns, Arg::wrap(arg))
-    }
+    fn wrap((ns, _, arg): Self::Inner<'_>) -> Self::Param<'_> { NestedWithArg(ns, Arg::wrap(arg)) }
 }
 impl<Arg: SystemInput> HasInnerArg for NestedWithArg<'_, Arg> {
     type InnerArg = Arg;

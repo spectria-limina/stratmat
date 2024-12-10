@@ -3,13 +3,11 @@
 use std::path::{Path, PathBuf};
 
 use avian2d::prelude::*;
-use bevy::winit::WinitSettings;
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::{log::LogPlugin, prelude::*, winit::WinitSettings};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_vector_shapes::prelude::*;
 use clap::{ArgAction, Parser as _};
-
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 

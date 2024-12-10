@@ -70,9 +70,7 @@ impl Hitbox {
 }
 
 impl Default for Hitbox {
-    fn default() -> Self {
-        Self::new(default(), bevy::color::palettes::css::SALMON.into(), 10.0)
-    }
+    fn default() -> Self { Self::new(default(), bevy::color::palettes::css::SALMON.into(), 10.0) }
 }
 
 #[derive(Bundle, Default)]
@@ -99,25 +97,19 @@ pub fn insert_hitbox(entity: &mut EntityCommands, hitbox: Hitbox) {
                     }
                 };
 
-                parent.spawn(shape_bundle(
-                    hitbox.outer_radius,
-                    ShapeConfig {
-                        color: hitbox.color,
-                        thickness: hitbox.outer_radius * OUTER_CIRCLE_THICKNESS_RATIO,
-                        hollow: true,
-                        ..ShapeConfig::default_2d()
-                    },
-                ));
+                parent.spawn(shape_bundle(hitbox.outer_radius, ShapeConfig {
+                    color: hitbox.color,
+                    thickness: hitbox.outer_radius * OUTER_CIRCLE_THICKNESS_RATIO,
+                    hollow: true,
+                    ..ShapeConfig::default_2d()
+                }));
 
-                parent.spawn(shape_bundle(
-                    hitbox.inner_radius,
-                    ShapeConfig {
-                        color: hitbox.color,
-                        thickness: hitbox.inner_radius * INNER_CIRCLE_THICKNESS_RATIO,
-                        hollow: true,
-                        ..ShapeConfig::default_2d()
-                    },
-                ));
+                parent.spawn(shape_bundle(hitbox.inner_radius, ShapeConfig {
+                    color: hitbox.color,
+                    thickness: hitbox.inner_radius * INNER_CIRCLE_THICKNESS_RATIO,
+                    hollow: true,
+                    ..ShapeConfig::default_2d()
+                }));
             })
             .insert(HitboxBundle {
                 collider: hitbox.collider(),
