@@ -6,6 +6,9 @@ use bevy_egui::{
     egui::{self, Ui},
     EguiContexts,
 };
+use derive_where::derive_where;
+
+use crate::ecs::{NestedSystem, NestedSystemId};
 
 // TODO: TEST TEST TEST
 pub fn egui_contexts_scope<U, F: FnOnce(SystemParamItem<EguiContexts>) -> U>(
@@ -28,16 +31,22 @@ impl SystemInput for Widget<'_> {
     type Param<'i> = Widget<'i>;
     type Inner<'i> = (Entity, &'i mut Ui);
 
-    fn wrap<'i>((id, ui): Self::Inner<'i>) -> Self::Param<'i> {
-        Widget(id, ui)
-    }
+    fn wrap<'i>((id, ui): Self::Inner<'i>) -> Self::Param<'i> { Widget(id, ui) }
 }
 
 impl<A> SystemInput for WidgetWith<'_, A> {
     type Param<'i> = WidgetWith<'i, A>;
     type Inner<'i> = (Entity, (&'i mut Ui, A));
 
-    fn wrap<'i>((id, (ui, arg)): Self::Inner<'i>) -> Self::Param<'i> {
-        WidgetWith(id, ui, arg)
+    fn wrap<'i>((id, (ui, arg)): Self::Inner<'i>) -> Self::Param<'i> { WidgetWith(id, ui, arg) }
+}
+
+#[derive_where(Debug, Copy, Clone)]
+#[derive(Component)]
+pub struct HasWidget<R: 'static = ()>(NestedSystemId<InMut<'static, Ui>, egui::InnerResponse<R>>);
+
+impl<R: 'static> HasWidget<R> {
+    pub fn show(&self, nested: &mut NestedSystem, ui: &mut Ui) -> egui::InnerResponse<R> {
+        nested.run_nested_with(self.0, ui)
     }
 }

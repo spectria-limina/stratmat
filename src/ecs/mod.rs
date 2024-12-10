@@ -1,8 +1,9 @@
-use std::{self, marker::PhantomData};
+use std::marker::PhantomData;
 
 use bevy::{ecs::system::IntoObserverSystem, prelude::*};
 
 pub mod nested;
+pub use nested::*;
 
 /// Marker component for child entities added by a specific component.
 #[derive(Component, Copy, Clone, Default, Debug)]

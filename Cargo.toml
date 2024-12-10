@@ -52,6 +52,7 @@ bevy_egui = "0.31.1"
 bevy_vector_shapes = "0.9.2"
 chrono = "0.4.38"
 clap.workspace = true
+derive-where = "1.2.7"
 derive_more = { version = "1.0.0", default-features = false, features = [
     "from",
     "debug",
