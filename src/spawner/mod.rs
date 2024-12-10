@@ -143,7 +143,7 @@ impl<Target: Spawnable> Spawner<Target> {
     }
 
     pub fn show(
-        Widget { id, ui }: Widget,
+        Widget(id, ui): Widget,
         spawner_q: Query<(&Spawner<Target>, &SpawnerTextureId)>,
         mut pointer_ev: EventWriter<PointerHits>,
     ) -> egui::Response {

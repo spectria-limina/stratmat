@@ -21,14 +21,7 @@ impl<Target: Spawnable> SpawnerPanel<Target> {
         }
     }
 
-    pub fn show(
-        WidgetWith {
-            id: _id,
-            ui,
-            args: this,
-        }: WidgetWith<Self>,
-        world: &mut World,
-    ) {
+    pub fn show(WidgetWith(_id, ui, this): WidgetWith<Self>, world: &mut World) {
         ui.add_space(this.spacing.y);
         let frame = egui::Frame {
             outer_margin: egui::Margin::symmetric(this.spacing.x, this.spacing.y) / 2.0,
