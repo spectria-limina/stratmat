@@ -6,9 +6,9 @@ use bevy_egui::{
     egui::{self, Ui},
     EguiContexts,
 };
-use derive_where::derive_where;
 
 use crate::ecs::{NestedSystem, NestedSystemId};
+
 
 // TODO: TEST TEST TEST
 pub fn egui_contexts_scope<U, F: FnOnce(SystemParamItem<EguiContexts>) -> U>(
@@ -23,30 +23,34 @@ pub fn egui_context(world: &mut World) -> egui::Context {
     egui_contexts_scope(world, |mut contexts| contexts.ctx_mut().clone())
 }
 
-pub struct Widget<'a>(pub Entity, pub &'a mut Ui);
+pub struct WidgetIn<'a>(pub Entity, pub &'a mut Ui);
 
-pub struct WidgetWith<'a, A>(pub Entity, pub &'a mut Ui, pub A);
+pub struct WidgethWithIn<'a, A>(pub Entity, pub &'a mut Ui, pub A);
 
-impl SystemInput for Widget<'_> {
-    type Param<'i> = Widget<'i>;
+impl SystemInput for WidgetIn<'_> {
+    type Param<'i> = WidgetIn<'i>;
     type Inner<'i> = (Entity, &'i mut Ui);
 
-    fn wrap<'i>((id, ui): Self::Inner<'i>) -> Self::Param<'i> { Widget(id, ui) }
+    fn wrap((id, ui): Self::Inner<'_>) -> Self::Param<'_> { WidgetIn(id, ui) }
 }
 
-impl<A> SystemInput for WidgetWith<'_, A> {
-    type Param<'i> = WidgetWith<'i, A>;
+impl<A> SystemInput for WidgethWithIn<'_, A> {
+    type Param<'i> = WidgethWithIn<'i, A>;
     type Inner<'i> = (Entity, (&'i mut Ui, A));
 
-    fn wrap<'i>((id, (ui, arg)): Self::Inner<'i>) -> Self::Param<'i> { WidgetWith(id, ui, arg) }
+    fn wrap((id, (ui, arg)): Self::Inner<'_>) -> Self::Param<'_> { WidgethWithIn(id, ui, arg) }
 }
 
-#[derive_where(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[derive(Component)]
-pub struct HasWidget<R: 'static = ()>(NestedSystemId<InMut<'static, Ui>, egui::InnerResponse<R>>);
+pub struct WidgetRegistration(NestedSystemId<InMut<'static, Ui>>);
 
-impl<R: 'static> HasWidget<R> {
-    pub fn show(&self, nested: &mut NestedSystem, ui: &mut Ui) -> egui::InnerResponse<R> {
+impl WidgetRegistration {
+    pub fn show(&self, nested: &mut NestedSystem, ui: &mut Ui) {
         nested.run_nested_with(self.0, ui)
     }
 }
+
+#[derive(Debug, Copy, Clone, Component)]
+
+pub struct HasWidget {}

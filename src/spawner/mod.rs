@@ -1,5 +1,4 @@
-use std::borrow::Cow;
-use std::marker::PhantomData;
+use std::{borrow::Cow, fmt::Debug, marker::PhantomData};
 
 use bevy::{
     ecs::{component::ComponentId, system::EntityCommands, world::DeferredWorld},
@@ -11,11 +10,10 @@ use bevy::{
 };
 use bevy_egui::{self, egui, EguiUserTextures};
 use itertools::Itertools;
-use std::fmt::Debug;
 
 use crate::{
     ecs::{EntityExts, EntityExtsOf},
-    widget::Widget,
+    widget::WidgetIn,
 };
 
 pub mod panel;
@@ -143,7 +141,7 @@ impl<Target: Spawnable> Spawner<Target> {
     }
 
     pub fn show(
-        Widget(id, ui): Widget,
+        WidgetIn(id, ui): WidgetIn,
         spawner_q: Query<(&Spawner<Target>, &SpawnerTextureId)>,
         mut pointer_ev: EventWriter<PointerHits>,
     ) -> egui::Response {
@@ -198,9 +196,7 @@ impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
     }
 }
 
-pub fn plugin<T: Spawnable>() -> SpawnerPlugin<T> {
-    default()
-}
+pub fn plugin<T: Spawnable>() -> SpawnerPlugin<T> { default() }
 
 // TODO: Put this somewhere better lol.
 fn log_debug<E: std::fmt::Debug + Event>(mut events: EventReader<E>) {
@@ -215,24 +211,23 @@ fn observe_debug<E: std::fmt::Debug + Event>(ev: Trigger<E>) {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::ecs::EntityWorldExts;
-    use crate::waymark::Waymark;
-    use crate::widget::egui_context;
-    use crate::{drag, testing::*};
-
     use avian2d::PhysicsPlugins;
-    use bevy::app::ScheduleRunnerPlugin;
-    use bevy::input::mouse::MouseButtonInput;
-    use bevy::picking::pointer::PointerInput;
-    use bevy::render::settings::{RenderCreation, WgpuSettings};
-    use bevy::render::RenderPlugin;
-    use bevy::window::{PrimaryWindow, WindowEvent};
-    use bevy::winit::WinitPlugin;
-    use bevy_egui::egui;
-    use bevy_egui::EguiPlugin;
-
+    use bevy::{
+        app::ScheduleRunnerPlugin,
+        input::mouse::MouseButtonInput,
+        picking::pointer::PointerInput,
+        render::{
+            settings::{RenderCreation, WgpuSettings},
+            RenderPlugin,
+        },
+        window::{PrimaryWindow, WindowEvent},
+        winit::WinitPlugin,
+    };
+    use bevy_egui::{egui, EguiPlugin};
     use float_eq::assert_float_eq;
+
+    use super::*;
+    use crate::{drag, ecs::EntityWorldExts, testing::*, waymark::Waymark, widget::egui_context};
 
     #[derive(Default, Resource)]
     struct TestWinPos(egui::Pos2);

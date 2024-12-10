@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use bevy::{ecs::system::IntoObserverSystem, prelude::*};
 
+pub mod conflicts;
 pub mod nested;
+
+pub use conflicts::*;
 pub use nested::*;
 
 /// Marker component for child entities added by a specific component.

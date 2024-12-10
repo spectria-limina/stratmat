@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use super::{Spawnable, Spawner};
-use crate::{exts::*, widget::WidgetWith};
+use crate::{exts::*, widget::WidgethWithIn};
 
 #[derive(Component, derive_more::Debug, Reflect)]
 pub struct SpawnerPanel<Target> {
@@ -23,7 +23,7 @@ impl<Target: Spawnable> SpawnerPanel<Target> {
         }
     }
 
-    pub fn show(WidgetWith(_id, ui, this): WidgetWith<Self>, world: &mut World) {
+    pub fn show(WidgethWithIn(_id, ui, this): WidgethWithIn<Self>, world: &mut World) {
         ui.add_space(this.spacing.y);
         let frame = egui::Frame {
             outer_margin: egui::Margin::symmetric(this.spacing.x, this.spacing.y) / 2.0,

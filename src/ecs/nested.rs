@@ -1,25 +1,23 @@
 use std::{
     any::{Any, TypeId},
     borrow::Cow,
-    fmt::Write,
     marker::PhantomData,
 };
 
 use bevy::{
     ecs::{
         archetype::ArchetypeComponentId,
-        component::{ComponentId, Components, Tick},
-        query::{Access, AccessConflicts},
+        component::{ComponentId, Tick},
+        query::Access,
         schedule::InternedSystemSet,
         world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
     },
     prelude::*,
     ptr::OwningPtr,
 };
-use derive_more::derive::Display;
 use derive_where::derive_where;
 
-use super::Cached;
+use super::{diagnose_conflicts, AccessDiags, Cached};
 
 pub type ArgInner<'a, Arg> = <Arg as SystemInput>::Inner<'a>;
 pub type ArgParam<'a, Arg> = <Arg as SystemInput>::Param<'a>;
@@ -30,53 +28,53 @@ pub trait HasInnerArg {
     type InnerArg: SystemInput;
 }
 
-impl<'a> SystemInput for &mut NestedSystem<'a> {
+impl SystemInput for &mut NestedSystem<'_> {
     type Param<'i> = &'i mut NestedSystem<'i>;
     type Inner<'i> = NestedSystemArg<'i, (), ()>;
 
-    fn wrap<'i>((ns, _, _): Self::Inner<'i>) -> Self::Param<'i> { ns }
+    fn wrap((ns, _, _): Self::Inner<'_>) -> Self::Param<'_> { ns }
 }
-impl<'a> HasInnerArg for &mut NestedSystem<'a> {
+impl HasInnerArg for &mut NestedSystem<'_> {
     type InnerArg = ();
 }
 
 pub struct NestedWithArg<'a, Arg: SystemInput>(&'a mut NestedSystem<'a>, Arg);
 
-impl<'a, Arg: SystemInput> SystemInput for NestedWithArg<'a, Arg> {
+impl<Arg: SystemInput> SystemInput for NestedWithArg<'_, Arg> {
     type Param<'i> = NestedWithArg<'i, ArgParam<'i, Arg>>;
     type Inner<'i> = NestedSystemArg<'i, (), Arg>;
 
-    fn wrap<'i>((ns, _, arg): Self::Inner<'i>) -> Self::Param<'i> {
+    fn wrap((ns, _, arg): Self::Inner<'_>) -> Self::Param<'_> {
         NestedWithArg(ns, Arg::wrap(arg))
     }
 }
-impl<'a, Arg: SystemInput> HasInnerArg for NestedWithArg<'a, Arg> {
+impl<Arg: SystemInput> HasInnerArg for NestedWithArg<'_, Arg> {
     type InnerArg = Arg;
 }
 
 pub struct NestedWithData<'a, Data>(&'a mut NestedSystem<'a>, Data);
 
-impl<'a, Data> SystemInput for NestedWithData<'a, Data> {
+impl<Data> SystemInput for NestedWithData<'_, Data> {
     type Param<'i> = NestedWithData<'i, Data>;
     type Inner<'i> = NestedSystemArg<'i, Data, ()>;
 
-    fn wrap<'i>((ns, data, _): Self::Inner<'i>) -> Self::Param<'i> { NestedWithData(ns, data) }
+    fn wrap((ns, data, _): Self::Inner<'_>) -> Self::Param<'_> { NestedWithData(ns, data) }
 }
-impl<'a, Data> HasInnerArg for NestedWithData<'a, Data> {
+impl<Data> HasInnerArg for NestedWithData<'_, Data> {
     type InnerArg = ();
 }
 
 pub struct NestedWith<'a, Data, Arg: SystemInput>(&'a mut NestedSystem<'a>, Data, Arg);
 
-impl<'a, Data, Arg: SystemInput> SystemInput for NestedWith<'a, Data, Arg> {
+impl<Data, Arg: SystemInput> SystemInput for NestedWith<'_, Data, Arg> {
     type Param<'i> = NestedWith<'i, Data, ArgParam<'i, Arg>>;
     type Inner<'i> = NestedSystemArg<'i, Data, Arg>;
 
-    fn wrap<'i>((ns, data, arg): Self::Inner<'i>) -> Self::Param<'i> {
+    fn wrap((ns, data, arg): Self::Inner<'_>) -> Self::Param<'_> {
         NestedWith(ns, data, Arg::wrap(arg))
     }
 }
-impl<'a, Data, Arg: SystemInput> HasInnerArg for NestedWith<'a, Data, Arg> {
+impl<Data, Arg: SystemInput> HasInnerArg for NestedWith<'_, Data, Arg> {
     type InnerArg = Arg;
 }
 
@@ -104,9 +102,9 @@ pub trait DynNestedSystem: Send + Sync {
     fn component_access(&self) -> &Access<ComponentId>;
     // arg MUST be the ArgInner type.
     // the return type is always the Out type.
-    unsafe fn run<'w>(
+    unsafe fn run(
         &mut self,
-        nested: &mut NestedSystem<'w>,
+        nested: &mut NestedSystem<'_>,
         inner_arg: OwningPtr<'_>,
     ) -> Box<dyn Any>;
 }
@@ -124,9 +122,9 @@ where
     fn queue_deferred(&mut self, world: DeferredWorld) { self.sys.queue_deferred(world); }
     fn component_access(&self) -> &Access<ComponentId> { self.sys.component_access() }
 
-    unsafe fn run<'w>(
+    unsafe fn run(
         &mut self,
-        nested: &mut NestedSystem<'w>,
+        nested: &mut NestedSystem<'_>,
         inner_arg: OwningPtr<'_>,
     ) -> Box<dyn Any> {
         nested.reborrow_scope(move |nested| {
@@ -193,6 +191,9 @@ pub struct NestedSystemId<Arg: SystemInput + 'static = (), Out: 'static = ()>(
     usize,
     PhantomData<fn(Arg) -> Out>,
 );
+// SAFETY: It's just phantom data
+unsafe impl<Arg: SystemInput + 'static, Out: 'static> Send for NestedSystemId<Arg, Out> {}
+unsafe impl<Arg: SystemInput + 'static, Out: 'static> Sync for NestedSystemId<Arg, Out> {}
 
 pub struct NestedSystem<'w> {
     accesses: &'w mut Vec<(String, Access<ComponentId>)>,
@@ -206,9 +207,9 @@ impl NestedSystem<'_> {
         for<'i> F: FnOnce(&'i mut NestedSystem<'i>) -> R,
     {
         let mut reborrowed = NestedSystem {
-            accesses: &mut self.accesses,
+            accesses: self.accesses,
             world: self.world,
-            registry: &mut self.registry,
+            registry: self.registry,
         };
         f(&mut reborrowed)
     }
@@ -295,193 +296,6 @@ impl NestedSystem<'_> {
     }
 }
 
-#[derive(Debug, Display, Copy, Clone)]
-pub enum BroadAccess {
-    #[display("")]
-    None,
-    #[display("Some")]
-    Some,
-    #[display("**ALL**")]
-    All,
-}
-
-#[derive(Debug, Display, Copy, Clone)]
-pub enum BroadAccessKind {
-    #[display("Read Components")]
-    ReadComponents,
-    #[display("Write Components")]
-    WriteComponents,
-    #[display("Read Resources")]
-    ReadResources,
-    #[display("Write Resources")]
-    WriteResources,
-}
-
-#[derive(Debug, Display, Copy, Clone)]
-pub enum NarrowAccess {
-    #[display("")]
-    None,
-    #[display("Read")]
-    Read,
-    #[display("**WRITE**")]
-    Write,
-}
-
-#[derive(Deref, Debug, Clone)]
-pub struct AccessDiags {
-    name: String,
-    #[deref]
-    access: Access<ComponentId>,
-}
-
-impl AccessDiags {
-    pub fn new(name: String, access: Access<ComponentId>) -> Self { Self { name, access } }
-
-    pub fn broad(&self, kind: BroadAccessKind) -> BroadAccess {
-        type Pred = fn(&Access<ComponentId>) -> bool;
-        fn on(this: &AccessDiags, any: Pred, all: Pred) -> BroadAccess {
-            if all(&this) {
-                BroadAccess::All
-            } else if any(&this) {
-                BroadAccess::Some
-            } else {
-                BroadAccess::None
-            }
-        }
-
-        match kind {
-            BroadAccessKind::ReadComponents => on(
-                self,
-                Access::has_any_component_read,
-                Access::has_read_all_components,
-            ),
-            BroadAccessKind::WriteComponents => on(
-                self,
-                Access::has_any_component_write,
-                Access::has_write_all_components,
-            ),
-            BroadAccessKind::ReadResources => on(
-                self,
-                Access::has_any_resource_read,
-                Access::has_read_all_resources,
-            ),
-            BroadAccessKind::WriteResources => on(
-                self,
-                Access::has_any_resource_write,
-                Access::has_write_all_resources,
-            ),
-        }
-    }
-
-    fn narrow(&self, cid: ComponentId) -> NarrowAccess {
-        if self.has_component_write(cid) || self.has_resource_write(cid) {
-            NarrowAccess::Write
-        } else if self.has_component_read(cid) || self.has_resource_read(cid) {
-            NarrowAccess::Read
-        } else {
-            NarrowAccess::None
-        }
-    }
-}
-
-#[track_caller]
-pub fn diagnose_conflicts(components: &Components, new: AccessDiags, prev: Vec<AccessDiags>) {
-    use prettytable::{row, Cell, Row, Table};
-    fn mk_row(
-        label: &str,
-        new: &AccessDiags,
-        prevs: &[AccessDiags],
-        f: impl Fn(&AccessDiags) -> String,
-    ) -> Row {
-        let mut row = row![r->label, c->f(new)];
-        for prev in prevs {
-            row.add_cell(Cell::new(&f(prev)).style_spec("c"));
-        }
-        row
-    }
-
-    let (broad, narrow): (Vec<AccessDiags>, Vec<AccessDiags>) = prev
-        .into_iter()
-        .partition(|a| a.get_conflicts(&new) == AccessConflicts::All);
-    let mut msg = format!(
-        "\nNested system data access conflicts between {} and still-running systems:",
-        new.name
-    );
-
-    if !broad.is_empty() {
-        let mut table = Table::new();
-        let mut titles = row![""];
-        titles.add_cell(Cell::new(&BroadAccessKind::ReadComponents.to_string()).style_spec("c"));
-        titles.add_cell(Cell::new(&BroadAccessKind::WriteComponents.to_string()).style_spec("c"));
-        titles.add_cell(Cell::new(&BroadAccessKind::ReadResources.to_string()).style_spec("c"));
-        titles.add_cell(Cell::new(&BroadAccessKind::WriteResources.to_string()).style_spec("c"));
-        table.set_titles(titles);
-        let row = table.add_row(row![br->&format!("~~{}~~", new.name)]);
-        row.add_cell(
-            Cell::new(&new.broad(BroadAccessKind::ReadComponents).to_string()).style_spec("c"),
-        );
-        row.add_cell(
-            Cell::new(&new.broad(BroadAccessKind::WriteComponents).to_string()).style_spec("c"),
-        );
-        row.add_cell(
-            Cell::new(&new.broad(BroadAccessKind::ReadResources).to_string()).style_spec("c"),
-        );
-        row.add_cell(
-            Cell::new(&new.broad(BroadAccessKind::WriteResources).to_string()).style_spec("c"),
-        );
-
-        for a in broad {
-            let row = table.add_row(row![r->&a.name]);
-            row.add_cell(
-                Cell::new(&a.broad(BroadAccessKind::ReadComponents).to_string()).style_spec("c"),
-            );
-            row.add_cell(
-                Cell::new(&a.broad(BroadAccessKind::WriteComponents).to_string()).style_spec("c"),
-            );
-            row.add_cell(
-                Cell::new(&a.broad(BroadAccessKind::ReadResources).to_string()).style_spec("c"),
-            );
-            row.add_cell(
-                Cell::new(&a.broad(BroadAccessKind::WriteResources).to_string()).style_spec("c"),
-            );
-        }
-
-        let _ = write!(&mut msg, "\n\n{table}");
-    }
-
-    if !narrow.is_empty() {
-        let mut table = Table::new();
-        let mut bits = fixedbitset::FixedBitSet::new();
-        for a in &narrow {
-            let AccessConflicts::Individual(bytes) = a.get_conflicts(&new) else {
-                panic!("enum variant magically changed");
-            };
-            bits.union_with(&bytes);
-        }
-
-        let mut titles = row![""];
-        let mut row = row![rb->&format!("~~{}~~", new.name)];
-        for cid in bits.ones().map(ComponentId::new) {
-            let name = components.get_info(cid).map_or("+++ERROR+++", |c| c.name());
-            titles.add_cell(Cell::new(name).style_spec("c"));
-            row.add_cell(Cell::new(&new.narrow(cid).to_string()).style_spec("cb"));
-        }
-        table.set_titles(titles);
-        table.add_row(row);
-
-        for a in narrow {
-            let mut row = row![r->&a.name];
-            for cid in bits.ones().map(ComponentId::new) {
-                row.add_cell(Cell::new(&a.narrow(cid).to_string()).style_spec("c"));
-            }
-            table.add_row(row);
-        }
-
-        let _ = write!(&mut msg, "\n\n{table}");
-    }
-    error!("{}", msg);
-}
-
 /*
 pub trait NestedSystemExts {
     fn run_nested<Out>(&mut self, s: NestedSystemId<(), Out>) -> Out;
@@ -520,7 +334,7 @@ pub fn with_name<S>(sys: S, name: &'static str) -> WithName<S> { WithName::new(s
 #[macro_export]
 macro_rules! named (
     ($sys:expr) => (named!($sys, $sys));
-    ($sys:expr, $name:expr) => (crate::ecs::nested::with_name($sys, stringify!($name)));
+    ($sys:expr, $name:expr) => ($crate::ecs::nested::with_name($sys, stringify!($name)));
 );
 
 impl<S, I, O, M> IntoSystem<I, O, (WithName<S>, M)> for WithName<S>
