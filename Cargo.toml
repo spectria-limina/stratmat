@@ -54,6 +54,7 @@ chrono = "0.4.38"
 clap.workspace = true
 derive_more = { version = "1.0.0", default-features = false, features = [
     "from",
+    "debug",
 ] }
 enum-iterator = "2.1.0"
 eyre.workspace = true
@@ -67,7 +68,6 @@ serde_json.workspace = true
 tataru.workspace = true
 thiserror = "2.0.3"
 tracing.workspace = true
-type-variance = "0.1.0"
 uuid = "1.11.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

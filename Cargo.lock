@@ -4426,7 +4426,6 @@ dependencies = [
  "tataru",
  "thiserror 2.0.4",
  "tracing",
- "type-variance",
  "uuid",
  "wasm-bindgen",
  "web-sys",
@@ -4798,12 +4797,6 @@ dependencies = [
  "cfg-if",
  "static_assertions",
 ]
-
-[[package]]
-name = "type-variance"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae798ec329aee58fe027dc440bb2ba27790e577123d43d0a91d5ed550d238cc6"
 
 [[package]]
 name = "typeid"

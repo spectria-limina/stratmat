@@ -1,4 +1,4 @@
-use std::{borrow::Cow, marker::PhantomData};
+use std::{any::Any, borrow::Cow, marker::PhantomData};
 
 use bevy::{
     ecs::{
@@ -10,7 +10,6 @@ use bevy::{
     prelude::*,
     ptr::OwningPtr,
 };
-use type_variance::{Invariant, Lifetime};
 
 /// Marker component for child entities added by a specific component.
 #[derive(Component, Copy, Clone, Default, Debug)]
@@ -87,18 +86,15 @@ impl<'w> EntityScope<'w> for EntityWorldMut<'w> {
         unsafe { self.world_mut().commands() }
     }
 }
-
 pub struct ScopedOn<'a, 'w: 'a, E: EntityScope<'w>, C: Component> {
     entity: &'a mut E,
-    _c: Invariant<C>,
-    _w: Invariant<Lifetime<'w>>,
+    _ph: PhantomData<(&'w mut (), C)>,
 }
 impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> ScopedOn<'a, 'w, E, C> {
     pub fn new(entity: &'a mut E) -> Self {
         Self {
             entity,
-            _c: default(),
-            _w: default(),
+            _ph: default(),
         }
     }
 }
@@ -194,7 +190,6 @@ pub trait EntityWorldExts<'w> {
 }
 
 impl<'w> EntityWorldExts<'w> for EntityWorldMut<'w> {
-    #[track_caller]
     /// Panics if id is not in the world.
     fn run_instanced_with<'a, A, I, O, M, S>(&mut self, system: S, args: A) -> O
     where
@@ -223,7 +218,6 @@ impl<'w> EntityWorldExts<'w> for EntityWorldMut<'w> {
             out
         })
     }
-    #[track_caller]
     /// Panics if id is not in the world.
     fn run_instanced<'a, I, O, M, S>(&mut self, system: S) -> O
     where
@@ -272,25 +266,15 @@ impl<Sys, Data> NestedSystem<Sys, Data> {
     }
 }
 
-pub trait ErasedNestedSystem<'w>: Send + Sync {
-    fn queue_deferred(&mut self, world: DeferredWorld);
-    fn name(&self) -> Cow<'static, str>;
-    fn update_archetype_component_access(&mut self, world: UnsafeWorldCell<'_>);
-    fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;
-    // arg MUST be the Arg type.
-    // the return type is always the Out type.
-    unsafe fn run<'a>(&'a mut self, nested: &'a mut NestedSystems<'w>, arg: OwningPtr<'a>);
-}
+pub type NestedSystemInput<'a, Data, Arg> = (NestedSystems<'a>, Data, Arg);
 
-pub type NestedSystemInput<'a, 'w, Data, Arg> = (&'a mut NestedSystems<'w>, Data, Arg);
-
-impl<'a, 'w: 'a> SystemInput for &'a mut NestedSystems<'w> {
+impl<'a> SystemInput for NestedSystems<'a> {
     type Param<'i>
-        = &'i mut NestedSystems<'w>
+        = NestedSystems<'i>
     where
         Self: 'i;
     type Inner<'i>
-        = NestedSystemInput<'i, 'w, (), ()>
+        = NestedSystemInput<'i, (), ()>
     where
         Self: 'i;
 
@@ -301,15 +285,15 @@ impl<'a, 'w: 'a> SystemInput for &'a mut NestedSystems<'w> {
         ns
     }
 }
-pub struct WithArg<'a, 'w, Arg>(&'a mut NestedSystems<'w>, Arg);
+pub struct NestedWithArg<'a, Arg>(NestedSystems<'a>, Arg);
 
-impl<'a, 'w: 'a, Arg> SystemInput for WithArg<'a, 'w, Arg> {
+impl<'a, Arg> SystemInput for NestedWithArg<'a, Arg> {
     type Param<'i>
-        = WithArg<'i, 'w, Arg>
+        = NestedWithArg<'i, Arg>
     where
         Self: 'i;
     type Inner<'i>
-        = NestedSystemInput<'i, 'w, (), Arg>
+        = NestedSystemInput<'i, (), Arg>
     where
         Self: 'i;
 
@@ -317,19 +301,19 @@ impl<'a, 'w: 'a, Arg> SystemInput for WithArg<'a, 'w, Arg> {
     where
         Self: 'i,
     {
-        WithArg(ns, arg)
+        NestedWithArg(ns, arg)
     }
 }
 
-pub struct WithData<'a, 'w, Data>(&'a mut NestedSystems<'w>, Data);
+pub struct NestedWithData<'a, Data>(NestedSystems<'a>, Data);
 
-impl<'a, 'w: 'a, Data> SystemInput for WithData<'a, 'w, Data> {
+impl<'a, Data> SystemInput for NestedWithData<'a, Data> {
     type Param<'i>
-        = WithData<'i, 'w, Data>
+        = NestedWithData<'i, Data>
     where
         Self: 'i;
     type Inner<'i>
-        = NestedSystemInput<'i, 'w, Data, ()>
+        = NestedSystemInput<'i, Data, ()>
     where
         Self: 'i;
 
@@ -337,19 +321,19 @@ impl<'a, 'w: 'a, Data> SystemInput for WithData<'a, 'w, Data> {
     where
         Self: 'i,
     {
-        WithData(ns, data)
+        NestedWithData(ns, data)
     }
 }
 
-pub struct Nested<'a, 'w, Data, Arg>(&'a mut NestedSystems<'w>, Data, Arg);
+pub struct NestedWith<'a, Data, Arg>(NestedSystems<'a>, Data, Arg);
 
-impl<'a, 'w: 'a, Data, Arg> SystemInput for Nested<'a, 'w, Data, Arg> {
+impl<'a, Data, Arg> SystemInput for NestedWith<'a, Data, Arg> {
     type Param<'i>
-        = Nested<'i, 'w, Data, Arg>
+        = NestedWith<'i, Data, Arg>
     where
         Self: 'i;
     type Inner<'i>
-        = NestedSystemInput<'i, 'w, Data, Arg>
+        = NestedSystemInput<'i, Data, Arg>
     where
         Self: 'i;
 
@@ -357,17 +341,25 @@ impl<'a, 'w: 'a, Data, Arg> SystemInput for Nested<'a, 'w, Data, Arg> {
     where
         Self: 'i,
     {
-        Nested(ns, data, arg)
+        NestedWith(ns, data, arg)
     }
 }
 
-impl<'w, Sys, Data, Arg> ErasedNestedSystem<'w> for NestedSystem<Sys, Data>
+pub trait ErasedNestedSystem: Send + Sync {
+    fn queue_deferred(&mut self, world: DeferredWorld);
+    fn name(&self) -> Cow<'static, str>;
+    fn update_archetype_component_access(&mut self, world: UnsafeWorldCell<'_>);
+    fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;
+    // arg MUST be the Arg type.
+    // the return type is always the Out type.
+    unsafe fn run<'w>(&mut self, nested: NestedSystems<'w>, arg: OwningPtr<'_>) -> Box<dyn Any>;
+}
+
+impl<Sys, Data, Arg> ErasedNestedSystem for NestedSystem<Sys, Data>
 where
     Sys: System,
-    <Sys as System>::In: for<'a> SystemInput<Inner<'a> = NestedSystemInput<'a, 'w, Data, Arg>>,
-    Data: Clone + Send + Sync + 'static,
-    Arg: 'static,
-    <Sys as System>::Out: 'static,
+    <Sys as System>::In: for<'a> SystemInput<Inner<'a> = NestedSystemInput<'a, Data, Arg>>,
+    Data: Clone + Send + Sync,
 {
     fn name(&self) -> Cow<'static, str> {
         self.sys.name()
@@ -382,20 +374,20 @@ where
         self.sys.archetype_component_access()
     }
 
-    unsafe fn run<'a>(&'a mut self, nested: &'a mut NestedSystems<'w>, arg: OwningPtr<'a>) {
-        // TODO: Validate argument type?!
-        let world = nested.world;
+    unsafe fn run<'w>(&mut self, nested: NestedSystems<'w>, arg: OwningPtr<'_>) -> Box<dyn Any> {
+        // FIXME: Validate argument type?!
 
-        let input: <<Sys as System>::In as SystemInput>::Inner<'a> =
-            (nested, self.data.clone(), arg.read());
+        let world = nested.world;
+        let input: SystemIn<Sys> = (nested, self.data.clone(), arg.read());
+        let out = unsafe { self.sys.run_unsafe(input, world) };
         unsafe {
-            self.sys.run_unsafe(input, world);
             self.sys.queue_deferred(world.into_deferred());
         }
+        Box::new(out)
     }
 }
 
-type CachedSystem = Cached<Box<dyn for<'w> ErasedNestedSystem<'w>>>;
+type CachedSystem = Cached<Box<dyn ErasedNestedSystem>>;
 
 #[derive(Resource, Default)]
 pub struct NestedSystemRegistry {
@@ -408,18 +400,15 @@ impl NestedSystemRegistry {
     }
 
     #[allow(private_bounds)]
-    #[track_caller]
     pub fn register<Sys, In, Arg, Out, Marker>(
         world: &mut World,
         s: Sys,
     ) -> NestedSystemId<Arg, Out>
     where
         Sys: IntoSystem<In, Out, Marker>,
-        In: for<'a> SystemInput<Inner<'a> = NestedSystemInput<'a, 'static, (), Arg>> + 'static,
+        In: for<'a> SystemInput<Inner<'a> = NestedSystemInput<'a, (), Arg>> + 'static,
         Arg: 'static,
         Out: 'static,
-        NestedSystem<<Sys as bevy::prelude::IntoSystem<In, Out, Marker>>::System, ()>:
-            for<'w> ErasedNestedSystem<'w>,
     {
         Self::register_with_data(world, s, ())
     }
@@ -427,7 +416,6 @@ impl NestedSystemRegistry {
     #[allow(clippy::type_complexity)]
     // FIXME
     #[allow(private_bounds)]
-    #[track_caller]
     pub fn register_with_data<Sys, In, Data, Arg, Out, Marker>(
         world: &mut World,
         s: Sys,
@@ -435,12 +423,10 @@ impl NestedSystemRegistry {
     ) -> NestedSystemId<Arg, Out>
     where
         Sys: IntoSystem<In, Out, Marker>,
-        In: for<'a> SystemInput<Inner<'a> = NestedSystemInput<'a, 'static, Data, Arg>> + 'static,
+        In: for<'a> SystemInput<Inner<'a> = NestedSystemInput<'a, Data, Arg>> + 'static,
         Data: Clone + Send + Sync + 'static,
         Arg: 'static,
         Out: 'static,
-        NestedSystem<<Sys as bevy::prelude::IntoSystem<In, Out, Marker>>::System, Data>:
-            for<'w> ErasedNestedSystem<'w>,
     {
         let mut sys = IntoSystem::into_system(s);
         sys.initialize(world);
@@ -448,43 +434,45 @@ impl NestedSystemRegistry {
         registry
             .store
             .push(Cached::new(Box::new(NestedSystem::new(sys, data))));
-        NestedSystemId(registry.store.len() - 1, default(), default())
+        NestedSystemId(registry.store.len() - 1, PhantomData)
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct NestedSystemId<Arg = (), Out = ()>(usize, Invariant<Arg>, Invariant<Out>);
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, derive_more::Debug)]
+pub struct NestedSystemId<Arg: 'static = (), Out: 'static = ()>(
+    usize,
+    #[debug(skip)] PhantomData<(Arg, Out)>,
+);
 
 pub struct NestedSystems<'w> {
-    accesses: Vec<(String, Access<ArchetypeComponentId>)>,
+    accesses: &'w mut Vec<(String, Access<ArchetypeComponentId>)>,
     world: UnsafeWorldCell<'w>,
     registry: &'w mut NestedSystemRegistry,
 }
 
 impl NestedSystems<'_> {
-    pub fn scope<'world, R, F: for<'call, 'cell> FnOnce(&'call mut NestedSystems<'cell>) -> R>(
+    pub fn scope<'world, R, F: for<'w> FnOnce(NestedSystems<'w>) -> R>(
         world: &'world mut World,
         f: F,
     ) {
         world.resource_scope(
             |world: &mut World, mut registry: Mut<NestedSystemRegistry>| {
+                let mut accesses = vec![];
                 let mut this = NestedSystems {
-                    accesses: vec![],
+                    accesses: &mut accesses,
                     world: world.as_unsafe_world_cell(),
                     registry: &mut registry,
                 };
-                f(&mut this)
+                f(this)
             },
         );
     }
 
-    #[track_caller]
-    pub fn run_nested<Out>(&mut self, s: NestedSystemId<(), Out>) {
+    pub fn run_nested<Out: 'static>(self, s: NestedSystemId<(), Out>) -> Out {
         self.run_nested_with(s, ())
     }
 
-    #[track_caller]
-    pub fn run_nested_with<Arg, Out>(&mut self, s: NestedSystemId<Arg, Out>, arg: Arg) {
+    pub fn run_nested_with<Arg, Out: 'static>(self, s: NestedSystemId<Arg, Out>, arg: Arg) -> Out {
         let Some(mut sys) = self
             .registry
             .store
@@ -507,17 +495,30 @@ impl NestedSystems<'_> {
             }
         }
         self.accesses.push((sys.name().to_string(), access.clone()));
-        // SAFETY: We've checked that our accesses work out, added this access to the list,
-        //         and we have exclusive ownership of the world.
-        OwningPtr::make(arg, move |ptr| {
-            unsafe {
-                sys.run(self, ptr);
-                sys.queue_deferred(self.world.into_deferred());
-            }
-            // FIXME: Do we need to poison/abort if a panic comes through here? Figure that out.
-            self.accesses.pop();
-        })
+        // SAFETY: The NestedSystemId tells us that arg is the correct type.
+        //         Even if the caller launders it between registries they can't change the type.
+        let world = self.world;
+        let out = OwningPtr::make(arg, |ptr| unsafe { sys.run(self, ptr) });
+        // SAFETY: The only thing we're touching is the command queue,
+        //         we never let any other caller touch that.
+        unsafe {
+            sys.queue_deferred(world.into_deferred());
+        }
+        // FIXME: Do we need to poison/abort if a panic comes through here? Figure that out.
+        // self.accesses.pop();
+        match out.downcast::<Out>() {
+            Ok(out) => *out,
+            Err(_) => panic!(
+                "Nested system {:?} gave us the wrong output. Expected {}. Yikes!",
+                s,
+                std::any::type_name::<Out>()
+            ),
+        }
     }
+}
+
+fn shorten<'a, 'b: 'a, T>(t: &'b mut T) -> &'a mut T {
+    t
 }
 
 #[cfg(test)]
@@ -542,7 +543,7 @@ mod test {
     type IdWC1 = NestedSystemId;
 
     fn r_c1(
-        Nested(ns, data, (arg, id_r_c1_again, id_rw_c2_c3, id_w_c1)): Nested<
+        NestedWith(ns, data, (arg, id_r_c1_again, id_rw_c2_c3, id_w_c1)): NestedWith<
             f32,
             (u32, IdRC1Again, IdRwC2C3, IdWC1),
         >,
@@ -553,15 +554,18 @@ mod test {
         assert_eq!(data, DATA);
         ns.run_nested_with(id_r_c1_again, (id_rw_c2_c3, id_w_c1));
     }
-    fn r_c1_again(WithArg(ns, (id_rw_c2_c3, id_w_c1)): WithArg<(IdRwC2C3, IdWC1)>, _q: Query<&C1>) {
+    fn r_c1_again(
+        NestedWithArg(ns, (id_rw_c2_c3, id_w_c1)): NestedWithArg<(IdRwC2C3, IdWC1)>,
+        _q: Query<&C1>,
+    ) {
         info!("r_c1_again");
         ns.run_nested_with(id_rw_c2_c3, id_w_c1);
     }
-    fn rw_c2_c3(WithArg(ns, id_w_c1): WithArg<IdWC1>, _q: Query<(&C2, &mut C3)>) {
+    fn rw_c2_c3(NestedWithArg(ns, id_w_c1): NestedWithArg<IdWC1>, _q: Query<(&C2, &mut C3)>) {
         info!("rw_c2_c3");
         ns.run_nested(id_w_c1);
     }
-    fn w_c1(_ns: &mut NestedSystems, _q: Query<&mut C1>) {
+    fn w_c1(_ns: NestedSystems, _q: Query<&mut C1>) {
         error!("w_c1... undefined behaviour... 😔");
     }
 

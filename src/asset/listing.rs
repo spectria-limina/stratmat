@@ -77,8 +77,8 @@ impl<A: Asset> VisitAssetDependencies for AssetListing<A> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct ListingLoader<A>(PhantomData<A>);
+#[derive(Copy, Clone, derive_more::Debug)]
+pub struct ListingLoader<A>(#[debug(skip)] PhantomData<A>);
 
 impl<A> Default for ListingLoader<A> {
     fn default() -> Self {

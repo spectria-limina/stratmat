@@ -78,7 +78,6 @@ pub trait AssetHookExt {
     ///
     /// The system can refer to the [`AssetHookTarget`] as a parameter
     /// to access the loaded resource.
-    #[track_caller]
     fn on_asset_loaded<M, S, A>(&mut self, handle: Handle<A>, system: S)
     where
         M: 'static,
@@ -93,7 +92,6 @@ pub trait AssetHookExt {
     ///
     /// This is identical to `on_asset_loaded` but it can also be
     /// passed system input.
-    #[track_caller]
     fn on_asset_loaded_with<I, M, S, A>(
         &mut self,
         handle: Handle<A>,
@@ -110,7 +108,6 @@ pub trait AssetHookExt {
 }
 
 impl AssetHookExt for World {
-    #[track_caller]
     fn on_asset_loaded_with<I, M, S, A>(
         &mut self,
         handle: Handle<A>,
@@ -132,7 +129,6 @@ impl AssetHookExt for World {
 }
 
 impl AssetHookExt for Commands<'_, '_> {
-    #[track_caller]
     fn on_asset_loaded_with<I, M, S, A>(
         &mut self,
         handle: Handle<A>,
@@ -149,7 +145,6 @@ impl AssetHookExt for Commands<'_, '_> {
     }
 }
 
-#[track_caller]
 fn asset_loaded_run_impl<I, M, S, A>(
     In((handle, system, input)): In<(Handle<A>, S, <I as SystemInput>::Inner<'static>)>,
     world: &mut World,
@@ -373,8 +368,8 @@ unsafe impl<'a, A: Asset> SystemParam for OptionalGlobalAsset<'a, A> {
 }
 unsafe impl<A: Asset> ReadOnlySystemParam for OptionalGlobalAsset<'_, A> {}
 
-#[derive(Component, Clone, Debug, Reflect, Deref)]
-pub struct GlobalAssetPath<A: Asset>(#[deref] AssetPath<'static>, PhantomData<A>);
+#[derive(Component, Clone, derive_more::Debug, Reflect, Deref)]
+pub struct GlobalAssetPath<A: Asset>(#[deref] AssetPath<'static>, #[debug(skip)] PhantomData<A>);
 
 impl<A: Asset> GlobalAssetPath<A> {
     pub fn new<'a>(path: impl Into<AssetPath<'a>>) -> Self {
@@ -422,7 +417,6 @@ pub trait LifecycleExts {
     /// Initialize only the lifecycle. Use this for already-initialized external types.
     fn init_lifecycle<A: Asset>(&mut self) -> &mut Self;
 
-    #[track_caller]
     fn load_global_asset<'a, A: Asset>(&mut self, path: impl Into<AssetPath<'a>>) -> &mut Self;
 }
 
@@ -440,7 +434,6 @@ impl LifecycleExts for App {
             )
     }
 
-    #[track_caller]
     fn load_global_asset<'a, A: Asset>(&mut self, path: impl Into<AssetPath<'a>>) -> &mut Self {
         let world = self.world_mut();
         if !world.contains_resource::<LifecycleRegistration<A>>() {

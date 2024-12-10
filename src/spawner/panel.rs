@@ -1,15 +1,17 @@
+use std::marker::PhantomData;
+
 use bevy::prelude::*;
 use bevy_egui::egui;
-use type_variance::Invariant;
 
 use super::{Spawnable, Spawner};
 use crate::{exts::*, widget::WidgetWith};
 
-#[derive(Component)]
+#[derive(Component, derive_more::Debug, Reflect)]
 pub struct SpawnerPanel<Target> {
     pub spacing: Vec2,
     pub spawners: Vec<Entity>,
-    _t: Invariant<Target>,
+    #[debug(skip)]
+    _ph: PhantomData<Target>,
 }
 
 impl<Target: Spawnable> SpawnerPanel<Target> {
@@ -17,7 +19,7 @@ impl<Target: Spawnable> SpawnerPanel<Target> {
         Self {
             spacing,
             spawners: spawners.into_iter().collect(),
-            _t: default(),
+            _ph: PhantomData,
         }
     }
 

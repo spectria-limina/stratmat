@@ -176,8 +176,9 @@ impl<Target: Spawnable> Spawner<Target> {
 }
 
 /// Plugin for spawner support
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, derive_more::Debug)]
 pub struct SpawnerPlugin<Target> {
+    #[debug(skip)]
     _phantom: PhantomData<Target>,
 }
 
