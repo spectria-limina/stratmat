@@ -44,9 +44,9 @@ type WidgetSystemId = NestedSystemId<InMut<'static, Ui>>;
 
 #[derive(Debug, Copy, Clone)]
 #[derive(Component)]
-pub struct WidgetRegistration(WidgetSystemId);
+pub struct Widget(WidgetSystemId);
 
-impl WidgetRegistration {
+impl Widget {
     pub fn show(&self, nested: &mut NestedSystem, ui: &mut Ui) {
         nested.run_nested_with(self.0, ui)
     }
@@ -54,7 +54,7 @@ impl WidgetRegistration {
 
 #[derive(Debug, Clone, Component)]
 
-pub struct Widget(fn(&mut World, Entity) -> WidgetSystemId);
+pub struct InitWidget(fn(&mut World, Entity) -> WidgetSystemId);
 
 macro_rules! widget {
     ($show:path) => {
@@ -66,7 +66,7 @@ macro_rules! widget {
 type _ItsNotUnusedISwear = NestedSystemRegistry;
 
 #[derive(Component)]
-#[require(Widget(|| widget!(Test::show)))]
+#[require(InitWidget(|| widget!(Test::show)))]
 struct Test;
 
 impl Test {
