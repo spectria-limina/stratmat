@@ -7,7 +7,7 @@ use bevy_egui::{
     EguiContexts,
 };
 
-use crate::ecs::{NestedSystem, NestedSystemId, NestedSystemRegistry, NestedWith};
+use crate::ecs::{NestedSystem, NestedSystemId};
 
 // TODO: TEST TEST TEST
 pub fn egui_contexts_scope<U, F: FnOnce(SystemParamItem<EguiContexts>) -> U>(
@@ -56,21 +56,32 @@ impl Widget {
 
 pub struct InitWidget(fn(&mut World, Entity) -> WidgetSystemId);
 
+#[macro_export]
 macro_rules! widget {
+    () => {
+        $crate::widget!(Self::show)
+    };
     ($show:path) => {
-        Widget(|world: &mut World, id: Entity| -> WidgetSystemId {
-            NestedSystemRegistry::register_with_data(world, $show, id)
+        $crate::widget::InitWidget(|world: &mut World, id: Entity| -> WidgetSystemId {
+            $crate::ecs::nested::NestedSystemRegistry::register_with_data(world, $show, id)
         })
     };
 }
-type _ItsNotUnusedISwear = NestedSystemRegistry;
+#[allow(unused)]
+pub use crate::widget;
 
-#[derive(Component)]
-#[require(InitWidget(|| widget!(Test::show)))]
-struct Test;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::ecs::NestedWith;
 
-impl Test {
-    pub fn show(NestedWith(_ns, _id, InMut(_ui)): NestedWith<Entity, InMut<Ui>>) {
-        // do ui stuff here i guess
+    #[derive(Component)]
+    #[require(InitWidget(|| widget!()))]
+    struct Test;
+
+    impl Test {
+        pub fn show(NestedWith(_ns, _id, InMut(_ui)): NestedWith<Entity, InMut<Ui>>) {
+            // do ui stuff here i guess
+        }
     }
 }
