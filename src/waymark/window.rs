@@ -9,9 +9,9 @@ use bevy_egui::{egui, egui::TextEdit, EguiClipboard};
 use super::{insert_waymark, Preset, Waymark};
 use crate::{
     arena::Arena,
-    ecs::EntityWorldExts,
+    ecs::{EntityWorldExts, NestedSystemExts},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
-    widget::egui_context,
+    widget::{egui_context, WidgetSystemId},
 };
 
 const SPAWNER_SIZE: f32 = 40.0;
@@ -83,10 +83,8 @@ impl WaymarkWindow {
             );
             ui.separator();
 
-            let panel = SpawnerPanel::<Waymark>::new();
-            world
-                .entity_mut(win_id)
-                .run_instanced_with(SpawnerPanel::<Waymark>::show, (ui, panel));
+            let panel_sys_id: WidgetSystemId = todo!();
+            world.run_nested_with(panel_sys_id, ui);
 
             state.apply(world);
         });
@@ -177,7 +175,7 @@ impl Plugin for WaymarkWindowPlugin {
         app.add_plugins(spawner::plugin::<Waymark>())
             .add_systems(Update, WaymarkWindow::show)
             .add_systems(Startup, |mut commands: Commands| {
-                commands.spawn((WaymarkWindow::default(), Name::new("Waymarks")))
+                commands.spawn((WaymarkWindow::default(), Name::new("Waymarks")));
             });
     }
 }

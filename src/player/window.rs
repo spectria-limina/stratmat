@@ -8,9 +8,9 @@ use bevy_egui::egui;
 
 use super::{job::Job, Player, PlayerSprite};
 use crate::{
-    ecs::EntityWorldExts,
+    ecs::{EntityWorldExts, NestedSystemExts},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
-    widget::egui_context,
+    widget::{egui_context, WidgetSystemId},
 };
 
 const SIZE: f32 = 35.0;
@@ -51,12 +51,9 @@ impl PlayerWindow {
         ewin.show(&ctx, |ui| {
             let (mut win_q, _parent_q) = state.get_mut(world);
             let win_id = win_q.single_mut();
+            let panel_sys_id: WidgetSystemId = todo!();
 
-            let panel = crate::spawner::panel::SpawnerPanel::<PlayerSprite>::new();
-            world.entity_mut(win_id).run_instanced_with(
-                crate::spawner::panel::SpawnerPanel::<PlayerSprite>::show,
-                (ui, panel),
-            );
+            world.run_nested_with(panel_sys_id, ui);
 
             state.apply(world);
         });
@@ -104,7 +101,7 @@ impl Plugin for WaymarkWindowPlugin {
         app.add_plugins(spawner::plugin::<PlayerSprite>())
             .add_systems(Update, PlayerWindow::show)
             .add_systems(Startup, |mut commands: Commands| {
-                commands.spawn((PlayerWindow, Name::new("Players")))
+                commands.spawn((PlayerWindow, Name::new("Players")));
             });
     }
 }

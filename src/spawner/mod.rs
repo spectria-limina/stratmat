@@ -12,8 +12,8 @@ use bevy_egui::{self, egui, EguiUserTextures};
 use itertools::Itertools;
 
 use crate::{
-    ecs::{EntityExts, EntityExtsOf},
-    widget::WidgetIn,
+    ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
+    widget::{WidgetCtx, WidgetSystemId},
 };
 
 pub mod panel;
@@ -144,7 +144,7 @@ impl<T: Spawnable> Spawner<T> {
     }
 
     pub fn show(
-        WidgetIn(id, mut ui): WidgetIn,
+        WidgetCtx { ns: _ns, id, ui }: WidgetCtx,
         spawner_q: Query<(&Spawner<T>, &SpawnerTextureId)>,
         mut pointer_ev: EventWriter<PointerHits>,
     ) -> egui::Response {
@@ -230,7 +230,13 @@ mod test {
     use float_eq::assert_float_eq;
 
     use super::*;
-    use crate::{drag, ecs::EntityWorldExts, testing::*, waymark::Waymark, widget::egui_context};
+    use crate::{
+        drag,
+        ecs::{EntityWorldExts, NestedSystemExts},
+        testing::*,
+        waymark::Waymark,
+        widget::{egui_context, WidgetSystemId},
+    };
 
     #[derive(Default, Resource)]
     struct TestWinPos(egui::Pos2);
@@ -245,9 +251,8 @@ mod test {
             .show(&ctx, |ui| {
                 let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
                 let id = q.single(world);
-                world
-                    .entity_mut(id)
-                    .run_instanced_with(Spawner::<Waymark>::show, ui);
+                let panel_sys_id: WidgetSystemId = todo!();
+                world.run_nested_with(panel_sys_id, ui);
             });
     }
 

@@ -5,8 +5,8 @@ use bevy_egui::egui;
 
 use super::{Spawnable, Spawner};
 use crate::{
-    ecs::EntityWorldExts as _,
-    widget::{widget, InitWidget, WidgetWith},
+    ecs::{EntityWorldExts as _, NestedSystemExts},
+    widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
 };
 
 #[derive(Component, derive_more::Debug, Reflect)]
@@ -19,7 +19,7 @@ pub struct SpawnerPanel<T: Spawnable> {
 impl<T: Spawnable> SpawnerPanel<T> {
     pub fn new() -> Self { Self { _ph: PhantomData } }
 
-    pub fn show(WidgetWith(_id, ui, In(this)): WidgetWith<In<Self>>, world: &mut World) {
+    pub fn show(WidgetCtx { ns: _ns, id, ui }: WidgetCtx, world: &mut World) {
         ui.add_space(T::sep().y);
         let frame = egui::Frame {
             outer_margin: egui::Margin::symmetric(T::sep().x, T::sep().y) / 2.0,
@@ -31,11 +31,10 @@ impl<T: Spawnable> SpawnerPanel<T> {
                     .with_main_wrap(true)
                     .with_main_align(egui::Align::Center),
                 |ui| {
-                    ui.spacing_mut().item_spacing = egui::Vec2::new(this.spacing.x, this.spacing.y);
-                    for &id in &this.spawners {
-                        world
-                            .entity_mut(id)
-                            .run_instanced_with(Spawner::<T>::show, ui);
+                    ui.spacing_mut().item_spacing = egui::Vec2::new(T::sep().x, T::sep().y);
+                    let spawners: Vec<WidgetSystemId> = todo!();
+                    for id in spawners {
+                        world.run_nested_with(id, ui);
                     }
                 },
             )
