@@ -7,6 +7,9 @@
 #![allow(internal_features)]
 #![cfg_attr(any(docsrs, docsrs_dep), feature(rustdoc_internals))]
 
+#[cfg(all(feature = "winit", feature = "dom"))]
+compile_error!("Features 'winit' and 'dom' are incompatible.");
+
 use std::path::{Path, PathBuf};
 
 use avian2d::prelude::*;
