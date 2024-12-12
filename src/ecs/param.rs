@@ -1,10 +1,13 @@
-use std::{any::TypeId, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData, mem::ManuallyDrop};
 
 use bevy::{
     ecs::system::{LocalBuilder, SystemMeta, SystemParam},
     prelude::{SystemParamBuilder, *},
+    utils::all_tuples,
 };
 use derive_where::derive_where;
+
+use super::GivenBuilder;
 
 pub trait ICantBelieveItsNotClone {
     type Butter;
@@ -19,6 +22,10 @@ impl<C: Clone> ICantBelieveItsNotClone for &C {
 impl<T: Clone> ICantBelieveItsNotClone for LocalBuilder<T> {
     type Butter = Self;
     fn i_cant_believe_its_not_clone(&self) -> Self::Butter { LocalBuilder(self.0.clone()) }
+}
+impl ICantBelieveItsNotClone for GivenBuilder {
+    type Butter = Self;
+    fn i_cant_believe_its_not_clone(&self) -> Self::Butter { self.clone() }
 }
 
 #[derive_where(Copy, Clone; IfP, ElseQ)]
@@ -57,54 +64,67 @@ where
         let p_ty = TypeId::of::<P>();
         let q_ty = TypeId::of::<Q>();
         if p_ty == q_ty {
-            let mut out: ParamState<P> = self.i.build(world, meta);
+            let mut out = ManuallyDrop::<ParamState<P>>::new(self.i.build(world, meta));
             // SAFETY: We proved above that P == Q, so this operations are valid by substitution.
             //         There are also no implicit hidden lifetime parameters in ParamState.
-            unsafe { (&mut out as *mut ParamState<P> as *mut ParamState<Q>).read() }
+            unsafe { (&mut out as *mut _ as *mut ParamState<Q>).read() }
         } else {
             self.e.build(world, meta)
         }
     }
 }
 
-pub fn overlay_matching<OParam, OBuilder, Param1, Param2, Builder1, Builder2>(
-    overlay: OBuilder,
-    (builder1, builder2): (Builder1, Builder2),
-) -> (
-    OverlayBuilder<OParam, Param1, OBuilder, Builder1>,
-    OverlayBuilder<OParam, Param2, OBuilder, Builder2>,
-)
-where
-    OParam: SystemParam + 'static,
-    OBuilder: SystemParamBuilder<OParam> + ICantBelieveItsNotClone<Butter = OBuilder>,
-    Param1: SystemParam + 'static,
-    Param2: SystemParam + 'static,
-    Builder1: SystemParamBuilder<Param1>,
-    Builder2: SystemParamBuilder<Param2>,
-{
-    (
-        OverlayBuilder::new(overlay.i_cant_believe_its_not_clone(), builder1),
-        OverlayBuilder::new(overlay, builder2),
-    )
+pub trait OverlayMatching<Param: SystemParam> {
+    type Param<OParam, OBuilder>;
+
+    fn overlay_matching<OParam, OBuilder>(self, overlay: OBuilder) -> Self::Param<OParam, OBuilder>
+    where
+        OParam: SystemParam + 'static,
+        OBuilder: SystemParamBuilder<OParam> + ICantBelieveItsNotClone<Butter = OBuilder>;
 }
+
+macro_rules! overlay_matching {
+    ($(#[$meta:meta])* $(($Param:ident, $Builder:ident, $builder:ident)),*) => {
+        $(#[$meta:meta])*
+        #[allow(unused)]
+        impl<$($Param,)* $($Builder,)*> OverlayMatching<($($Param,)*)> for ($($Builder,)*)
+        where
+            $($Param: SystemParam + 'static,)*
+            $($Builder: SystemParamBuilder<$Param>,)*
+        {
+            type Param<OParam, OBuilder> = ($(OverlayBuilder<OParam, $Param, OBuilder, $Builder>,)*);
+
+            fn overlay_matching<OParam, OBuilder>(
+                self,
+                overlay: OBuilder,
+            ) -> Self::Param<OParam, OBuilder>
+            where
+                OParam: SystemParam + 'static,
+                OBuilder: SystemParamBuilder<OParam> + ICantBelieveItsNotClone<Butter = OBuilder>,
+            {
+                let ($($builder,)*) = self;
+                ($(OverlayBuilder::new(overlay.i_cant_believe_its_not_clone(), $builder),)*)
+            }
+        }
+    };
+}
+all_tuples!(overlay_matching, 0, 16, Param, Builder, builder);
 
 #[cfg(test)]
 mod test {
     use bevy::ecs::system::{LocalBuilder, ParamBuilder};
 
     use super::*;
+    use crate::ecs::{Given, GivenBuilder};
 
     #[test]
     fn overlay_eq() {
         let mut world = World::new();
 
         let overlay = LocalBuilder(true);
-        let builder = OverlayBuilder::<Local<bool>, Local<bool>, _, _>::new(
-            overlay,
-            ParamBuilder::of::<Local<bool>>(),
-        );
+        let builder = (ParamBuilder::of::<Local<bool>>(),).overlay_matching(overlay);
 
-        let mut sys = (builder,)
+        let mut sys = builder
             .build_state(&mut world)
             .build_any_system(|b: Local<bool>| *b);
 
@@ -118,10 +138,9 @@ mod test {
         let mut world = World::new();
 
         let overlay = LocalBuilder(1);
-        let builder =
-            OverlayBuilder::<Local<u32>, _, _, _>::new(overlay, ParamBuilder::of::<Local<bool>>());
+        let builder = (ParamBuilder::of::<Local<bool>>(),).overlay_matching(overlay);
 
-        let mut sys = (builder,)
+        let mut sys = builder
             .build_state(&mut world)
             .build_any_system(|b: Local<bool>| *b);
 
@@ -143,7 +162,7 @@ mod test {
                 )
             };
         }
-        let overlay_builder = overlay_matching(overlay, builder!());
+        let overlay_builder = builder!().overlay_matching(overlay);
 
         let sys_fn = |u: Local<u32>, b: Local<bool>| (*u, *b);
         let mut sys = builder!().build_state(&mut world).build_any_system(sys_fn);
@@ -157,5 +176,51 @@ mod test {
         // Check that the no-overlay version had a different result first, to test the test.
         assert_eq!(result, (0, false));
         assert_eq!(overlay_result, (0, true));
+    }
+
+    #[test]
+    fn overlay_given() {
+        let mut world = World::new();
+
+
+        #[derive(Component)]
+        struct Target;
+        #[derive(Component)]
+        struct PowerLevel(f32);
+        #[derive(Resource)]
+        struct ThagomizerLocked(Option<Entity>);
+
+        let target_id = world.spawn((Name::new("Target"), Target)).id();
+        // .5 is representable exactly
+        let high_power_id = world.spawn(PowerLevel(9000.5)).id();
+        let _low_power_id = world.spawn(PowerLevel(8999.5)).id();
+        world.insert_resource(ThagomizerLocked(Some(target_id)));
+
+        let builder = (
+            ParamBuilder::of::<Single<&Name, With<Target>>>(),
+            ParamBuilder::of::<Given<&PowerLevel>>(),
+            ParamBuilder::of::<Res<ThagomizerLocked>>(),
+            ParamBuilder::of::<Commands>(),
+        )
+            .overlay_matching::<Given<&PowerLevel>, _>(GivenBuilder::new(high_power_id));
+
+        fn confirm_thagomizer(
+            target: Single<&Name, With<Target>>,
+            power_level: Given<&PowerLevel>,
+            locked: Res<ThagomizerLocked>,
+            _commands: Commands,
+        ) -> (Option<Entity>, String, f32) {
+            (locked.0, target.to_string(), power_level.get().0)
+        }
+        let mut overlay_sys = builder
+            .build_state(&mut world)
+            .build_system(confirm_thagomizer);
+
+        let confirmation = overlay_sys.run((), &mut world);
+
+        assert_eq!(
+            confirmation,
+            (Some(target_id), "Target".to_string(), 9000.5)
+        );
     }
 }

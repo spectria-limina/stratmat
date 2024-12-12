@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use bevy::ecs::{
-    query::{QueryData, QueryItem, ROQueryItem},
+    query::{QueryData, QueryItem, ROQueryItem, WorldQuery},
     system::{ParamBuilder, SystemParam},
 };
 pub use bevy::prelude::*;
@@ -25,15 +25,6 @@ impl<'w, 's, D: QueryData, Label> Given<'w, 's, D, Label> {
 
     pub fn get(&self) -> ROQueryItem<D> { self.query.get(self.given).unwrap() }
     pub fn get_mut(&mut self) -> QueryItem<D> { self.query.get_mut(self.given).unwrap() }
-}
-
-impl<'w, 's, D: QueryData, Label> Deref for Given<'w, 's, D, Label> {
-    type Target = D;
-
-    fn deref(&self) -> &Self::Target { todo!() }
-}
-impl<'w, 's, D: QueryData, Label> DerefMut for Given<'w, 's, D, Label> {
-    fn deref_mut(&mut self) -> &mut Self::Target { todo!() }
 }
 
 unsafe impl<'w, 's, D: QueryData + 'static, Label> SystemParam for Given<'w, 's, D, Label> {
@@ -96,7 +87,8 @@ unsafe impl<'w, 's, D: QueryData + 'static, Label> SystemParamBuilder<Given<'w, 
 mod test {
     use super::*;
 
-    #[cfg(test)]
+    #[test]
+    #[should_panic]
     fn no_val_panic() {
         let mut world = World::new();
 
@@ -107,7 +99,7 @@ mod test {
         let _result: Entity = sys.run((), &mut world);
     }
 
-    #[cfg(test)]
+    #[test]
     fn entity() {
         let mut world = World::new();
 
@@ -121,7 +113,7 @@ mod test {
         assert_eq!(result, entity);
     }
 
-    #[cfg(test)]
+    #[test]
     fn component() {
         let mut world = World::new();
 
@@ -135,6 +127,6 @@ mod test {
 
         let result: u32 = sys.run((), &mut world);
 
-        assert_eq!(result, 32);
+        assert_eq!(result, 8);
     }
 }

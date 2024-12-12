@@ -3,6 +3,9 @@
 #![allow(unexpected_cfgs)]
 // I'll clean em up later
 #![allow(unused_imports)]
+// `rustdoc_internals` is needed for `#[doc(fake_variadics)]`
+#![allow(internal_features)]
+#![cfg_attr(any(docsrs, docsrs_dep), feature(rustdoc_internals))]
 
 use std::path::{Path, PathBuf};
 
