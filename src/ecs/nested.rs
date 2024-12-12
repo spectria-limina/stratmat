@@ -15,8 +15,8 @@ use super::*;
 
 pub type ArgInner<'a, Arg> = <Arg as SystemInput>::Inner<'a>;
 pub type ArgParam<'a, Arg> = <Arg as SystemInput>::Param<'a>;
-pub type NestedSystemArg<'a, Data, Arg> = NestedSystemArgInner<'a, Data, ArgInner<'a, Arg>>;
-pub type NestedSystemArgInner<'a, Data, ArgInner> = (&'a mut NestedSystem<'a>, Data, ArgInner);
+pub type NestedSystemArg<'a, Arg> = NestedSystemArgInner<'a, ArgInner<'a, Arg>>;
+pub type NestedSystemArgInner<'a, ArgInner> = (&'a mut NestedSystem<'a>, ArgInner);
 
 pub trait HasInnerArg {
     type InnerArg: SystemInput;
@@ -24,9 +24,9 @@ pub trait HasInnerArg {
 
 impl SystemInput for &mut NestedSystem<'_> {
     type Param<'i> = &'i mut NestedSystem<'i>;
-    type Inner<'i> = NestedSystemArg<'i, (), ()>;
+    type Inner<'i> = NestedSystemArg<'i, ()>;
 
-    fn wrap((ns, _, _): Self::Inner<'_>) -> Self::Param<'_> { ns }
+    fn wrap((ns, _): Self::Inner<'_>) -> Self::Param<'_> { ns }
 }
 impl HasInnerArg for &mut NestedSystem<'_> {
     type InnerArg = ();
@@ -36,14 +36,15 @@ pub struct NestedWithArg<'a, Arg: SystemInput>(pub &'a mut NestedSystem<'a>, pub
 
 impl<Arg: SystemInput> SystemInput for NestedWithArg<'_, Arg> {
     type Param<'i> = NestedWithArg<'i, ArgParam<'i, Arg>>;
-    type Inner<'i> = NestedSystemArg<'i, (), Arg>;
+    type Inner<'i> = NestedSystemArg<'i, Arg>;
 
-    fn wrap((ns, _, arg): Self::Inner<'_>) -> Self::Param<'_> { NestedWithArg(ns, Arg::wrap(arg)) }
+    fn wrap((ns, arg): Self::Inner<'_>) -> Self::Param<'_> { NestedWithArg(ns, Arg::wrap(arg)) }
 }
 impl<Arg: SystemInput> HasInnerArg for NestedWithArg<'_, Arg> {
     type InnerArg = Arg;
 }
 
+/*
 pub struct NestedWithData<'a, Data>(pub &'a mut NestedSystem<'a>, pub Data);
 
 impl<Data> SystemInput for NestedWithData<'_, Data> {
@@ -69,19 +70,18 @@ impl<Data, Arg: SystemInput> SystemInput for NestedWith<'_, Data, Arg> {
 impl<Data, Arg: SystemInput> HasInnerArg for NestedWith<'_, Data, Arg> {
     type InnerArg = Arg;
 }
+    */
 
 
-struct SystemWithData<Sys, Data, Arg> {
+struct SystemWithData<Sys, Arg> {
     sys: Sys,
-    data: Data,
     _ph: PhantomData<fn(Arg)>,
 }
 
-impl<Sys, Data, Arg> SystemWithData<Sys, Data, Arg> {
-    fn new(sys: Sys, data: Data) -> Self {
+impl<Sys, Arg> SystemWithData<Sys, Arg> {
+    fn new(sys: Sys) -> Self {
         Self {
             sys,
-            data,
             _ph: PhantomData,
         }
     }
@@ -103,11 +103,10 @@ pub trait DynNestedSystem: Send + Sync {
     ) -> Box<dyn Any>;
 }
 
-impl<Sys, Data, Arg: SystemInput> DynNestedSystem for SystemWithData<Sys, Data, Arg>
+impl<Sys, Arg: SystemInput> DynNestedSystem for SystemWithData<Sys, Arg>
 where
     Sys: System,
-    <Sys as System>::In: for<'a> SystemInput<Inner<'a> = NestedSystemArg<'a, Data, Arg>>,
-    Data: Clone + Send + Sync,
+    <Sys as System>::In: for<'a> SystemInput<Inner<'a> = NestedSystemArg<'a, Arg>>,
 {
     fn name(&self) -> Cow<'static, str> { self.sys.name() }
     fn update_archetype_component_access(&mut self, world: UnsafeWorldCell<'_>) {
@@ -124,7 +123,7 @@ where
         nested.reborrow_scope(move |nested| {
             let world = nested.world;
             // SAFETY: This is guaranteed safe by our only caller
-            let input: SystemIn<Sys> = (nested, self.data.clone(), unsafe { inner_arg.read() });
+            let input: SystemIn<Sys> = (nested, unsafe { inner_arg.read() });
             let out = unsafe { self.sys.run_unsafe(input, world) };
             unsafe {
                 self.sys.queue_deferred(world.into_deferred());
@@ -141,6 +140,9 @@ pub struct NestedSystemRegistry {
     store: Vec<CachedSystem>,
 }
 
+type SPFIn<Sys, Marker> = <Sys as SystemParamFunction<Marker>>::In;
+type SPFOut<Sys, Marker> = <Sys as SystemParamFunction<Marker>>::Out;
+
 impl NestedSystemRegistry {
     pub fn new() -> Self { default() }
 
@@ -151,31 +153,54 @@ impl NestedSystemRegistry {
     where
         Sys: IntoSystem<In, Out, Marker>,
         In: HasInnerArg<InnerArg: 'static>,
-        for<'a> In: SystemInput<Inner<'a> = NestedSystemArg<'a, (), <In as HasInnerArg>::InnerArg>>
-            + 'static,
+        for<'a> In:
+            SystemInput<Inner<'a> = NestedSystemArg<'a, <In as HasInnerArg>::InnerArg>> + 'static,
         Out: 'static,
     {
-        Self::register_with_data(world, s, ())
+        Self::register_system(world, IntoSystem::into_system(s))
     }
 
-    pub fn register_with_data<Sys, In, Data, Out, Marker>(
+    pub fn register_with_given<Sys, In, Out, Marker: 'static>(
         world: &mut World,
         s: Sys,
-        data: Data,
-    ) -> NestedSystemId<<In as HasInnerArg>::InnerArg, Out>
+        given: Entity,
+    ) -> NestedSystemId<<SPFIn<Sys, Marker> as HasInnerArg>::InnerArg, SPFOut<Sys, Marker>>
     where
-        Sys: IntoSystem<In, Out, Marker>,
-        In: HasInnerArg<InnerArg: 'static>,
-        for<'a> In: SystemInput<Inner<'a> = NestedSystemArg<'a, Data, <In as HasInnerArg>::InnerArg>>
-            + 'static,
-        Data: Clone + Send + Sync + 'static,
-        Out: 'static,
+        Sys: SystemParamFunction<Marker, Param: 'static> + DefaultBuilder<Marker>,
+        <Sys as DefaultBuilder<Marker>>::Builder:
+            OverlayMatching<<Sys as SystemParamFunction<Marker>>::Param>,
+        SPFIn<Sys, Marker>: HasInnerArg<InnerArg: 'static> + 'static,
+        for<'a> SPFIn<Sys, Marker>: SystemInput<
+            Inner<'a> = NestedSystemArg<'a, <SPFIn<Sys, Marker> as HasInnerArg>::InnerArg>,
+        >,
+        SPFOut<Sys, Marker>: 'static,
     {
-        let mut sys = IntoSystem::into_system(s);
+        let sys = s
+            .default_builder()
+            .overlay_matching::<Given<Entity>, _>(GivenBuilder::new(given))
+            .build_state(world)
+            .build_any_system(s);
+        Self::register_system(world, sys)
+    }
+
+    pub fn register_system<Sys>(
+        world: &mut World,
+        mut sys: Sys,
+    ) -> NestedSystemId<<<Sys as System>::In as HasInnerArg>::InnerArg, <Sys as System>::Out>
+    where
+        Sys: System,
+        <Sys as System>::In: HasInnerArg<InnerArg: 'static> + 'static,
+        for<'a> <Sys as System>::In: SystemInput<
+            Inner<'a> = NestedSystemArg<'a, <<Sys as System>::In as HasInnerArg>::InnerArg>,
+        >,
+        <Sys as System>::Out: 'static,
+    {
         sys.initialize(world);
         let mut registry = world.resource_mut::<NestedSystemRegistry>();
-        let boxed: Box<dyn DynNestedSystem> =
-            Box::new(SystemWithData::<_, Data, <In as HasInnerArg>::InnerArg>::new(sys, data));
+        let boxed: Box<dyn DynNestedSystem> = Box::new(SystemWithData::<
+            _,
+            <<Sys as System>::In as HasInnerArg>::InnerArg,
+        >::new(sys));
         registry.store.push(Cached::new(boxed));
         NestedSystemId(registry.store.len() - 1, PhantomData)
     }
@@ -318,7 +343,7 @@ mod test {
 
     use bevy::log::LogPlugin;
 
-    use super::{super::named, *};
+    use super::*;
 
     #[derive(Component, Default, Debug)]
     struct C1;
@@ -327,7 +352,7 @@ mod test {
     struct C2;
 
     #[derive(Component, Default, Debug)]
-    struct C3;
+    struct C3(f32);
 
     #[derive(Resource, Default, Debug)]
     struct R1;
@@ -341,13 +366,12 @@ mod test {
         app.add_plugins(LogPlugin::default());
 
         app.init_resource::<NestedSystemRegistry>();
-        app.world_mut().spawn((C1, C2, C3));
+        let entity = app.world_mut().spawn((C1, C2, C3(PI))).id();
 
         let wr_c1_c3 = |_ns: &mut NestedSystem, _q: Query<(&mut C1, &C3)>| {
             error!("read/write conflict on C1... undefined behaviour... 😔");
         };
-        let id_wr_c1_c3: NestedSystemId =
-            NestedSystemRegistry::register(app.world_mut(), named!(wr_c1_c3));
+        let id_wr_c1_c3: NestedSystemId = NestedSystemRegistry::register(app.world_mut(), wr_c1_c3);
         let rw_c2_c3 = move |NestedWithArg(_ns, In(arg)): NestedWithArg<In<u32>>,
                              _q: Query<(&C2, &mut C3)>| {
             info!("rw_c2_c3");
@@ -355,19 +379,19 @@ mod test {
             "hi mom!"
         };
         let id_rw_c2_c3: NestedSystemId<In<u32>, &str> =
-            NestedSystemRegistry::register(app.world_mut(), named!(rw_c2_c3));
+            NestedSystemRegistry::register(app.world_mut(), rw_c2_c3);
         let r_c1_again = move |ns: &mut NestedSystem, _q: Query<&C1>| {
             info!("r_c1_again");
             assert_eq!(ns.run_nested_with(id_rw_c2_c3, 1728), "hi mom!");
             ns.run_nested(id_wr_c1_c3);
         };
-        let id_r_c1_again = NestedSystemRegistry::register(app.world_mut(), named!(r_c1_again));
-        let r_c1 = move |NestedWithData(ns, data): NestedWithData<f32>, _q: Query<&C1>| {
+        let id_r_c1_again = NestedSystemRegistry::register(app.world_mut(), r_c1_again);
+        let r_c1 = move |ns: &mut NestedSystem, _q: Query<&C1>, given: Given<&C3>| {
             info!("r_c1");
-            assert_eq!(data, PI);
+            assert_eq!(given.get().0, PI);
             ns.run_nested(id_r_c1_again);
         };
-        let id_r_c1 = NestedSystemRegistry::register_with_data(app.world_mut(), named!(r_c1), PI);
+        let id_r_c1 = NestedSystemRegistry::register_with_given(app.world_mut(), r_c1, entity);
 
         NestedSystem::scope(app.world_mut(), |ns| ns.run_nested(id_r_c1))
     }
@@ -382,26 +406,26 @@ mod test {
         app.init_resource::<NestedSystemRegistry>();
         app.init_resource::<R1>();
         app.init_resource::<R2>();
-        app.world_mut().spawn((C1, C2, C3));
-        app.world_mut().spawn((C1, C2, C3));
-        app.world_mut().spawn((C1, C2, C3));
-        app.world_mut().spawn((C1, C2, C3));
+        app.world_mut().spawn((C1, C2, C3(0.0)));
+        app.world_mut().spawn((C1, C2, C3(1.0)));
+        app.world_mut().spawn((C1, C2, C3(2.0)));
+        app.world_mut().spawn((C1, C2, C3(3.0)));
 
         let rsr_wac =
             |_ns: &mut NestedSystem, _r1: Res<R1>, _r2: Res<R2>, _wsc: Query<EntityMut>| {
                 error!("... undefined behaviour... 😔");
             };
-        let id_rsr_wac = NestedSystemRegistry::register(app.world_mut(), named!(rsr_wac));
+        let id_rsr_wac = NestedSystemRegistry::register(app.world_mut(), rsr_wac);
         let rnr_rac = move |ns: &mut NestedSystem, _rac: Query<EntityRef>| {
             info!("rne_rac");
             ns.run_nested(id_rsr_wac);
         };
-        let id_rnr_rac = NestedSystemRegistry::register(app.world_mut(), named!(rnr_rac));
+        let id_rnr_rac = NestedSystemRegistry::register(app.world_mut(), rnr_rac);
         let wsr_rsc = move |ns: &mut NestedSystem, _wsr: ResMut<R1>, _rsc: Query<&C1>| {
             info!("r_c1_again");
             ns.run_nested(id_rnr_rac);
         };
-        let id_wsr_rsc = NestedSystemRegistry::register(app.world_mut(), named!(wsr_rsc));
+        let id_wsr_rsc = NestedSystemRegistry::register(app.world_mut(), wsr_rsc);
 
         NestedSystem::scope(app.world_mut(), |ns| ns.run_nested(id_wsr_rsc))
     }

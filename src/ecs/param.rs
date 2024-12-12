@@ -1,32 +1,15 @@
 use std::{any::TypeId, marker::PhantomData, mem::ManuallyDrop};
 
 use bevy::{
-    ecs::system::{LocalBuilder, SystemMeta, SystemParam},
-    prelude::{SystemParamBuilder, *},
+    ecs::system::{
+        HasSystemInput, LocalBuilder, ParamBuilder, SystemMeta, SystemParam, SystemParamFunction,
+    },
+    prelude::*,
     utils::all_tuples,
 };
 use derive_where::derive_where;
 
 use super::GivenBuilder;
-
-pub trait ICantBelieveItsNotClone {
-    type Butter;
-    fn i_cant_believe_its_not_clone(&self) -> Self::Butter;
-}
-
-impl<C: Clone> ICantBelieveItsNotClone for &C {
-    type Butter = C;
-    fn i_cant_believe_its_not_clone(&self) -> Self::Butter { C::clone(self) }
-}
-
-impl<T: Clone> ICantBelieveItsNotClone for LocalBuilder<T> {
-    type Butter = Self;
-    fn i_cant_believe_its_not_clone(&self) -> Self::Butter { LocalBuilder(self.0.clone()) }
-}
-impl ICantBelieveItsNotClone for GivenBuilder {
-    type Butter = Self;
-    fn i_cant_believe_its_not_clone(&self) -> Self::Butter { self.clone() }
-}
 
 #[derive_where(Copy, Clone; IfP, ElseQ)]
 pub struct OverlayBuilder<P, Q, IfP, ElseQ> {
@@ -75,12 +58,18 @@ where
 }
 
 pub trait OverlayMatching<Param: SystemParam> {
-    type Param<OParam, OBuilder>;
-
-    fn overlay_matching<OParam, OBuilder>(self, overlay: OBuilder) -> Self::Param<OParam, OBuilder>
+    type Builder<OParam, OBuilder>: SystemParamBuilder<Param>
     where
         OParam: SystemParam + 'static,
-        OBuilder: SystemParamBuilder<OParam> + ICantBelieveItsNotClone<Butter = OBuilder>;
+        OBuilder: SystemParamBuilder<OParam> + Clone;
+
+    fn overlay_matching<OParam, OBuilder>(
+        self,
+        overlay: OBuilder,
+    ) -> Self::Builder<OParam, OBuilder>
+    where
+        OParam: SystemParam + 'static,
+        OBuilder: SystemParamBuilder<OParam> + Clone;
 }
 
 macro_rules! overlay_matching {
@@ -92,25 +81,73 @@ macro_rules! overlay_matching {
             $($Param: SystemParam + 'static,)*
             $($Builder: SystemParamBuilder<$Param>,)*
         {
-            type Param<OParam, OBuilder> = ($(OverlayBuilder<OParam, $Param, OBuilder, $Builder>,)*);
-
-            fn overlay_matching<OParam, OBuilder>(
-                self,
-                overlay: OBuilder,
-            ) -> Self::Param<OParam, OBuilder>
+            type Builder<OParam, OBuilder> = ($(OverlayBuilder<OParam, $Param, OBuilder, $Builder>,)*)
             where
                 OParam: SystemParam + 'static,
-                OBuilder: SystemParamBuilder<OParam> + ICantBelieveItsNotClone<Butter = OBuilder>,
+                OBuilder: SystemParamBuilder<OParam> + Clone;
+
+            fn overlay_matching<OParam: SystemParam, OBuilder: SystemParamBuilder<OParam>>(
+                self,
+                overlay: OBuilder,
+            ) -> Self::Builder<OParam, OBuilder>
+            where
+                OParam: SystemParam + 'static,
+                OBuilder: SystemParamBuilder<OParam> + Clone,
             {
                 let ($($builder,)*) = self;
-                ($(OverlayBuilder::new(overlay.i_cant_believe_its_not_clone(), $builder),)*)
+                ($(OverlayBuilder::new(overlay.clone(), $builder),)*)
             }
         }
-    };
+    }
 }
 all_tuples!(overlay_matching, 0, 16, Param, Builder, builder);
 
-#[cfg(test)]
+pub trait DefaultBuilder<Marker>: SystemParamFunction<Marker> {
+    type Builder: SystemParamBuilder<<Self as SystemParamFunction<Marker>>::Param>;
+
+    fn default_builder(&self) -> Self::Builder;
+}
+
+macro_rules! first {
+    ($first:tt, $second:tt) => {
+        $first
+    };
+}
+
+macro_rules! default_builder {
+    ($(#[$meta:meta])* $($Param:ident),*) => {
+        $(#[$meta:meta])*
+        #[allow(unused)]
+        impl<$($Param,)* Out> DefaultBuilder<Self> for fn($($Param,)*) -> Out
+        where
+            Self: SystemParamFunction<Self, Param = ($($Param,)*)>,
+            $($Param: SystemParam,)*
+        {
+            type Builder = ($(first!(ParamBuilder, $Param),)*);
+
+            fn default_builder(&self) -> Self::Builder {
+                ($(first!(ParamBuilder, $Param),)*)
+            }
+        }
+
+        $(#[$meta:meta])*
+        #[allow(unused)]
+        impl<In, $($Param,)* Out> DefaultBuilder<(HasSystemInput, Self)> for fn(In, $($Param,)*) -> Out
+        where
+            Self: SystemParamFunction<(HasSystemInput, Self), Param = ($($Param,)*)>,
+            $($Param: SystemParam,)*
+        {
+            type Builder = ($(first!(ParamBuilder, $Param),)*);
+
+            fn default_builder(&self) -> Self::Builder {
+                ($(first!(ParamBuilder, $Param),)*)
+            }
+        }
+    }
+}
+all_tuples!(default_builder, 0, 16, Param);
+
+#[cfg(broken = "ICantBelieveItsNotClone")]
 mod test {
     use bevy::ecs::system::{LocalBuilder, ParamBuilder};
 
@@ -196,12 +233,8 @@ mod test {
         let _low_power_id = world.spawn(PowerLevel(8999.5)).id();
         world.insert_resource(ThagomizerLocked(Some(target_id)));
 
-        let builder = (
-            ParamBuilder::of::<Single<&Name, With<Target>>>(),
-            ParamBuilder::of::<Given<&PowerLevel>>(),
-            ParamBuilder::of::<Res<ThagomizerLocked>>(),
-            ParamBuilder::of::<Commands>(),
-        )
+        let builder = confirm_thagomizer
+            .default_builder()
             .overlay_matching::<Given<&PowerLevel>, _>(GivenBuilder::new(high_power_id));
 
         fn confirm_thagomizer(

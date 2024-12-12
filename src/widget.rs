@@ -63,7 +63,7 @@ macro_rules! widget {
     };
     ($show:path) => {
         $crate::widget::InitWidget(|world: &mut World, id: Entity| -> WidgetSystemId {
-            $crate::ecs::nested::NestedSystemRegistry::register_with_data(world, $show, id)
+            $crate::ecs::nested::NestedSystemRegistry::register_with_given(world, $show, id)
         })
     };
 }
@@ -73,14 +73,14 @@ pub use crate::widget;
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ecs::NestedWith;
+    use crate::ecs::NestedWithArg;
 
     #[derive(Component)]
     #[require(InitWidget(|| widget!()))]
     struct Test;
 
     impl Test {
-        pub fn show(NestedWith(_ns, _id, InMut(_ui)): NestedWith<Entity, InMut<Ui>>) {
+        pub fn show(NestedWithArg(_ns, InMut(_ui)): NestedWithArg<InMut<Ui>>) {
             // do ui stuff here i guess
         }
     }
