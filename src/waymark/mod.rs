@@ -16,7 +16,7 @@ use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{arena::GameCoordOffset, color::AlphaScale, drag::Draggable, spawner::Spawnable};
+use crate::{arena::GameCoordOffset, color::AlphaScale, drag::Draggable};
 
 pub mod window;
 
@@ -283,20 +283,6 @@ pub fn insert_waymark(waymark: Waymark, entry: Option<PresetEntry>) -> impl Enti
     InsertWaymark {
         waymark,
         preset_entry: entry,
-    }
-}
-
-impl Spawnable for Waymark {
-    const UNIQUE: bool = true;
-
-    fn spawner_name(&self) -> std::borrow::Cow<'static, str> { self.name().into() }
-
-    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
-        self.asset_handle(asset_server)
-    }
-
-    fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) {
-        entity.queue(insert_waymark(*self, None));
     }
 }
 

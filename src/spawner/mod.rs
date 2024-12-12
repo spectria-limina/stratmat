@@ -27,6 +27,9 @@ const SPAWNER_DISABLED_ALPHA: u8 = 25;
 pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug {
     const UNIQUE: bool;
 
+    fn size() -> Vec2;
+    fn sep() -> Vec2;
+
     fn spawner_name(&self) -> Cow<'static, str>;
     fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image>;
     fn insert(&self, entity: &mut EntityCommands);
@@ -36,10 +39,10 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 ///
 /// Rendered using egui, not the normal logic.
 #[derive(Debug, Clone, Component)]
-#[component(on_add = Spawner::<Target>::on_add)]
-#[component(on_remove = Spawner::<Target>::on_remove)]
-pub struct Spawner<Target: Spawnable> {
-    pub target: Target,
+#[component(on_add = Spawner::<T>::on_add)]
+#[component(on_remove = Spawner::<T>::on_remove)]
+pub struct Spawner<T: Spawnable> {
+    pub target: T,
     pub image: Handle<Image>,
     pub size: Vec2,
     pub enabled: bool,
@@ -48,12 +51,12 @@ pub struct Spawner<Target: Spawnable> {
 #[derive(Debug, Copy, Clone, Component)]
 pub struct SpawnerTextureId(egui::TextureId);
 
-impl<Target: Spawnable> Spawner<Target> {
-    pub fn new(target: Target, image: Handle<Image>, size: Vec2) -> Self {
+impl<T: Spawnable> Spawner<T> {
+    pub fn new(target: T, image: Handle<Image>) -> Self {
         Self {
             target,
             image,
-            size,
+            size: T::size(),
             enabled: true,
         }
     }
@@ -84,7 +87,7 @@ impl<Target: Spawnable> Spawner<Target> {
     }
 
     // TODO: TEST TEST TEST
-    pub fn update_enabled_state(mut q: Query<&mut Spawner<Target>>, target_q: Query<&Target>) {
+    pub fn update_enabled_state(mut q: Query<&mut Spawner<T>>, target_q: Query<&T>) {
         for mut spawner in &mut q {
             spawner.enabled = !target_q.iter().contains(&spawner.target);
         }
@@ -99,7 +102,7 @@ impl<Target: Spawnable> Spawner<Target> {
     /// Panics if there is more than one camera.
     pub fn start_drag(
         ev: Trigger<Pointer<DragStart>>,
-        spawner_q: Query<(&Spawner<Target>, Option<&Parent>)>,
+        spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
         camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
@@ -141,8 +144,8 @@ impl<Target: Spawnable> Spawner<Target> {
     }
 
     pub fn show(
-        WidgetIn(id, ui): WidgetIn,
-        spawner_q: Query<(&Spawner<Target>, &SpawnerTextureId)>,
+        WidgetIn(id, mut ui): WidgetIn,
+        spawner_q: Query<(&Spawner<T>, &SpawnerTextureId)>,
         mut pointer_ev: EventWriter<PointerHits>,
     ) -> egui::Response {
         let (spawner, texture_id) = spawner_q.get(id).unwrap();
@@ -252,7 +255,6 @@ mod test {
         commands.spawn(Spawner::new(
             Waymark::A,
             asset_server.load(Waymark::A.asset_path()),
-            Vec2::splat(SPAWNER_SIZE),
         ));
         commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
             Vec2::ZERO,

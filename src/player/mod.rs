@@ -43,21 +43,6 @@ impl PlayerSprite {
             .map_or(Job::none_asset_path(), Job::icon_asset_path)
     }
 }
-
-impl Spawnable for PlayerSprite {
-    const UNIQUE: bool = true;
-
-    fn spawner_name(&self) -> std::borrow::Cow<'static, str> {
-        format!("{:#?} Spawner", self.job).into()
-    }
-
-    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
-        asset_server.load(self.asset_path())
-    }
-
-    fn insert(&self, entity: &mut EntityCommands) { entity.insert((Player {}, *self)); }
-}
-
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {

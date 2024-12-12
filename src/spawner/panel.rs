@@ -4,29 +4,25 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use super::{Spawnable, Spawner};
-use crate::{ecs::EntityWorldExts as _, widget::WidgethWithIn};
+use crate::{
+    ecs::EntityWorldExts as _,
+    widget::{widget, InitWidget, WidgetWith},
+};
 
 #[derive(Component, derive_more::Debug, Reflect)]
-pub struct SpawnerPanel<Target> {
-    pub spacing: Vec2,
-    pub spawners: Vec<Entity>,
+#[require(InitWidget(|| widget!()))]
+pub struct SpawnerPanel<T: Spawnable> {
     #[debug(skip)]
-    _ph: PhantomData<Target>,
+    _ph: PhantomData<T>,
 }
 
-impl<Target: Spawnable> SpawnerPanel<Target> {
-    pub fn new(spacing: Vec2, spawners: impl IntoIterator<Item = Entity>) -> Self {
-        Self {
-            spacing,
-            spawners: spawners.into_iter().collect(),
-            _ph: PhantomData,
-        }
-    }
+impl<T: Spawnable> SpawnerPanel<T> {
+    pub fn new() -> Self { Self { _ph: PhantomData } }
 
-    pub fn show(WidgethWithIn(_id, ui, this): WidgethWithIn<Self>, world: &mut World) {
-        ui.add_space(this.spacing.y);
+    pub fn show(WidgetWith(_id, ui, In(this)): WidgetWith<In<Self>>, world: &mut World) {
+        ui.add_space(T::sep().y);
         let frame = egui::Frame {
-            outer_margin: egui::Margin::symmetric(this.spacing.x, this.spacing.y) / 2.0,
+            outer_margin: egui::Margin::symmetric(T::sep().x, T::sep().y) / 2.0,
             ..default()
         };
         frame.show(ui, |ui| {
@@ -39,7 +35,7 @@ impl<Target: Spawnable> SpawnerPanel<Target> {
                     for &id in &this.spawners {
                         world
                             .entity_mut(id)
-                            .run_instanced_with(Spawner::<Target>::show, ui);
+                            .run_instanced_with(Spawner::<T>::show, ui);
                     }
                 },
             )

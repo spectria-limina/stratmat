@@ -1,19 +1,38 @@
 //! Waymark tray and associated code.
 
-use bevy::{ecs::system::SystemState, prelude::*};
+use bevy::{
+    ecs::{component::ComponentId, system::SystemState, world::DeferredWorld},
+    prelude::*,
+};
 use bevy_egui::{egui, egui::TextEdit, EguiClipboard};
 
-use super::{Preset, Waymark};
+use super::{insert_waymark, Preset, Waymark};
 use crate::{
     arena::Arena,
     ecs::EntityWorldExts,
-    spawner::{self, Spawner},
+    spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
     widget::egui_context,
 };
 
-/// The size of waymark spawner, in pixels.
-const WAYMARK_SPAWNER_SIZE: f32 = 40.0;
-const WAYMARK_SPAWNER_SEP: f32 = 5.0;
+const SPAWNER_SIZE: f32 = 40.0;
+const SPAWNER_SEP: f32 = 5.0;
+
+impl Spawnable for Waymark {
+    const UNIQUE: bool = true;
+
+    fn size() -> Vec2 { Vec2::splat(SPAWNER_SIZE) }
+    fn sep() -> Vec2 { Vec2::splat(SPAWNER_SEP) }
+
+    fn spawner_name(&self) -> std::borrow::Cow<'static, str> { self.name().into() }
+
+    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
+        self.asset_handle(asset_server)
+    }
+
+    fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) {
+        entity.queue(insert_waymark(*self, None));
+    }
+}
 
 /// A window with controls to manipulate the waymarks.
 #[derive(Debug, Default, Clone, Component, Reflect)]
@@ -28,16 +47,14 @@ impl WaymarkWindow {
         let mut state = SystemState::<(
             Query<(Entity, &mut WaymarkWindow)>,
             Query<&Children>,
-            Query<(Entity, &Spawner<Waymark>)>,
             Commands,
             ResMut<EguiClipboard>,
         )>::new(world);
 
-        let ewin = egui::Window::new("Waymarks")
-            .default_width(4.0 * (WAYMARK_SPAWNER_SIZE + WAYMARK_SPAWNER_SEP));
+        let ewin =
+            egui::Window::new("Waymarks").default_width(4.0 * (Waymark::size() + Waymark::sep()).x);
         ewin.show(&ctx, |ui| {
-            let (mut win_q, parent_q, spawner_q, mut commands, mut clipboard) =
-                state.get_mut(world);
+            let (mut win_q, _parent_q, mut commands, mut clipboard) = state.get_mut(world);
             let (win_id, mut win) = win_q.single_mut();
 
             ui.horizontal(|ui| {
@@ -66,22 +83,10 @@ impl WaymarkWindow {
             );
             ui.separator();
 
-            let mut spawners = parent_q
-                .children(win_id)
-                .iter()
-                .filter_map(|&id| spawner_q.get(id).ok())
-                .map(|(id, spawner)| (id, spawner.clone()))
-                .collect::<Vec<_>>();
-            spawners.sort_by_key(|(_, spawner)| spawner.target);
-
-            let panel = crate::spawner::panel::SpawnerPanel::<Waymark>::new(
-                Vec2::splat(WAYMARK_SPAWNER_SEP),
-                spawners.into_iter().map(|(id, _)| id),
-            );
-            world.entity_mut(win_id).run_instanced_with(
-                crate::spawner::panel::SpawnerPanel::<Waymark>::show,
-                (ui, panel),
-            );
+            let panel = SpawnerPanel::<Waymark>::new();
+            world
+                .entity_mut(win_id)
+                .run_instanced_with(SpawnerPanel::<Waymark>::show, (ui, panel));
 
             state.apply(world);
         });
@@ -143,18 +148,23 @@ impl WaymarkWindow {
     }
 
     /// Setup the window.
-    pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-        commands
-            .spawn(WaymarkWindow::default())
-            .with_children(|parent| {
-                for waymark in enum_iterator::all::<Waymark>() {
-                    parent.spawn(Spawner::<Waymark>::new(
-                        waymark,
-                        asset_server.load(waymark.asset_path()),
-                        Vec2::splat(WAYMARK_SPAWNER_SIZE),
-                    ));
-                }
+    pub fn on_add(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        world.commands().queue(move |world: &mut World| {
+            world.resource_scope(move |world: &mut World, asset_server: Mut<AssetServer>| {
+                world.entity_mut(id).with_children(move |window| {
+                    window
+                        .spawn(SpawnerPanel::<Waymark>::new())
+                        .with_children(move |panel| {
+                            for waymark in enum_iterator::all::<Waymark>() {
+                                panel.spawn(Spawner::<Waymark>::new(
+                                    waymark,
+                                    asset_server.load(waymark.asset_path()),
+                                ));
+                            }
+                        });
+                });
             });
+        });
     }
 }
 
@@ -166,7 +176,9 @@ impl Plugin for WaymarkWindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(spawner::plugin::<Waymark>())
             .add_systems(Update, WaymarkWindow::show)
-            .add_systems(Startup, WaymarkWindow::setup);
+            .add_systems(Startup, |mut commands: Commands| {
+                commands.spawn((WaymarkWindow::default(), Name::new("Waymarks")))
+            });
     }
 }
 
