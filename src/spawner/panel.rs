@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{any::type_name, marker::PhantomData};
 
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -6,7 +6,7 @@ use bevy_egui::egui;
 use super::{Spawnable, Spawner};
 use crate::{
     ecs::{EntityWorldExts as _, NestedSystemExts},
-    widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
+    widget::{widget, InitWidget, Widget, WidgetCtx, WidgetSystemId},
 };
 
 #[derive(Component, derive_more::Debug, Reflect)]
@@ -19,7 +19,12 @@ pub struct SpawnerPanel<T: Spawnable> {
 impl<T: Spawnable> SpawnerPanel<T> {
     pub fn new() -> Self { Self { _ph: PhantomData } }
 
-    pub fn show(WidgetCtx { ns: _ns, id, ui }: WidgetCtx, world: &mut World) {
+    pub fn show(
+        WidgetCtx { ns, id, ui }: WidgetCtx,
+        spawner_q: Query<&Widget, With<Spawner<T>>>,
+        children_q: Query<&Children>,
+    ) {
+        debug!("Drawing SpawnerPanel<{:?}>", type_name::<T>());
         ui.add_space(T::sep().y);
         let frame = egui::Frame {
             outer_margin: egui::Margin::symmetric(T::sep().x, T::sep().y) / 2.0,
@@ -32,9 +37,8 @@ impl<T: Spawnable> SpawnerPanel<T> {
                     .with_main_align(egui::Align::Center),
                 |ui| {
                     ui.spacing_mut().item_spacing = egui::Vec2::new(T::sep().x, T::sep().y);
-                    let spawners: Vec<WidgetSystemId> = todo!();
-                    for id in spawners {
-                        world.run_nested_with(id, ui);
+                    for spawner in spawner_q.iter_many(children_q.children(id)) {
+                        spawner.show(ns, ui);
                     }
                 },
             )

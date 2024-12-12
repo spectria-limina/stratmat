@@ -70,7 +70,6 @@ impl<Data, Arg: SystemInput> HasInnerArg for NestedWith<'_, Data, Arg> {
     type InnerArg = Arg;
 }
 
-
 struct SystemWithData<Sys, Data, Arg> {
     sys: Sys,
     data: Data,
@@ -126,9 +125,6 @@ where
             // SAFETY: This is guaranteed safe by our only caller
             let input: SystemIn<Sys> = (nested, self.data.clone(), unsafe { inner_arg.read() });
             let out = unsafe { self.sys.run_unsafe(input, world) };
-            unsafe {
-                self.sys.queue_deferred(world.into_deferred());
-            }
             Box::new(out)
         })
     }
@@ -277,7 +273,7 @@ impl NestedSystem<'_> {
         }
         self.registry.store[s.0] = Cached::Stored(sys);
         // FIXME: Do we need to poison/abort if a panic comes through here? Figure that out.
-        // self.accesses.pop();
+        self.accesses.pop();
         match out.downcast::<Out>() {
             Ok(out) => *out,
             Err(_) => panic!(

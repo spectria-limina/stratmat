@@ -107,6 +107,7 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
         .add_plugins(arena::plugin())
         .add_plugins(color::plugin())
         .add_plugins(drag::plugin())
+        .add_plugins(ecs::plugin())
         .add_plugins(player::plugin())
         .add_plugins(player::window::plugin())
         .add_plugins(waymark::plugin())

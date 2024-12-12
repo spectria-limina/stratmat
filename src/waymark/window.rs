@@ -5,13 +5,14 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::{egui, egui::TextEdit, EguiClipboard};
+use itertools::Itertools;
 
 use super::{insert_waymark, Preset, Waymark};
 use crate::{
     arena::Arena,
     ecs::{EntityWorldExts, NestedSystemExts},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
-    widget::{egui_context, WidgetSystemId},
+    widget::{egui_context, Widget, WidgetSystemId},
 };
 
 const SPAWNER_SIZE: f32 = 40.0;
@@ -36,6 +37,7 @@ impl Spawnable for Waymark {
 
 /// A window with controls to manipulate the waymarks.
 #[derive(Debug, Default, Clone, Component, Reflect)]
+#[component(on_add = Self::on_add)]
 pub struct WaymarkWindow {
     preset_name: String,
 }
@@ -46,6 +48,7 @@ impl WaymarkWindow {
         let ctx = egui_context(world);
         let mut state = SystemState::<(
             Query<(Entity, &mut WaymarkWindow)>,
+            Query<&Widget, With<SpawnerPanel<Waymark>>>,
             Query<&Children>,
             Commands,
             ResMut<EguiClipboard>,
@@ -54,7 +57,8 @@ impl WaymarkWindow {
         let ewin =
             egui::Window::new("Waymarks").default_width(4.0 * (Waymark::size() + Waymark::sep()).x);
         ewin.show(&ctx, |ui| {
-            let (mut win_q, _parent_q, mut commands, mut clipboard) = state.get_mut(world);
+            let (mut win_q, panel_q, children_q, mut commands, mut clipboard) =
+                state.get_mut(world);
             let (win_id, mut win) = win_q.single_mut();
 
             ui.horizontal(|ui| {
@@ -83,8 +87,12 @@ impl WaymarkWindow {
             );
             ui.separator();
 
-            let panel_sys_id: WidgetSystemId = todo!();
-            world.run_nested_with(panel_sys_id, ui);
+            let panel = panel_q
+                .iter_many(children_q.children(win_id))
+                .copied()
+                .exactly_one()
+                .unwrap();
+            panel.show_world(world, ui);
 
             state.apply(world);
         });

@@ -308,3 +308,9 @@ where S: System
     fn validate_param(&mut self, world: &World) -> bool { self.sys.validate_param(world) }
     fn default_system_sets(&self) -> Vec<InternedSystemSet> {self.sys.default_system_sets()  }
 }
+
+pub struct EcsExtensionsPlugin;
+impl Plugin for EcsExtensionsPlugin {
+    fn build(&self, app: &mut App) { app.init_resource::<NestedSystemRegistry>(); }
+}
+pub fn plugin() -> EcsExtensionsPlugin { EcsExtensionsPlugin }

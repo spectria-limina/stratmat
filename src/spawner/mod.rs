@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Debug, marker::PhantomData};
+use std::{any::type_name, borrow::Cow, fmt::Debug, marker::PhantomData};
 
 use bevy::{
     ecs::{component::ComponentId, system::EntityCommands, world::DeferredWorld},
@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use crate::{
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
-    widget::{WidgetCtx, WidgetSystemId},
+    widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
 };
 
 pub mod panel;
@@ -41,6 +41,7 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 #[derive(Debug, Clone, Component)]
 #[component(on_add = Spawner::<T>::on_add)]
 #[component(on_remove = Spawner::<T>::on_remove)]
+#[require(InitWidget(|| widget!()))]
 pub struct Spawner<T: Spawnable> {
     pub target: T,
     pub image: Handle<Image>,
@@ -147,8 +148,11 @@ impl<T: Spawnable> Spawner<T> {
         WidgetCtx { ns: _ns, id, ui }: WidgetCtx,
         spawner_q: Query<(&Spawner<T>, &SpawnerTextureId)>,
         mut pointer_ev: EventWriter<PointerHits>,
-    ) -> egui::Response {
-        let (spawner, texture_id) = spawner_q.get(id).unwrap();
+    ) {
+        let (spawner, texture_id) = spawner_q
+            .get(id)
+            .expect("Spawner::show called without a Spawner");
+        debug!("Drawing Spawner<{:?}>: {:?}", type_name::<T>(), spawner);
         let resp = ui.add(
             egui::Image::new((
                 texture_id.0,
@@ -171,8 +175,6 @@ impl<T: Spawnable> Spawner<T> {
                 1_000_001.0,
             ));
         }
-
-        resp
     }
 }
 
@@ -235,7 +237,7 @@ mod test {
         ecs::{EntityWorldExts, NestedSystemExts},
         testing::*,
         waymark::Waymark,
-        widget::{egui_context, WidgetSystemId},
+        widget::{egui_context, Widget, WidgetSystemId},
     };
 
     #[derive(Default, Resource)]
@@ -249,10 +251,9 @@ mod test {
         egui::Area::new("test".into())
             .fixed_pos(pos)
             .show(&ctx, |ui| {
-                let mut q = world.query_filtered::<Entity, With<Spawner<Waymark>>>();
-                let id = q.single(world);
-                let panel_sys_id: WidgetSystemId = todo!();
-                world.run_nested_with(panel_sys_id, ui);
+                let mut state = world.query_filtered::<&Widget, With<Spawner<Waymark>>>();
+                let widget = *state.single(world);
+                widget.show_world(world, ui);
             });
     }
 

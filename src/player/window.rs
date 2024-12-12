@@ -5,12 +5,13 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::egui;
+use itertools::Itertools;
 
 use super::{job::Job, Player, PlayerSprite};
 use crate::{
     ecs::{EntityWorldExts, NestedSystemExts},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
-    widget::{egui_context, WidgetSystemId},
+    widget::{egui_context, Widget, WidgetSystemId},
 };
 
 const SIZE: f32 = 35.0;
@@ -35,6 +36,7 @@ impl Spawnable for PlayerSprite {
 
 /// A window with controls to manipulate the waymarks.
 #[derive(Debug, Default, Copy, Clone, Component, Reflect)]
+#[component(on_add = Self::on_add)]
 pub struct PlayerWindow;
 
 impl PlayerWindow {
@@ -43,17 +45,24 @@ impl PlayerWindow {
     /// Will panic if there is more than one camera.
     pub fn show(world: &mut World) {
         let ctx = egui_context(world);
-        let mut state =
-            SystemState::<(Query<Entity, With<PlayerWindow>>, Query<&Children>)>::new(world);
+        let mut state = SystemState::<(
+            Query<Entity, With<PlayerWindow>>,
+            Query<&Widget, With<SpawnerPanel<PlayerSprite>>>,
+            Query<&Children>,
+        )>::new(world);
 
         let ewin = egui::Window::new("Players")
             .default_width(4.0 * (PlayerSprite::size() + PlayerSprite::sep()).x);
         ewin.show(&ctx, |ui| {
-            let (mut win_q, _parent_q) = state.get_mut(world);
+            let (mut win_q, panel_q, parent_q) = state.get_mut(world);
             let win_id = win_q.single_mut();
-            let panel_sys_id: WidgetSystemId = todo!();
 
-            world.run_nested_with(panel_sys_id, ui);
+            let panel = panel_q
+                .iter_many(parent_q.children(win_id))
+                .copied()
+                .exactly_one()
+                .unwrap();
+            panel.show_world(world, ui);
 
             state.apply(world);
         });
@@ -72,7 +81,7 @@ impl PlayerWindow {
             Job::Dragoon,
         ];
 
-        world.commands().queue(move |mut world: &mut World| {
+        world.commands().queue(move |world: &mut World| {
             world.resource_scope(move |world: &mut World, asset_server: Mut<AssetServer>| {
                 world.entity_mut(id).with_children(move |window| {
                     window
