@@ -12,8 +12,8 @@ use bevy::{
     prelude::*,
 };
 
-pub mod conflicts;
-pub mod nested;
+mod conflicts;
+mod nested;
 
 #[allow(unused_imports)]
 pub use {conflicts::*, nested::*};

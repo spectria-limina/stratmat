@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use super::{Spawnable, Spawner};
-use crate::{exts::*, widget::WidgethWithIn};
+use crate::{ecs::EntityWorldExts as _, widget::WidgethWithIn};
 
 #[derive(Component, derive_more::Debug, Reflect)]
 pub struct SpawnerPanel<Target> {

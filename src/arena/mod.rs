@@ -16,8 +16,8 @@ use thiserror::Error;
 
 use crate::{
     asset::{
-        lifecycle::{AssetHookExt, AssetHookTarget, LifecycleExts},
-        listing::{AssetListing, ListingExt},
+        AssetHookExt, AssetHookTarget, LifecycleExts,
+        AssetListing, ListingExt,
     },
     waymark::{Preset, Waymark},
     Layer,

@@ -5,7 +5,7 @@ use bevy_egui::{
 };
 
 use super::{despawn_all_arenas, spawn_arena, ArenaListing, ArenaMeta};
-use crate::asset::lifecycle::OptionalGlobalAsset;
+use crate::asset::OptionalGlobalAsset;
 
 #[derive(Component, Debug)]
 pub struct ArenaMenu {}

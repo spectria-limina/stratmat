@@ -33,17 +33,7 @@ mod widget;
 #[cfg(test)]
 mod testing;
 
-mod exts {
-    #[allow(unused_imports)]
-    pub use crate::{
-        asset::lifecycle::{AssetHookExt as _, LifecycleExts as _},
-        asset::listing::ListingExt as _,
-        ecs::{EntityExts as _, EntityWorldExts as _, NestedSystemExts as _},
-    };
-}
-
 /// Collision layers.
-
 // avian's derive macro causes this warning on nightly
 #[derive(PhysicsLayer, Default)]
 pub enum Layer {
@@ -112,7 +102,7 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
                                        */
         )
         .insert_resource(WinitSettings::desktop_app())
-        .add_plugins(asset::lifecycle::plugin())
+        .add_plugins(asset::plugin())
         .add_plugins(arena::menu::plugin())
         .add_plugins(arena::plugin())
         .add_plugins(color::plugin())

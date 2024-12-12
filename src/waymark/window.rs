@@ -23,8 +23,6 @@ pub struct WaymarkWindow {
 
 impl WaymarkWindow {
     /// [System] that draws the waymark window and handles events.
-    ///
-    /// Will panic if there is more than one camera.
     pub fn show(world: &mut World) {
         let ctx = egui_context(world);
         let mut state = SystemState::<(
