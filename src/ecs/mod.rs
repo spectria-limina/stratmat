@@ -1,22 +1,21 @@
 use std::{any::TypeId, borrow::Cow, marker::PhantomData};
 
-use bevy::{
-    ecs::{
-        archetype::ArchetypeComponentId,
-        component::{ComponentId, Tick},
-        query::Access,
-        schedule::InternedSystemSet,
-        system::IntoObserverSystem,
-        world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
-    },
-    prelude::*,
+use bevy::ecs::{
+    archetype::ArchetypeComponentId,
+    component::{ComponentId, Tick},
+    query::Access,
+    schedule::InternedSystemSet,
+    system::IntoObserverSystem,
+    world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
 };
 
 pub mod conflicts;
+pub mod given;
 pub mod nested;
+pub mod param;
 
-pub use conflicts::*;
-pub use nested::*;
+#[allow(unused_imports)]
+pub use {conflicts::*, given::*, nested::*, param::*};
 
 /// Marker component for child entities added by a specific component.
 #[derive(Component, Copy, Clone, Default, Debug)]

@@ -1,5 +1,8 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 #![allow(dead_code)]
+#![allow(unexpected_cfgs)]
+// I'll clean em up later
+#![allow(unused_imports)]
 
 use std::path::{Path, PathBuf};
 

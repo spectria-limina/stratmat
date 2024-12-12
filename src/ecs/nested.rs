@@ -11,7 +11,7 @@ use bevy::{
 };
 use derive_where::derive_where;
 
-use super::{diagnose_conflicts, AccessDiags, Cached};
+use super::*;
 
 pub type ArgInner<'a, Arg> = <Arg as SystemInput>::Inner<'a>;
 pub type ArgParam<'a, Arg> = <Arg as SystemInput>::Param<'a>;
