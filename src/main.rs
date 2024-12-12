@@ -38,7 +38,7 @@ mod exts {
     pub use crate::{
         asset::lifecycle::{AssetHookExt as _, LifecycleExts as _},
         asset::listing::ListingExt as _,
-        ecs::{EntityExts as _, EntityWorldExts as _},
+        ecs::{EntityExts as _, EntityWorldExts as _, NestedSystemExts as _},
     };
 }
 

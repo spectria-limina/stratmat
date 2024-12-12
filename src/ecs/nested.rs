@@ -288,29 +288,80 @@ impl NestedSystem<'_> {
     }
 }
 
-/*
 pub trait NestedSystemExts {
-    fn run_nested<Out>(&mut self, s: NestedSystemId<(), Out>) -> Out;
-    fn run_nested_with<ArgInner, Out: 'static>(
+    fn run_nested<Out: 'static>(&mut self, s: NestedSystemId<(), Out>) -> Out;
+    fn run_nested_with<Arg: SystemInput + 'static, Out: 'static>(
         &mut self,
-        s: NestedSystemId<ArgInner, Out>,
-        arg: ArgInner,
+        s: NestedSystemId<Arg, Out>,
+        arg: ArgInner<Arg>,
     ) -> Out;
+
+    fn register_nested<Sys, In, Out, Marker>(
+        &mut self,
+        s: Sys,
+    ) -> NestedSystemId<<In as HasInnerArg>::InnerArg, Out>
+    where
+        Sys: IntoSystem<In, Out, Marker>,
+        In: HasInnerArg<InnerArg: 'static>,
+        for<'a> In: SystemInput<Inner<'a> = NestedSystemArg<'a, (), <In as HasInnerArg>::InnerArg>>
+            + 'static,
+        Out: 'static;
+    fn register_nested_with_data<Sys, In, Data, Out, Marker>(
+        &mut self,
+        s: Sys,
+        data: Data,
+    ) -> NestedSystemId<<In as HasInnerArg>::InnerArg, Out>
+    where
+        Sys: IntoSystem<In, Out, Marker>,
+        In: HasInnerArg<InnerArg: 'static>,
+        for<'a> In: SystemInput<Inner<'a> = NestedSystemArg<'a, Data, <In as HasInnerArg>::InnerArg>>
+            + 'static,
+        Data: Clone + Send + Sync + 'static,
+        Out: 'static;
 }
 
 impl NestedSystemExts for World {
     fn run_nested<Out: 'static>(&mut self, s: NestedSystemId<(), Out>) -> Out {
         NestedSystem::scope(self, |nested| nested.run_nested(s))
     }
-    fn run_nested_with<ArgInner, Out: 'static>(
+    fn run_nested_with<Arg: SystemInput + 'static, Out: 'static>(
         &mut self,
-        s: NestedSystemId<ArgInner, Out>,
-        arg: ArgInner,
+        s: NestedSystemId<Arg, Out>,
+        arg: ArgInner<Arg>,
     ) -> Out {
         NestedSystem::scope(self, |nested| nested.run_nested_with(s, arg))
     }
+
+    fn register_nested<Sys, In, Out, Marker>(
+        &mut self,
+        s: Sys,
+    ) -> NestedSystemId<<In as HasInnerArg>::InnerArg, Out>
+    where
+        Sys: IntoSystem<In, Out, Marker>,
+        In: HasInnerArg<InnerArg: 'static>,
+        for<'a> In: SystemInput<Inner<'a> = NestedSystemArg<'a, (), <In as HasInnerArg>::InnerArg>>
+            + 'static,
+        Out: 'static,
+    {
+        NestedSystemRegistry::register(self, s)
+    }
+
+    fn register_nested_with_data<Sys, In, Data, Out, Marker>(
+        &mut self,
+        s: Sys,
+        data: Data,
+    ) -> NestedSystemId<<In as HasInnerArg>::InnerArg, Out>
+    where
+        Sys: IntoSystem<In, Out, Marker>,
+        In: HasInnerArg<InnerArg: 'static>,
+        for<'a> In: SystemInput<Inner<'a> = NestedSystemArg<'a, Data, <In as HasInnerArg>::InnerArg>>
+            + 'static,
+        Data: Clone + Send + Sync + 'static,
+        Out: 'static,
+    {
+        NestedSystemRegistry::register_with_data(self, s, data)
+    }
 }
-    */
 
 #[cfg(test)]
 mod test {
