@@ -1,4 +1,5 @@
 use bevy::prelude::{Alpha as _, *};
+#[cfg(feature = "egui")]
 use bevy_vector_shapes::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -32,9 +33,10 @@ pub struct ColorPlugin;
 
 impl Plugin for ColorPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<AlphaScale>();
-        app.register_type::<ComputedAlpha>();
-        app.add_systems(PostUpdate, propagate_alpha);
+        app.register_type::<AlphaScale>()
+            .register_type::<ComputedAlpha>()
+            .add_systems(PostUpdate, propagate_alpha);
+        #[cfg(feature = "egui")]
         app.add_systems(
             PostUpdate,
             (update_sprite_alpha, update_shape_alpha).after(propagate_alpha),
@@ -42,12 +44,14 @@ impl Plugin for ColorPlugin {
     }
 }
 
+#[cfg(feature = "egui")]
 pub fn update_sprite_alpha(mut q: Query<(&mut Sprite, &ComputedAlpha)>) {
     for (mut sprite, ComputedAlpha(alpha)) in &mut q {
         sprite.color.set_alpha(*alpha)
     }
 }
 
+#[cfg(feature = "egui")]
 pub fn update_shape_alpha(mut q: Query<(&mut ShapeFill, &ComputedAlpha)>) {
     for (mut shape, ComputedAlpha(alpha)) in &mut q {
         shape.color.set_alpha(*alpha)

@@ -4,21 +4,34 @@
 //! Waymarks can be manually manipulated, as well as imported and exported using the format of the Waymark Preset plugin.
 
 use avian2d::prelude::*;
+#[cfg(feature = "egui")]
+use bevy::window::RequestRedraw;
 use bevy::{
     color::palettes::css::{FUCHSIA, LIGHT_CYAN, RED, YELLOW},
     prelude::*,
     utils::HashMap,
-    window::RequestRedraw,
 };
+#[cfg(feature = "egui")]
 use bevy_vector_shapes::prelude::*;
 use enum_iterator::Sequence;
 use int_enum::IntEnum;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{arena::GameCoordOffset, color::AlphaScale, drag::Draggable};
+use crate::{
+    arena::GameCoordOffset,
+    color::AlphaScale,
+    drag::Draggable,
+    image::Image,
+    shape::{ColliderFromShape, DrawShape, Shape, Stroke},
+};
 
-pub mod window;
+#[cfg(feature = "egui")]
+mod window_egui;
+pub mod window {
+    #[cfg(feature = "egui")]
+    pub use super::window_egui::*;
+}
 
 /// The diameter, in yalms, of a waymark.
 const WAYMARK_SIZE: f32 = 2.4;
@@ -72,7 +85,8 @@ pub struct PresetEntry {
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[derive(Component, Reflect, Serialize, Deserialize)]
 #[derive(IntEnum, Sequence)]
-#[require(Draggable, Visibility, Collider)]
+#[require(Draggable, Collider)]
+#[cfg_attr(feature = "egui", require(Visibility))]
 pub enum Waymark {
     A = 0,
     B = 1,
@@ -178,6 +192,7 @@ impl Waymark {
         for entity in entities {
             world.entity_mut(entity).despawn_recursive();
         }
+        #[cfg(feature = "egui")]
         world.send_event(RequestRedraw);
     }
 }
@@ -218,15 +233,13 @@ impl EntityCommand for InsertWaymark {
             }
         }
 
-        entity.insert((
-            Name::new(waymark.name()),
-            waymark,
-            if waymark.is_square() {
-                Collider::rectangle(WAYMARK_SIZE, WAYMARK_SIZE)
-            } else {
-                Collider::circle(WAYMARK_SIZE / 2.0)
-            },
-        ));
+        let shape = if waymark.is_square() {
+            Shape::Circle(Circle::new(WAYMARK_SIZE / 2.0))
+        } else {
+            Shape::Rectangle(Rectangle::from_length(WAYMARK_SIZE))
+        };
+
+        entity.insert((Name::new(waymark.name()), waymark, shape, ColliderFromShape));
 
         entity.with_children(|parent| {
             parent.spawn((
@@ -242,38 +255,15 @@ impl EntityCommand for InsertWaymark {
                 AlphaScale::default(),
             ));
 
-            let mut spawn_shape = |name, alpha, config| {
-                if waymark.is_square() {
-                    parent.spawn((
-                        Name::new(name),
-                        AlphaScale(alpha),
-                        ShapeBundle::rect(&config, Vec2::new(WAYMARK_SIZE, WAYMARK_SIZE)),
-                    ));
-                } else {
-                    parent.spawn((
-                        Name::new(name),
-                        AlphaScale(alpha),
-                        ShapeBundle::circle(&config, WAYMARK_SIZE / 2.0),
-                    ));
-                };
-            };
-
-            spawn_shape("Waymark Stroke", STROKE_OPACITY, ShapeConfig {
-                color: waymark.color(),
-                thickness: STROKE_WIDTH,
-                hollow: true,
-                alpha_mode: AlphaMode::Blend.into(),
-                transform: Transform::from_xyz(0.0, 0.0, -0.1),
-                ..ShapeConfig::default_2d()
-            });
-
-            spawn_shape("Waymark Fill", FILL_OPACITY, ShapeConfig {
-                color: waymark.color(),
-                hollow: false,
-                alpha_mode: AlphaMode::Blend.into(),
-                transform: Transform::from_xyz(0.0, 0.0, -0.2),
-                ..ShapeConfig::default_2d()
-            });
+            parent.spawn((
+                Name::new("Waymark Shape"),
+                shape,
+                DrawShape::new(
+                    waymark.color().with_alpha(FILL_OPACITY),
+                    Stroke::new(waymark.color().with_alpha(STROKE_OPACITY), STROKE_WIDTH),
+                ),
+                Transform::from_xyz(0.0, 0.0, -0.1),
+            ));
         });
     }
 }

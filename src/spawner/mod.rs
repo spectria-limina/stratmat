@@ -8,15 +8,29 @@ use bevy::{
     },
     prelude::*,
 };
+#[cfg(feature = "egui")]
 use bevy_egui::{self, egui, EguiUserTextures};
 use itertools::Itertools;
 
 use crate::{
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
+    image::Image,
     widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
 };
 
-pub mod panel;
+#[cfg(feature = "egui")]
+mod panel_egui;
+pub mod panel {
+    #[cfg(feature = "egui")]
+    pub use super::panel_egui::*;
+}
+#[cfg(all(feature = "egui", test))]
+mod test_egui;
+#[cfg(test)]
+pub mod test {
+    #[cfg(feature = "egui")]
+    pub use super::test_egui::*;
+}
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
 const SPAWNER_ALPHA: u8 = 230;
@@ -49,8 +63,9 @@ pub struct Spawner<T: Spawnable> {
     pub enabled: bool,
 }
 
+#[cfg(feature = "egui")]
 #[derive(Debug, Copy, Clone, Component)]
-pub struct SpawnerTextureId(egui::TextureId);
+pub struct EguiTextureId(egui::TextureId);
 
 impl<T: Spawnable> Spawner<T> {
     pub fn new(target: T, image: Handle<Image>) -> Self {
@@ -67,6 +82,7 @@ impl<T: Spawnable> Spawner<T> {
             .get_mut::<Self>(id)
             .expect("I was just added!")
             .clone();
+        #[cfg(feature = "egui")]
         let texture_id = world
             .resource_mut::<EguiUserTextures>()
             .add_image(spawner.image);
@@ -78,9 +94,10 @@ impl<T: Spawnable> Spawner<T> {
                 "Spawner for {}",
                 spawner.target.spawner_name(),
             )))
-            .insert(SpawnerTextureId(texture_id))
             .on::<Self>()
             .observe(Self::start_drag);
+        #[cfg(feature = "egui")]
+        entity.insert(EguiTextureId(texture_id));
     }
 
     pub fn on_remove(mut world: DeferredWorld, id: Entity, _: ComponentId) {
@@ -104,7 +121,7 @@ impl<T: Spawnable> Spawner<T> {
     pub fn start_drag(
         ev: Trigger<Pointer<DragStart>>,
         spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
-        camera_q: Query<(&Camera, &GlobalTransform)>,
+        #[cfg(feature = "egui")] camera_q: Query<(&Camera, &GlobalTransform)>,
         mut commands: Commands,
     ) {
         let id = ev.entity();
@@ -123,30 +140,36 @@ impl<T: Spawnable> Spawner<T> {
             new_spawner.set_parent(parent.get());
         }
 
-        let (camera, camera_transform) = camera_q.single();
-        let hit_position = ev.hit.position.unwrap().truncate();
-        let translation = camera
-            .viewport_to_world_2d(camera_transform, hit_position)
-            .unwrap()
-            .extend(0.0);
-        debug!(
-            "spawner spawning waymark {:?} at {translation} (from hit position: {hit_position})",
-            spawner.target,
-        );
-
         let mut entity = commands.entity(id);
         entity.remove::<Self>();
         // We might be parented to the window/another widget.
         entity.remove_parent();
         spawner.target.insert(&mut entity);
-        entity.insert(Transform::from_translation(translation));
+
+        #[cfg(feature = "egui")]
+        {
+            let (camera, camera_transform) = camera_q.single();
+            let hit_position = ev.hit.position.unwrap().truncate();
+            let translation = camera
+                .viewport_to_world_2d(camera_transform, hit_position)
+                .unwrap()
+                .extend(0.0);
+            debug!(
+                "spawner spawning waymark {:?} at {translation} (from hit position: \
+                 {hit_position})",
+                spawner.target,
+            );
+            entity.insert(Transform::from_translation(translation));
+        }
+
         // Forward to the general dragging implementation.
         commands.run_system_cached_with(crate::drag::start_drag, id);
     }
 
+    #[cfg(feature = "egui")]
     pub fn show(
         WidgetCtx { ns: _ns, id, ui }: WidgetCtx,
-        spawner_q: Query<(&Spawner<T>, &SpawnerTextureId)>,
+        spawner_q: Query<(&Spawner<T>, &EguiTextureId)>,
         mut pointer_ev: EventWriter<PointerHits>,
     ) {
         let (spawner, texture_id) = spawner_q
@@ -176,6 +199,9 @@ impl<T: Spawnable> Spawner<T> {
             ));
         }
     }
+
+    #[cfg(feature = "dom")]
+    pub fn show(_: WidgetCtx) { todo!() }
 }
 
 /// Plugin for spawner support
@@ -202,152 +228,3 @@ impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
 }
 
 pub fn plugin<T: Spawnable>() -> SpawnerPlugin<T> { default() }
-
-// TODO: Put this somewhere better lol.
-fn log_debug<E: std::fmt::Debug + Event>(mut events: EventReader<E>) {
-    for ev in events.read() {
-        debug!("{ev:?}");
-    }
-}
-
-fn observe_debug<E: std::fmt::Debug + Event>(ev: Trigger<E>) {
-    debug!("{:?} on {}", ev.event(), ev.entity());
-}
-
-#[cfg(test)]
-mod test {
-    use avian2d::PhysicsPlugins;
-    use bevy::{
-        app::ScheduleRunnerPlugin,
-        input::mouse::MouseButtonInput,
-        picking::pointer::PointerInput,
-        render::{
-            settings::{RenderCreation, WgpuSettings},
-            RenderPlugin,
-        },
-        window::{PrimaryWindow, WindowEvent},
-        winit::WinitPlugin,
-    };
-    use bevy_egui::{egui, EguiPlugin};
-    use float_eq::assert_float_eq;
-
-    use super::*;
-    use crate::{
-        drag,
-        ecs::{self, EntityWorldExts, NestedSystemExts},
-        testing::*,
-        waymark::Waymark,
-        widget::{egui_context, Widget, WidgetSystemId},
-    };
-
-    #[derive(Default, Resource)]
-    struct TestWinPos(egui::Pos2);
-
-    const SPAWNER_SIZE: f32 = 40.0;
-
-    fn draw_test_win<T: Spawnable>(world: &mut World) {
-        let ctx = egui_context(world);
-        let pos = world.resource::<TestWinPos>().0;
-        egui::Area::new("test".into())
-            .fixed_pos(pos)
-            .show(&ctx, |ui| {
-                let mut state = world.query_filtered::<&Widget, With<Spawner<Waymark>>>();
-                let widget = *state.single(world);
-                widget.show_world(world, ui);
-            });
-    }
-
-    fn spawn_test_entities(mut commands: Commands, asset_server: Res<AssetServer>) {
-        commands.spawn(Spawner::new(
-            Waymark::A,
-            asset_server.load(Waymark::A.asset_path()),
-        ));
-        commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
-            Vec2::ZERO,
-            Vec2::splat(200.0),
-        )));
-    }
-
-    // returns the primary window ID and the app itself
-    fn test_app() -> (App, Entity) {
-        let mut app = App::new();
-        app.add_plugins(
-            DefaultPlugins
-                .set(RenderPlugin {
-                    synchronous_pipeline_compilation: true,
-                    render_creation: RenderCreation::Automatic(WgpuSettings {
-                        backends: None,
-                        ..default()
-                    }),
-                })
-                .disable::<WinitPlugin>(),
-        )
-        // Allow for controlled looping & exit.
-        .add_plugins(ScheduleRunnerPlugin {
-            run_mode: bevy::app::RunMode::Loop { wait: None },
-        })
-        .add_plugins(PhysicsPlugins::default())
-        .add_systems(PreUpdate, forward_window_events)
-        .add_plugins(EguiPlugin)
-        .add_plugins(drag::plugin())
-        .add_plugins(ecs::plugin())
-        .add_plugins(super::plugin::<Waymark>())
-        .add_systems(Startup, add_test_camera)
-        .add_systems(Startup, spawn_test_entities)
-        .add_systems(Update, draw_test_win::<Waymark>)
-        .init_resource::<TestWinPos>();
-        // Make sure to finalize and to update once to initialize the UI.
-        // Don't use app.run() since it'll loop.
-        app.finish();
-        app.cleanup();
-        app.update();
-
-        let mut win_q = app
-            .world_mut()
-            .query_filtered::<Entity, With<PrimaryWindow>>();
-        let primary_window = win_q.single(app.world());
-        (app, primary_window)
-    }
-
-    #[test]
-    fn spawner_drag() {
-        let (mut app, _) = test_app();
-
-        let drag = Vec2::splat(50.0);
-        let start_pos = Vec2::splat(SPAWNER_SIZE / 2.0);
-        let end_pos = start_pos + drag;
-        app.world_mut().spawn(MockDrag {
-            start_pos,
-            end_pos,
-            button: MouseButton::Left,
-            duration: 10.0,
-        });
-        app.add_systems(First, MockDrag::update)
-            .add_observer(observe_debug::<Pointer<DragStart>>)
-            .add_observer(observe_debug::<Pointer<Drag>>)
-            .add_observer(observe_debug::<Pointer<DragEnd>>)
-            .add_systems(Update, log_debug::<WindowEvent>)
-            .add_systems(Update, log_debug::<CursorMoved>)
-            .add_systems(Update, log_debug::<MouseButtonInput>)
-            .add_systems(Update, log_debug::<PointerHits>)
-            .add_systems(Update, log_debug::<PointerInput>)
-            .add_systems(First, || {
-                debug!("new tick");
-            });
-        for _ in 0..20 {
-            app.update();
-        }
-
-        let mut spawner_q = app
-            .world_mut()
-            .query_filtered::<(), With<Spawner<Waymark>>>();
-        spawner_q.single(app.world());
-
-        let mut waymark_q = app
-            .world_mut()
-            .query_filtered::<&Transform, With<Waymark>>();
-        let transform = waymark_q.single(app.world());
-        assert_float_eq!(transform.translation.x, end_pos.x, abs <= 0.0001,);
-        assert_float_eq!(transform.translation.y, end_pos.y, abs <= 0.0001,);
-    }
-}

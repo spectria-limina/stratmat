@@ -7,23 +7,23 @@ use avian2d::prelude::*;
 use bevy::{
     asset::{AssetLoader, ParseAssetPathError},
     prelude::*,
-    render::camera::ScalingMode,
 };
-use bevy_inspector_egui::InspectorOptions;
 use itertools::Itertools;
 use serde::Deserialize;
 use thiserror::Error;
 
 use crate::{
     asset::{
-        AssetHookExt, AssetHookTarget, LifecycleExts,
-        AssetListing, ListingExt,
-    },
-    waymark::{Preset, Waymark},
-    Layer,
+        AssetHookExt, AssetHookTarget, AssetListing, LifecycleExts, ListingExt
+    }, shape::{ColliderFromShape, Shape}, waymark::{Preset, Waymark}, Layer
 };
 
-pub mod menu;
+#[cfg(feature = "egui")]
+mod menu_egui;
+pub mod menu {
+    #[cfg(feature = "egui")]
+    pub use super::menu_egui::*;
+}
 
 /// The file extension of `Arena` files.
 const EXTENSION: &str = "arena.ron";
@@ -42,27 +42,9 @@ pub fn asset_path(arena: impl AsRef<Path>) -> PathBuf {
     path
 }
 
-/// Quick and dirty enum to support arena collision shapes until something better comes along.
-///
-/// TODO: is there any hope of us ever eliminating this kind of type?
-#[derive(Reflect, Copy, Clone, PartialEq, Debug, Deserialize)]
-pub enum ArenaShape {
-    Rect(f32, f32),
-    Circle(f32),
-}
-
-impl From<ArenaShape> for Collider {
-    fn from(value: ArenaShape) -> Self {
-        match value {
-            ArenaShape::Rect(width, height) => Collider::rectangle(width, height),
-            ArenaShape::Circle(radius) => Collider::circle(radius),
-        }
-    }
-}
-
 /// An [`Arena`] is the backdrop to a fight, and includes everything needed to stage and set up a fight,
 /// such as the arena's background image, dimensions, and other metadata.
-#[derive(Asset, Reflect, Clone, Debug, Deserialize, InspectorOptions)]
+#[derive(Asset, Reflect, Clone, Debug, Deserialize)]
 pub struct ArenaMeta {
     pub name: String,
     pub short_name: String,
@@ -81,7 +63,7 @@ pub struct ArenaMeta {
     /// Used for import/export only; internally the origin is always the center.
     pub offset: Vec2,
     /// The shape of the actual usuable arena surface, inside the (death)wall.
-    pub shape: ArenaShape,
+    pub shape: Shape,
 }
 
 #[derive(Default, Copy, Clone, Debug)]
@@ -127,7 +109,8 @@ impl AssetLoader for ArenaLoader {
 ///
 /// TODO: Make more than one allowed at a time?
 #[derive(Deref, Component, Reflect, Clone, Debug)]
-#[require(Sprite, Transform, Visibility)]
+#[require(Transform)]
+#[cfg_attr(feature = "egui", require(Sprite, Visibility))]
 pub struct Arena(pub ArenaMeta);
 
 /// How big the viewport should be relative to the size of the arena.
@@ -151,27 +134,33 @@ pub struct GameCoordOffset(pub Vec2);
 /// This includes resetting the camera and updating the [`GameCoordOffset`].
 fn spawn_arena(
     In(arena): In<ArenaMeta>,
+    #[cfg(feature = "egui")]
     mut camera_q: Query<&'static mut OrthographicProjection, With<Camera2d>>,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
 ) {
     info!("Spawning new arena: {}", arena.name);
     // FIXME: Single-camera assumption.
-    camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
-        min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
-        min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
+    #[cfg(feature = "egui")]
+    {
+        use bevy::render::camera::ScalingMode;
+        camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
+            min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
+            min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
     };
-    let background = asset_server.load(&arena.background_path);
+}
     commands.spawn((
         Arena(arena.clone()),
         Name::new("Arena Background"),
+        #[cfg(feature = "egui")]
         Sprite {
-            image: background,
+            image: asset_server.load(&arena.background_path),
             custom_size: Some(arena.size),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
-        Collider::from(arena.shape),
+        arena.shape,
+        ColliderFromShape,
         CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
         PickingBehavior::IGNORE,
     ));

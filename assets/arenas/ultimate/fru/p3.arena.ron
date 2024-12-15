@@ -5,5 +5,5 @@
     background_path: "/sprites/arenas/ultimate/fru/p3.png",
     size: Vec2(40.0, 40.0),
     offset: Vec2(100.0, 100.0),
-    shape: Circle(20.0),
+    shape: Circle(radius: 20.0),
 )

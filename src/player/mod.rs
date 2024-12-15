@@ -5,7 +5,13 @@ use job::Job;
 use crate::{drag::Draggable, spawner::Spawnable};
 
 pub mod job;
-pub mod window;
+
+#[cfg(feature = "egui")]
+mod window_egui;
+pub mod window {
+    #[cfg(feature = "egui")]
+    pub use super::window_egui::*;
+}
 
 /// The size of a player icon.
 const PLAYER_SPRITE_SIZE: f32 = 2.0;
@@ -22,20 +28,23 @@ impl Player {}
 
 #[derive(Copy, Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, Debug)]
 #[derive(Component, Reflect)]
-#[require(Sprite(||Sprite{custom_size: Some(Vec2::splat(PLAYER_SPRITE_SIZE)), ..default()}))]
+#[cfg_attr(feature = "egui", require(Sprite(||Sprite{custom_size: Some(Vec2::splat(PLAYER_SPRITE_SIZE)), ..default()})))]
 pub struct PlayerSprite {
     pub job: Option<Job>,
 }
 
 impl PlayerSprite {
     pub fn update_sprites(
-        mut q: Query<(&PlayerSprite, &mut Sprite), Changed<PlayerSprite>>,
+        #[cfg(feature = "egui")] mut q: Query<(&PlayerSprite, &mut Sprite), Changed<PlayerSprite>>,
         asset_server: Res<AssetServer>,
     ) {
+        #[cfg(feature = "egui")]
         for (player_sprite, mut sprite) in &mut q {
             sprite.image = asset_server.load(player_sprite.asset_path());
             sprite.custom_size = Some(Vec2::splat(PLAYER_SPRITE_SIZE));
         }
+        #[cfg(feature = "dom")]
+        todo!();
     }
 
     pub fn asset_path(self) -> &'static str {

@@ -1,4 +1,18 @@
 {
     "editor.formatOnSave": true,
     "rust-analyzer.showUnlinkedFileNotification": false
+    /*
+    // *** dom de ***
+    "rust-analyzer.cargo.buildScripts.overrideCommand": null,
+    "rust-analyzer.cargo.allTargets": false,
+    "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+    "rust-analyzer.cargo.features": [
+        "dom"
+    ],
+    "rust-analyzer.cargo.noDefaultFeatures": true,
+    "rust-analyzer.cargo.extraArgs": [
+        "--profile",
+        "dom"
+    ],
+    */
 }

@@ -2,6 +2,7 @@ use std::f32::consts::PI;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
+#[cfg(feature = "egui")]
 use bevy_vector_shapes::{
     painter::ShapeConfig,
     shapes::{DiscBundle, ShapeBundle},
@@ -77,12 +78,13 @@ impl Default for Hitbox {
 struct HitboxBundle {
     hitbox: Hitbox,
     transform: Transform,
+    #[cfg(feature = "egui")]
     visibility: Visibility,
     collider: Collider,
 }
 
 pub fn insert_hitbox(entity: &mut EntityCommands, hitbox: Hitbox) {
-    entity.insert_if_new((GlobalTransform::default(), InheritedVisibility::default()));
+    #[cfg(feature = "egui")]
     entity.with_children(|parent| {
         parent
             // Insert the hitbox last so that it's not used after move.
@@ -117,4 +119,6 @@ pub fn insert_hitbox(entity: &mut EntityCommands, hitbox: Hitbox) {
                 ..default()
             });
     });
+    #[cfg(feature = "dom")]
+    todo!();
 }

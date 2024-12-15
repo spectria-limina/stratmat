@@ -53,29 +53,35 @@ pub fn start_drag(In(id): In<Entity>, world: &mut World) {
 pub fn on_drag(
     event: Trigger<Pointer<Drag>>,
     mut q: Query<&mut Transform>,
-    camera_q: Query<(&Camera, &GlobalTransform)>,
+    #[cfg(feature = "egui")] camera_q: Query<(&Camera, &GlobalTransform)>,
 ) {
     trace!("drag_listener");
     let Ok(mut transform) = q.get_mut(event.entity()) else {
         return;
     };
-    let (camera, camera_transform) = camera_q.single();
 
-    let new_pos_viewport = event.pointer_location.position;
-    let old_pos_viewport = new_pos_viewport - event.delta;
-    let new_pos_world = camera
-        .viewport_to_world_2d(camera_transform, new_pos_viewport)
-        .expect("unable to map cursor position to world coordinates");
-    let old_pos_world = camera
-        .viewport_to_world_2d(camera_transform, old_pos_viewport)
-        .expect("unable to map cursor position to world coordinates");
-    let delta_world = new_pos_world - old_pos_world;
-    debug!(
-        "updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: \
-         {new_pos_viewport}, old_world: {}, delta_world: {delta_world}",
-        transform.translation
-    );
-    transform.translation += delta_world.extend(0.0);
+    #[cfg(feature = "egui")]
+    {
+        let (camera, camera_transform) = camera_q.single();
+
+        let new_pos_viewport = event.pointer_location.position;
+        let old_pos_viewport = new_pos_viewport - event.delta;
+        let new_pos_world = camera
+            .viewport_to_world_2d(camera_transform, new_pos_viewport)
+            .expect("unable to map cursor position to world coordinates");
+        let old_pos_world = camera
+            .viewport_to_world_2d(camera_transform, old_pos_viewport)
+            .expect("unable to map cursor position to world coordinates");
+        let delta_world = new_pos_world - old_pos_world;
+        debug!(
+            "updating dragged entity position: old_vp: {old_pos_viewport}, new_vp: \
+             {new_pos_viewport}, old_world: {}, delta_world: {delta_world}",
+            transform.translation
+        );
+        transform.translation += delta_world.extend(0.0);
+    }
+    #[cfg(feature = "dom")]
+    todo!();
 }
 
 fn drag_update_oob(

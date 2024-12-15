@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unexpected_cfgs)]
 // I'll clean em up later
-#![allow(unused_imports)]
+#![allow(unused)]
 // `rustdoc_internals` is needed for `#[doc(fake_variadics)]`
 #![allow(internal_features)]
 #![cfg_attr(any(docsrs, docsrs_dep), feature(rustdoc_internals))]
@@ -13,10 +13,15 @@ compile_error!("Features 'winit' and 'dom' are incompatible.");
 use std::path::{Path, PathBuf};
 
 use avian2d::prelude::*;
-use bevy::{log::LogPlugin, prelude::*, winit::WinitSettings};
+#[cfg(feature = "egui")]
+use bevy::winit::WinitSettings;
+use bevy::{input::InputPlugin, log::LogPlugin, prelude::*};
+#[cfg(feature = "egui")]
 use bevy_egui::EguiPlugin;
+#[cfg(feature = "egui")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_vector_shapes::prelude::*;
+#[cfg(feature = "egui")]
+use bevy_vector_shapes::Shape2dPlugin;
 use clap::{ArgAction, Parser as _};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -28,13 +33,14 @@ mod debug;
 mod drag;
 mod ecs;
 mod hitbox;
+mod image;
 mod player;
+mod shape;
 mod spawner;
-mod waymark;
-mod widget;
-
 #[cfg(test)]
 mod testing;
+mod waymark;
+mod widget;
 
 /// Collision layers.
 // avian's derive macro causes this warning on nightly
@@ -53,8 +59,10 @@ pub enum Layer {
 #[derive(clap::Parser, Resource, Clone, Debug)]
 struct Args {
     /// Debug mode for the physics engine
+    #[cfg(feature = "egui")]
     #[clap(long, env = "STRATMAT_DEBUG_PHYSICS", action = ArgAction::Set, default_value_t = false)]
     debug_physics: bool,
+    #[cfg(feature = "egui")]
     #[clap(long, env = "STRATMAT_DEBUG_INSPECTOR", action = ArgAction::Set, default_value_t = cfg!(debug_assertions))]
     /// Enable the egui inspector
     debug_inspector: bool,
@@ -70,7 +78,7 @@ struct Args {
     log_filter: Option<String>,
 }
 
-fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
+fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::Result<()> {
     let mut app = App::new();
 
     if let Some(ref path) = args.asset_root {
@@ -82,21 +90,24 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
         log_plugin.filter = filter.clone();
     }
 
+    let mut default_plugins = DefaultPlugins.set(log_plugin).set(AssetPlugin {
+        meta_check: bevy::asset::AssetMetaCheck::Never,
+        ..default()
+    });
+    #[cfg(feature = "egui")]
+    {
+        default_plugins = default_plugins.set(WindowPlugin {
+            primary_window: Some(primary_window),
+            ..default()
+        });
+    }
+    #[cfg(feature = "dom")]
+    {
+        default_plugins = default_plugins.disable::<InputPlugin>();
+    }
+
     app.insert_resource(args.clone())
-        .add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(primary_window),
-                    ..default()
-                })
-                .set(log_plugin)
-                .set(AssetPlugin {
-                    meta_check: bevy::asset::AssetMetaCheck::Never,
-                    ..default()
-                }),
-        )
-        .add_plugins(EguiPlugin)
-        .add_plugins(Shape2dPlugin::default())
+        .add_plugins(default_plugins)
         .add_plugins(
             PhysicsPlugins::default(), /* FIXME: Re-disable once Jondolf/avian#571 is fixed.
                                           .disable::<IntegratorPlugin>()
@@ -104,22 +115,29 @@ fn start(args: Args, primary_window: Window) -> eyre::Result<()> {
                                           .disable::<SleepingPlugin>(),
                                        */
         )
-        .insert_resource(WinitSettings::desktop_app())
         .add_plugins(asset::plugin())
-        .add_plugins(arena::menu::plugin())
         .add_plugins(arena::plugin())
         .add_plugins(color::plugin())
         .add_plugins(drag::plugin())
         .add_plugins(ecs::plugin())
         .add_plugins(player::plugin())
+        .add_plugins(shape::plugin())
+        .add_plugins(waymark::plugin());
+
+    #[cfg(feature = "egui")]
+    app.add_plugins(EguiPlugin)
+        .insert_resource(WinitSettings::desktop_app())
+        .add_plugins(arena::menu::plugin())
+        .add_plugins(Shape2dPlugin::default())
         .add_plugins(player::window::plugin())
-        .add_plugins(waymark::plugin())
         .add_plugins(waymark::window::plugin())
         .add_systems(Startup, spawn_camera);
 
+    #[cfg(feature = "egui")]
     if args.debug_inspector {
         app.add_plugins(WorldInspectorPlugin::new());
     }
+    #[cfg(feature = "egui")]
     if args.debug_physics {
         app.add_plugins(PhysicsDebugPlugin::default());
     }
@@ -156,6 +174,7 @@ fn set_root_asset_path(app: &mut App, path: &Path) {
     );
 }
 
+#[cfg(feature = "egui")]
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, OrthographicProjection::default_2d()));
 }
@@ -216,6 +235,7 @@ fn main() -> Result<(), JsValue> {
         }
     };
 
+    #[cfg(feature = "egui")]
     let primary_window = Window {
         title: "Stratmat".into(),
         canvas: Some(selector.to_string()),
@@ -224,5 +244,10 @@ fn main() -> Result<(), JsValue> {
         ..default()
     };
 
-    start(args, primary_window).map_err(|e| JsValue::from_str(&format!("{e}")))
+    start(
+        args,
+        #[cfg(feature = "egui")]
+        primary_window,
+    )
+    .map_err(|e| JsValue::from_str(&format!("{e}")))
 }

@@ -253,9 +253,6 @@ name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "as-raw-xcb-connection"
@@ -367,11 +364,13 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 [[package]]
 name = "avian2d"
 version = "0.1.2"
-source = "git+https://github.com/Jondolf/avian.git?rev=52cbcec#52cbcecce0fd05a65005ab6935ebeb231373c2c6"
+source = "git+https://github.com/Jondolf/avian.git?rev=c4840dd#c4840ddf4a3adb081bb21c992e524231df83e195"
 dependencies = [
  "avian_derive",
  "bevy",
+ "bevy_heavy",
  "bevy_math",
+ "bevy_transform_interpolation",
  "bitflags 2.6.0",
  "derive_more",
  "fxhash",
@@ -379,14 +378,12 @@ dependencies = [
  "itertools",
  "nalgebra",
  "parry2d",
- "parry2d-f64",
- "serde",
 ]
 
 [[package]]
 name = "avian_derive"
 version = "0.1.0"
-source = "git+https://github.com/Jondolf/avian.git?rev=52cbcec#52cbcecce0fd05a65005ab6935ebeb231373c2c6"
+source = "git+https://github.com/Jondolf/avian.git?rev=c4840dd#c4840ddf4a3adb081bb21c992e524231df83e195"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -399,12 +396,6 @@ name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
-
-[[package]]
-name = "base64"
-version = "0.22.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bevy"
@@ -773,35 +764,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_gltf"
-version = "0.15.0"
+name = "bevy_heavy"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b21ed694796a001a5cf63de9ddc62fc017302b0e2998a361ef1126880ec93555"
+checksum = "f85619a206875db57b0213dc5242b51f1be748663cd5f8f99f78d2a6a108dabf"
 dependencies = [
- "base64 0.22.1",
- "bevy_animation",
- "bevy_app",
- "bevy_asset",
- "bevy_color",
- "bevy_core",
- "bevy_core_pipeline",
- "bevy_ecs",
- "bevy_hierarchy",
- "bevy_image",
  "bevy_math",
- "bevy_pbr",
  "bevy_reflect",
- "bevy_render",
- "bevy_scene",
- "bevy_tasks",
- "bevy_transform",
- "bevy_utils",
- "derive_more",
- "gltf",
- "percent-encoding",
- "serde",
- "serde_json",
- "smallvec",
 ]
 
 [[package]]
@@ -875,7 +844,6 @@ dependencies = [
  "bevy_diagnostic",
  "bevy_ecs",
  "bevy_gizmos",
- "bevy_gltf",
  "bevy_hierarchy",
  "bevy_image",
  "bevy_input",
@@ -1274,6 +1242,15 @@ dependencies = [
  "bevy_reflect",
  "derive_more",
  "serde",
+]
+
+[[package]]
+name = "bevy_transform_interpolation"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fcad6974fb74cab07425c4f3d3af78876966b4525c3aec5c0d56ae8511a946a"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
@@ -2518,42 +2495,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gltf"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ce1918195723ce6ac74e80542c5a96a40c2b26162c1957a5cd70799b8cacf7"
-dependencies = [
- "byteorder",
- "gltf-json",
- "lazy_static",
- "serde_json",
-]
-
-[[package]]
-name = "gltf-derive"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14070e711538afba5d6c807edb74bcb84e5dbb9211a3bf5dea0dfab5b24f4c51"
-dependencies = [
- "inflections",
- "proc-macro2",
- "quote",
- "syn 2.0.90",
-]
-
-[[package]]
-name = "gltf-json"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6176f9d60a7eab0a877e8e96548605dedbde9190a7ae1e80bbcc1c9af03ab14"
-dependencies = [
- "gltf-derive",
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "glutin_wgl_sys"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2684,6 +2625,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
 dependencies = [
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "i-cant-believe-its-not-bsn"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "258779888e12b0441df5e528b1d344a15ddb4ef43d9ba27763613412e2c255e6"
+dependencies = [
+ "bevy_ecs",
+ "bevy_hierarchy",
 ]
 
 [[package]]
@@ -2898,12 +2849,6 @@ dependencies = [
  "equivalent",
  "hashbrown 0.15.2",
 ]
-
-[[package]]
-name = "inflections"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
 
 [[package]]
 name = "int-enum"
@@ -3231,7 +3176,6 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "serde",
  "simba",
  "typenum",
 ]
@@ -3347,7 +3291,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -3719,36 +3662,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "ordered-float",
- "rayon",
  "rustc-hash 2.1.0",
- "serde",
- "simba",
- "slab",
- "smallvec",
- "spade",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "parry2d-f64"
-version = "0.17.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ddb8f75aa4a6402cc22b47efb61deb2e9534543df78309699877dcaa4dae7ec"
-dependencies = [
- "approx",
- "arrayvec",
- "bitflags 2.6.0",
- "downcast-rs",
- "either",
- "ena",
- "log",
- "nalgebra",
- "num-derive",
- "num-traits",
- "ordered-float",
- "rayon",
- "rustc-hash 2.1.0",
- "serde",
  "simba",
  "slab",
  "smallvec",
@@ -4195,7 +4109,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
 dependencies = [
- "base64 0.21.7",
+ "base64",
  "bitflags 2.6.0",
  "serde",
  "serde_derive",
@@ -4519,6 +4433,7 @@ dependencies = [
  "eyre",
  "fixedbitset 0.5.7",
  "float_eq",
+ "i-cant-believe-its-not-bsn",
  "int-enum",
  "itertools",
  "js-sys",

@@ -6,53 +6,48 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_egui::{
-    egui::{self, Ui},
-    EguiContexts,
-};
 
 use crate::ecs::{HasInnerArg, NestedSystem, NestedSystemExts, NestedSystemId};
 
-// TODO: TEST TEST TEST
-pub fn egui_contexts_scope<U, F: FnOnce(SystemParamItem<EguiContexts>) -> U>(
-    world: &mut World,
-    f: F,
-) -> U {
-    let mut state = SystemState::<EguiContexts>::new(world);
-    f(state.get_mut(world))
-}
+#[cfg(feature = "egui")]
+mod egui;
+#[cfg(feature = "egui")]
+pub use egui::*;
 
-pub fn egui_context(world: &mut World) -> egui::Context {
-    egui_contexts_scope(world, |mut contexts| contexts.ctx_mut().clone())
-}
+#[cfg(feature = "dom")]
+mod dom;
+#[cfg(feature = "dom")]
+pub use dom::*;
 
 pub struct WidgetCtx<'a> {
     pub ns: &'a mut NestedSystem<'a>,
     pub id: Entity,
-    pub ui: &'a mut Ui,
+    pub ui: &'a mut UiCtx,
 }
 
 impl SystemInput for WidgetCtx<'_> {
     type Param<'i> = WidgetCtx<'i>;
-    type Inner<'i> = (&'i mut NestedSystem<'i>, Entity, &'i mut Ui);
+    type Inner<'i> = (&'i mut NestedSystem<'i>, Entity, &'i mut UiCtx);
 
     fn wrap((ns, id, ui): Self::Inner<'_>) -> Self::Param<'_> { WidgetCtx { ns, id, ui } }
 }
 impl HasInnerArg for WidgetCtx<'_> {
-    type InnerArg = InMut<'static, Ui>;
+    type InnerArg = InMut<'static, UiCtx>;
 }
 
-pub type WidgetSystemId = NestedSystemId<InMut<'static, Ui>>;
+pub type WidgetSystemId = NestedSystemId<InMut<'static, UiCtx>>;
 
 #[derive(Debug, Copy, Clone)]
 #[derive(Component)]
 pub struct Widget(WidgetSystemId);
 
 impl Widget {
-    pub fn show(&self, nested: &mut NestedSystem, ui: &mut Ui) {
+    pub fn show(&self, nested: &mut NestedSystem, ui: &mut UiCtx) {
         nested.run_nested_with(self.0, ui)
     }
-    pub fn show_world(&self, world: &mut World, ui: &mut Ui) { world.run_nested_with(self.0, ui) }
+    pub fn show_world(&self, world: &mut World, ui: &mut UiCtx) {
+        world.run_nested_with(self.0, ui)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Component)]
@@ -106,7 +101,7 @@ mod test {
     struct Test;
 
     impl Test {
-        pub fn show(NestedWith(_ns, _id, InMut(_ui)): NestedWith<Entity, InMut<Ui>>) {
+        pub fn show(NestedWith(_ns, _id, InMut(_ui)): NestedWith<Entity, InMut<UiCtx>>) {
             // do ui stuff here i guess
         }
     }
