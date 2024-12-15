@@ -7,7 +7,7 @@ use bevy::{
 use bevy_egui::{egui, egui::TextEdit, EguiClipboard};
 use itertools::Itertools;
 
-use super::{insert_waymark, Preset, Waymark};
+use super::{Preset, Waymark, WAYMARK_Z};
 use crate::{
     arena::Arena,
     ecs::{EntityWorldExts, NestedSystemExts},
@@ -20,6 +20,7 @@ const SPAWNER_SEP: f32 = 5.0;
 
 impl Spawnable for Waymark {
     const UNIQUE: bool = true;
+    const Z: f32 = WAYMARK_Z;
 
     fn size() -> Vec2 { Vec2::splat(SPAWNER_SIZE) }
     fn sep() -> Vec2 { Vec2::splat(SPAWNER_SEP) }
@@ -30,9 +31,7 @@ impl Spawnable for Waymark {
         self.asset_handle(asset_server)
     }
 
-    fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) {
-        entity.queue(insert_waymark(*self, None));
-    }
+    fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) { entity.insert(*self); }
 }
 
 /// A window with controls to manipulate the waymarks.
@@ -50,6 +49,7 @@ impl WaymarkWindow {
             Query<(Entity, &mut WaymarkWindow)>,
             Query<&Widget, With<SpawnerPanel<Waymark>>>,
             Query<&Children>,
+            Query<Entity, With<Arena>>,
             Commands,
             ResMut<EguiClipboard>,
         )>::new(world);
@@ -57,7 +57,7 @@ impl WaymarkWindow {
         let ewin =
             egui::Window::new("Waymarks").default_width(4.0 * (Waymark::size() + Waymark::sep()).x);
         ewin.show(&ctx, |ui| {
-            let (mut win_q, panel_q, children_q, mut commands, mut clipboard) =
+            let (mut win_q, panel_q, children_q, arena_q, mut commands, mut clipboard) =
                 state.get_mut(world);
             let (win_id, mut win) = win_q.single_mut();
 
@@ -66,11 +66,16 @@ impl WaymarkWindow {
                 ui.add(TextEdit::singleline(&mut win.preset_name).desired_width(80.0));
             });
             ui.horizontal(|ui| {
-                if ui.button("Import").clicked() {
+                let arena = arena_q.get_single().ok();
+                if ui
+                    .add_enabled(arena.is_some(), egui::Button::new("Import"))
+                    .clicked()
+                {
                     Self::import_from_clipboard(
                         &mut win.preset_name,
                         &mut clipboard,
                         &mut commands,
+                        arena,
                     );
                 }
                 if ui.button("Export").clicked() {
@@ -102,14 +107,20 @@ impl WaymarkWindow {
         preset_name: &mut String,
         clipboard: &mut EguiClipboard,
         commands: &mut Commands,
+        arena: Option<Entity>,
     ) {
+        let Some(arena) = arena else {
+            error!("Unable to import waymarks: arena not loaded");
+            return;
+        };
+
         let Some(contents) = clipboard.get_contents() else {
-            info!("Unable to import waymarks: clipboard unavailable");
+            warn!("Unable to import waymarks: clipboard unavailable");
             return;
         };
 
         if contents.is_empty() {
-            info!("Unable to import waymarks: clipboard is empty (or unavailable)");
+            warn!("Unable to import waymarks: clipboard is empty (or unavailable)");
             return;
         }
 
@@ -117,7 +128,7 @@ impl WaymarkWindow {
             Ok(preset) => {
                 *preset_name = preset.name.clone();
                 commands.run_system_cached(Waymark::despawn_all);
-                Waymark::spawn_from_preset(commands, preset);
+                Waymark::spawn_from_preset(commands, preset, arena);
                 info!(
                     "Imported waymark preset '{}' from the clipboard",
                     preset_name

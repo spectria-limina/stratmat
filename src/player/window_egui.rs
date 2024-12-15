@@ -7,7 +7,7 @@ use bevy::{
 use bevy_egui::egui;
 use itertools::Itertools;
 
-use super::{job::Job, Player, PlayerSprite};
+use super::{job::Job, Player, PlayerSprite, PLAYER_Z};
 use crate::{
     ecs::{EntityWorldExts, NestedSystemExts},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
@@ -19,13 +19,12 @@ const SEP: f32 = 10.0;
 
 impl Spawnable for PlayerSprite {
     const UNIQUE: bool = true;
+    const Z: f32 = PLAYER_Z;
 
     fn size() -> Vec2 { Vec2::splat(SIZE) }
     fn sep() -> Vec2 { Vec2::splat(SEP) }
 
-    fn spawner_name(&self) -> std::borrow::Cow<'static, str> {
-        format!("{:#?} Spawner", self.job).into()
-    }
+    fn spawner_name(&self) -> std::borrow::Cow<'static, str> { format!("{:#?}", self.job).into() }
 
     fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
         asset_server.load(self.asset_path())

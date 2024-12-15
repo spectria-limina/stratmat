@@ -117,17 +117,19 @@ pub struct Arena(pub ArenaMeta);
 const ARENA_VIEWPORT_SCALE: f32 = 1.1;
 
 /// Z-coordinate of the arena background.
-///
-/// Our default viewport is (-1000.0, 1000.0), so make sure we are ever so slightly inside that.
-const ARENA_BACKGROUND_Z: f32 = -999.0;
+const ARENA_BACKGROUND_Z: f32 = 0.0;
 
 /// This resource represents the global coordinate offset for
 /// game coordinates. It is updated whenever an arena is spawned.
 ///
 /// It does not implement Default because (0,0) is probably the
 /// wrong offset.
-#[derive(Resource, Copy, Clone, Debug)]
+#[derive(Deref, Resource, Copy, Clone, Debug)]
 pub struct GameCoordOffset(pub Vec2);
+
+/// Event that is triggered when an arena is loaded, tageting the new arena.
+#[derive(Copy, Clone, Debug, Event, Reflect)]
+pub struct ArenaLoaded;
 
 /// Spawn an arena
 ///
@@ -149,7 +151,7 @@ fn spawn_arena(
             min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
     };
 }
-    commands.spawn((
+    let id = commands.spawn((
         Arena(arena.clone()),
         Name::new("Arena Background"),
         #[cfg(feature = "egui")]
@@ -163,8 +165,9 @@ fn spawn_arena(
         ColliderFromShape,
         CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
         PickingBehavior::IGNORE,
-    ));
+    )).id();
     commands.insert_resource(GameCoordOffset(arena.offset));
+    commands.trigger_targets(ArenaLoaded, id);
 }
 
 /// Despawn all arenas.
@@ -200,6 +203,8 @@ fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
     );
 
+    commands.add_observer(|ev: Trigger<ArenaLoaded>, mut commands: Commands| {
+        commands.entity(ev.observer()).despawn();
     let waymarks = r#"{
   "Name":"TEA",
   "MapID":694,
@@ -213,11 +218,8 @@ fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
   "Four":{"X":107.8,"Y":0.0,"Z":100.0,"ID":7,"Active":true}
 }"#;
     let preset: Preset = serde_json::de::from_str(waymarks).unwrap();
-    commands.on_asset_loaded_with(
-        handle,
-        |In(preset), mut commands: Commands| Waymark::spawn_from_preset(&mut commands, preset),
-        preset,
-    );
+    Waymark::spawn_from_preset(&mut commands, preset, ev.entity());
+});
 }
 
 pub fn plugin() -> ArenaPlugin { ArenaPlugin }

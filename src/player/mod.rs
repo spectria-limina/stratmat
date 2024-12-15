@@ -1,5 +1,8 @@
 use avian2d::prelude::Collider;
-use bevy::prelude::*;
+use bevy::{
+    ecs::{component::ComponentId, world::DeferredWorld},
+    prelude::*,
+};
 use job::Job;
 
 use crate::{drag::Draggable, spawner::Spawnable};
@@ -15,16 +18,24 @@ pub mod window {
 
 /// The size of a player icon.
 const PLAYER_SPRITE_SIZE: f32 = 2.0;
-
 const PLAYER_COLLIDER_SIZE: f32 = 0.001;
+const PLAYER_Z: f32 = 500.0;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, Component, Reflect)]
-#[require(Transform(|| Transform::from_xyz(0.0, 0.0, 1.0)))]
+#[require(Transform(|| Transform::from_xyz(0.0, 0.0, PLAYER_Z)))]
 #[require(Collider(|| Collider::circle(PLAYER_COLLIDER_SIZE)))]
 #[require(Draggable, PlayerSprite)]
+#[component(on_add = Self::set_name)]
 pub struct Player {}
 
-impl Player {}
+impl Player {
+    pub fn set_name(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        if let Some(job) = world.get::<PlayerSprite>(id).unwrap().job {
+            let name = job.to_string();
+            world.commands().entity(id).insert_if_new(Name::new(name));
+        }
+    }
+}
 
 #[derive(Copy, Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, Debug)]
 #[derive(Component, Reflect)]

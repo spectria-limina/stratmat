@@ -8,12 +8,14 @@ use bevy::{
         PickSet,
     },
     prelude::*,
+    transform::systems::{propagate_transforms, sync_simple_transforms},
 };
 #[cfg(feature = "egui")]
 use bevy_egui::{self, egui, EguiUserTextures};
 use itertools::Itertools;
 
 use crate::{
+    arena::Arena,
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
     image::Image,
     widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
@@ -41,6 +43,7 @@ const SPAWNER_DISABLED_ALPHA: u8 = 25;
 /// An entity that can be spawned.
 pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug + Ord {
     const UNIQUE: bool;
+    const Z: f32;
 
     fn size() -> Vec2;
     fn sep() -> Vec2;
@@ -112,18 +115,20 @@ impl<T: Spawnable> Spawner<T> {
         }
     }
 
-    /// Handle a drag event, spawning a new entity in place of the current entity if
-    /// the [Spawner] is enabled.
+    /// Handle a drag event, spawning a new entity to drag if the [Spawner] is enabled.
     ///
     /// Technically what it actually does is, to preserve continuity of the drag event,
     /// replaces this entity with the new waymark, and spawns a new [Spawner] in its place.
     ///
-    /// Panics if there is more than one camera.
+    /// The new entity will be a child of the current arena.
+    ///
+    /// Panics if there is more than one camera or arena.
     pub fn start_drag(
         ev: Trigger<Pointer<DragStart>>,
         spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
-        #[cfg(feature = "egui")] camera_q: Query<(&Camera, &GlobalTransform)>,
+        #[cfg(feature = "egui")] camera_q: Single<(&Camera, &GlobalTransform)>,
         children_q: Query<&mut Children>,
+        arena_q: Single<Entity, With<Arena>>,
         mut commands: Commands,
     ) {
         let id = ev.entity();
@@ -143,16 +148,12 @@ impl<T: Spawnable> Spawner<T> {
         }
 
         let mut entity = commands.entity(id);
-        entity.remove::<Self>();
-        // This will have no effect if we aren't parented.
-        // If we are, we've replaced ourself with the new spawner
-        entity.remove_parent();
-
+        entity.remove::<(Self, Name)>();
         spawner.target.insert(&mut entity);
 
         #[cfg(feature = "egui")]
         {
-            let (camera, camera_transform) = camera_q.single();
+            let (camera, camera_transform) = *camera_q;
             let hit_position = ev.hit.position.unwrap().truncate();
             let translation = camera
                 .viewport_to_world_2d(camera_transform, hit_position)
@@ -163,8 +164,10 @@ impl<T: Spawnable> Spawner<T> {
                  {hit_position})",
                 spawner.target,
             );
-            entity.insert(Transform::from_translation(translation));
+            entity.insert(Transform::from_translation(translation.with_z(T::Z)));
         }
+
+        entity.set_parent(*arena_q);
 
         // Forward to the general dragging implementation.
         commands.run_system_cached_with(crate::drag::start_drag, id);

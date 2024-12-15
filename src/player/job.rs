@@ -1,7 +1,8 @@
 use bevy::prelude::*;
+use derive_more::derive::Display;
 
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
-#[derive(Reflect)]
+#[derive(Reflect, Display)]
 pub enum Job {
     // Tanks
     Paladin,
