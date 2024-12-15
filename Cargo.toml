@@ -108,8 +108,8 @@ web-sys = { version = "0.3.74", features = [
 inherits = "dev"
 
 # Enable a small amount of optimization in debug mode
-[profile.dev]
-opt-level = 1
+# [profile.dev]
+# opt-level = 1
 
 # Enable high optimizations for dependencies (esp. Bevy), but not for our code:
 [profile.dev.package."*"]

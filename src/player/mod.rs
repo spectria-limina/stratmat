@@ -19,9 +19,9 @@ const PLAYER_SPRITE_SIZE: f32 = 2.0;
 const PLAYER_COLLIDER_SIZE: f32 = 0.001;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, Component, Reflect)]
-#[require(Draggable)]
+#[require(Transform(|| Transform::from_xyz(0.0, 0.0, 1.0)))]
 #[require(Collider(|| Collider::circle(PLAYER_COLLIDER_SIZE)))]
-#[require(PlayerSprite)]
+#[require(Draggable, PlayerSprite)]
 pub struct Player {}
 
 impl Player {}

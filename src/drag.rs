@@ -157,10 +157,11 @@ impl Draggable {
         debug!("Adding drag hooks to {id:?}");
         let mut commands = world.commands();
         let mut entity = commands.entity(id);
-        let mut of = entity.on::<Self>();
-        of.observe(on_drag_start);
-        of.observe(on_drag);
-        of.observe(on_drag_end);
+        let mut of = entity
+            .on::<Self>()
+            .observe(on_drag_start)
+            .observe(on_drag)
+            .observe(on_drag_end);
     }
 
     pub fn remove_observers(mut world: DeferredWorld, id: Entity, _: ComponentId) {

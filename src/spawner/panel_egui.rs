@@ -1,6 +1,9 @@
 use std::{any::type_name, marker::PhantomData};
 
-use bevy::prelude::*;
+use bevy::{
+    ecs::{component::ComponentId, world::DeferredWorld},
+    prelude::*,
+};
 use bevy_egui::egui;
 
 use super::{Spawnable, Spawner};
@@ -43,5 +46,14 @@ impl<T: Spawnable> SpawnerPanel<T> {
                 },
             )
         });
+    }
+
+    pub fn sort_children(
+        mut q: Query<&mut Children, (With<SpawnerPanel<T>>, Changed<Children>)>,
+        spawner_q: Query<&Spawner<T>>,
+    ) {
+        for mut children in &mut q {
+            children.sort_by_cached_key(|&id| spawner_q.get(id).map(|s| &s.target).ok())
+        }
     }
 }

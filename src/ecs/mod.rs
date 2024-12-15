@@ -40,11 +40,6 @@ pub trait EntityScope<'w> {
     fn id(&self) -> Entity;
     fn insert<B: Bundle>(&mut self, bundle: B) -> &mut Self;
 
-    fn observe<E, B, M>(&mut self, system: impl IntoObserverSystem<E, B, M>) -> &mut Self
-    where
-        E: Event,
-        B: Bundle;
-
     fn commands(&mut self) -> Commands;
 }
 
@@ -53,28 +48,12 @@ impl<'w> EntityScope<'w> for EntityCommands<'w> {
 
     fn insert<B: Bundle>(&mut self, bundle: B) -> &mut Self { self.insert(bundle) }
 
-    fn observe<E, B, M>(&mut self, system: impl IntoObserverSystem<E, B, M>) -> &mut Self
-    where
-        E: Event,
-        B: Bundle,
-    {
-        self.observe(system)
-    }
-
     fn commands(&mut self) -> Commands { self.commands() }
 }
 impl<'w> EntityScope<'w> for EntityWorldMut<'w> {
     fn id(&self) -> Entity { self.id() }
 
     fn insert<B: Bundle>(&mut self, bundle: B) -> &mut Self { self.insert(bundle) }
-
-    fn observe<E, B, M>(&mut self, system: impl IntoObserverSystem<E, B, M>) -> &mut Self
-    where
-        E: Event,
-        B: Bundle,
-    {
-        self.observe(system)
-    }
 
     fn commands(&mut self) -> Commands {
         // SAFETY: A commands object doesn't let you directly mutate entity storage.
@@ -100,8 +79,9 @@ impl<'a, 'w: 'a, C: Component, E: EntityScope<'w>> From<&'a mut E> for ScopedOn<
 pub trait EntityExtsOf<'w, C: Component> {
     type Unscoped;
 
-    fn observe<V, B, M>(&mut self, system: impl IntoObserverSystem<V, B, M>) -> &mut Self::Unscoped
+    fn observe<V, B, M>(&mut self, system: impl IntoObserverSystem<V, B, M>) -> &mut Self
     where
+        Self::Unscoped: BuildChildren,
         V: Event,
         B: Bundle;
 
@@ -111,12 +91,17 @@ pub trait EntityExtsOf<'w, C: Component> {
 impl<'w, C: Component, E: EntityScope<'w>> EntityExtsOf<'w, C> for ScopedOn<'_, 'w, E, C> {
     type Unscoped = E;
 
-    fn observe<V, B, M>(&mut self, system: impl IntoObserverSystem<V, B, M>) -> &mut Self::Unscoped
+    fn observe<V, B, M>(&mut self, system: impl IntoObserverSystem<V, B, M>) -> &mut Self
     where
+        Self::Unscoped: BuildChildren,
         V: Event,
         B: Bundle,
     {
-        self.entity.observe(system).insert(ChildFor::<C>::new())
+        self.entity.with_child((
+            Observer::new(system).with_entity(self.entity.id()),
+            ChildFor::<C>::new(),
+        ));
+        self
     }
 
     fn despawn_children(&mut self) -> &mut Self {

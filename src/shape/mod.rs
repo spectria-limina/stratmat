@@ -86,12 +86,9 @@ pub struct ShapePlugin;
 
 impl Plugin for ShapePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            ColliderFromShape::update_colliders.before(PhysicsSet::Prepare),
-        );
+        app.add_systems(Update, ColliderFromShape::update_colliders);
         #[cfg(feature = "egui")]
-        app.add_systems(PostUpdate, DrawShape::update_vector_shapes);
+        app.add_systems(Update, DrawShape::update_vector_shapes);
     }
 }
 

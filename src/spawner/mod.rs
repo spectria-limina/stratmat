@@ -5,6 +5,7 @@ use bevy::{
     picking::{
         backend::{HitData, PointerHits},
         pointer::PointerId,
+        PickSet,
     },
     prelude::*,
 };
@@ -38,7 +39,7 @@ const SPAWNER_ALPHA: u8 = 230;
 const SPAWNER_DISABLED_ALPHA: u8 = 25;
 
 /// An entity that can be spawned.
-pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug {
+pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug + Ord {
     const UNIQUE: bool;
 
     fn size() -> Vec2;
@@ -122,6 +123,7 @@ impl<T: Spawnable> Spawner<T> {
         ev: Trigger<Pointer<DragStart>>,
         spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
         #[cfg(feature = "egui")] camera_q: Query<(&Camera, &GlobalTransform)>,
+        children_q: Query<&mut Children>,
         mut commands: Commands,
     ) {
         let id = ev.entity();
@@ -142,8 +144,10 @@ impl<T: Spawnable> Spawner<T> {
 
         let mut entity = commands.entity(id);
         entity.remove::<Self>();
-        // We might be parented to the window/another widget.
+        // This will have no effect if we aren't parented.
+        // If we are, we've replaced ourself with the new spawner
         entity.remove_parent();
+
         spawner.target.insert(&mut entity);
 
         #[cfg(feature = "egui")]
@@ -223,6 +227,11 @@ impl<T: Spawnable> Plugin for SpawnerPlugin<T> {
     fn build(&self, app: &mut App) {
         if <T as Spawnable>::UNIQUE {
             app.add_systems(PostUpdate, Spawner::<T>::update_enabled_state);
+            #[cfg(feature = "egui")]
+            app.add_systems(
+                PreUpdate,
+                panel::SpawnerPanel::<T>::sort_children.after(PickSet::Last),
+            );
         }
     }
 }
