@@ -23,7 +23,7 @@ use crate::{
     arena::{Arena, GameCoordOffset},
     color::AlphaScale,
     drag::Draggable,
-    image::Image,
+    image::DrawImage,
     shape::{ColliderFromShape, DrawShape, Shape, Stroke},
 };
 
@@ -116,11 +116,6 @@ impl Waymark {
         }
     }
 
-    /// Retrieves a [Handle] to this image asset with the letter or number of the waymark.
-    pub fn asset_handle(self, asset_server: &AssetServer) -> Handle<Image> {
-        asset_server.load(self.asset_path())
-    }
-
     /// Produces the fill/stroke colour for this waymark.
     pub fn color(self) -> Color {
         match self {
@@ -209,8 +204,6 @@ impl Waymark {
             };
             debug!("inserting waymark {waymark:?} on entity {id:?} with preset {preset_entry:?}");
 
-            let image = waymark.asset_handle(&asset_server);
-
             let mut entity = commands.entity(id);
 
             if let Some(entry) = preset_entry {
@@ -241,18 +234,17 @@ impl Waymark {
             entity.remove::<PresetEntry>();
 
             entity.with_children(|parent| {
-                parent.spawn((
+                #[cfg_attr(not(feature = "egui"), allow(unused_variables))]
+                let mut image_child = parent.spawn((
                     Name::new("Waymark Image"),
-                    Sprite {
-                        image,
-                        custom_size: Some(Vec2::new(
-                            WAYMARK_SIZE * IMAGE_SCALE,
-                            WAYMARK_SIZE * IMAGE_SCALE,
-                        )),
-                        ..default()
-                    },
+                    DrawImage::new(
+                        waymark.asset_path().into(),
+                        Vec2::splat(WAYMARK_SIZE * IMAGE_SCALE),
+                    ),
                     AlphaScale::default(),
                 ));
+                #[cfg(feature = "egui")]
+                image_child.insert(Sprite::default());
 
                 parent.spawn((
                     Name::new("Waymark Shape"),

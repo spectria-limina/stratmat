@@ -27,10 +27,6 @@ impl Spawnable for Waymark {
 
     fn spawner_name(&self) -> std::borrow::Cow<'static, str> { self.name().into() }
 
-    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
-        self.asset_handle(asset_server)
-    }
-
     fn insert(&self, entity: &mut bevy::ecs::system::EntityCommands) { entity.insert(*self); }
 }
 
@@ -175,7 +171,7 @@ impl WaymarkWindow {
                             for waymark in enum_iterator::all::<Waymark>() {
                                 panel.spawn(Spawner::<Waymark>::new(
                                     waymark,
-                                    asset_server.load(waymark.asset_path()),
+                                    waymark.asset_path().into(),
                                 ));
                             }
                         });

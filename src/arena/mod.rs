@@ -15,7 +15,7 @@ use thiserror::Error;
 use crate::{
     asset::{
         AssetHookExt, AssetHookTarget, AssetListing, LifecycleExts, ListingExt
-    }, shape::{ColliderFromShape, Shape}, waymark::{Preset, Waymark}, Layer
+    }, image::DrawImage, shape::{ColliderFromShape, Shape}, waymark::{Preset, Waymark}, Layer
 };
 
 #[cfg(feature = "egui")]
@@ -151,21 +151,23 @@ fn spawn_arena(
             min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
     };
 }
-    let id = commands.spawn((
+    let mut entity = commands.spawn((
         Arena(arena.clone()),
         Name::new("Arena Background"),
-        #[cfg(feature = "egui")]
-        Sprite {
-            image: asset_server.load(&arena.background_path),
-            custom_size: Some(arena.size),
-            ..default()
-        },
+        DrawImage::new(
+           arena.background_path.into(),
+           arena.size,
+        ),
         Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
         arena.shape,
         ColliderFromShape,
         CollisionLayers::new([Layer::DragSurface], [Layer::Dragged]),
         PickingBehavior::IGNORE,
-    )).id();
+    ));
+    #[cfg(feature = "egui")]
+    entity.insert(Sprite::default());
+    let id = entity.id();
+
     commands.insert_resource(GameCoordOffset(arena.offset));
     commands.trigger_targets(ArenaLoaded, id);
 }

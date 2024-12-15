@@ -120,6 +120,7 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         .add_plugins(color::plugin())
         .add_plugins(drag::plugin())
         .add_plugins(ecs::plugin())
+        .add_plugins(image::plugin())
         .add_plugins(player::plugin())
         .add_plugins(shape::plugin())
         .add_plugins(waymark::plugin());

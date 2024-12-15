@@ -1,4 +1,4 @@
-use std::{any::type_name, borrow::Cow, fmt::Debug, marker::PhantomData};
+use std::{any::type_name, borrow::Cow, fmt::Debug, marker::PhantomData, path::PathBuf};
 
 use bevy::{
     ecs::{component::ComponentId, system::EntityCommands, world::DeferredWorld},
@@ -11,15 +11,20 @@ use bevy::{
     transform::systems::{propagate_transforms, sync_simple_transforms},
 };
 #[cfg(feature = "egui")]
-use bevy_egui::{self, egui, EguiUserTextures};
+use bevy_egui::{self, EguiUserTextures};
 use itertools::Itertools;
 
 use crate::{
     arena::Arena,
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
-    image::Image,
+    image::DrawImage,
     widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
 };
+
+#[cfg(feature = "egui")]
+mod egui;
+#[cfg(feature = "egui")]
+pub use egui::*;
 
 #[cfg(feature = "egui")]
 mod panel_egui;
@@ -27,6 +32,7 @@ pub mod panel {
     #[cfg(feature = "egui")]
     pub use super::panel_egui::*;
 }
+
 #[cfg(all(feature = "egui", test))]
 mod test_egui;
 #[cfg(test)]
@@ -49,7 +55,6 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
     fn sep() -> Vec2;
 
     fn spawner_name(&self) -> Cow<'static, str>;
-    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image>;
     fn insert(&self, entity: &mut EntityCommands);
 }
 
@@ -62,21 +67,15 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 #[require(InitWidget(|| widget!()))]
 pub struct Spawner<T: Spawnable> {
     pub target: T,
-    pub image: Handle<Image>,
-    pub size: Vec2,
+    pub path: PathBuf,
     pub enabled: bool,
 }
 
-#[cfg(feature = "egui")]
-#[derive(Debug, Copy, Clone, Component)]
-pub struct EguiTextureId(egui::TextureId);
-
 impl<T: Spawnable> Spawner<T> {
-    pub fn new(target: T, image: Handle<Image>) -> Self {
+    pub fn new(target: T, path: PathBuf) -> Self {
         Self {
             target,
-            image,
-            size: T::size(),
+            path,
             enabled: true,
         }
     }
@@ -86,10 +85,6 @@ impl<T: Spawnable> Spawner<T> {
             .get_mut::<Self>(id)
             .expect("I was just added!")
             .clone();
-        #[cfg(feature = "egui")]
-        let texture_id = world
-            .resource_mut::<EguiUserTextures>()
-            .add_image(spawner.image);
         let mut commands = world.commands();
         let mut entity = commands.entity(id);
 
@@ -100,8 +95,9 @@ impl<T: Spawnable> Spawner<T> {
             )))
             .on::<Self>()
             .observe(Self::start_drag);
+        entity.insert(DrawImage::new(spawner.path, T::size()));
         #[cfg(feature = "egui")]
-        entity.insert(EguiTextureId(texture_id));
+        entity.insert(crate::image::EguiTextureId::default());
     }
 
     pub fn on_remove(mut world: DeferredWorld, id: Entity, _: ComponentId) {
@@ -171,40 +167,6 @@ impl<T: Spawnable> Spawner<T> {
 
         // Forward to the general dragging implementation.
         commands.run_system_cached_with(crate::drag::start_drag, id);
-    }
-
-    #[cfg(feature = "egui")]
-    pub fn show(
-        WidgetCtx { ns: _ns, id, ui }: WidgetCtx,
-        spawner_q: Query<(&Spawner<T>, &EguiTextureId)>,
-        mut pointer_ev: EventWriter<PointerHits>,
-    ) {
-        let (spawner, texture_id) = spawner_q
-            .get(id)
-            .expect("Spawner::show called without a Spawner");
-        debug!("Drawing Spawner<{:?}>: {:?}", type_name::<T>(), spawner);
-        let resp = ui.add(
-            egui::Image::new((
-                texture_id.0,
-                egui::Vec2::new(spawner.size.x, spawner.size.y),
-            ))
-            .tint(egui::Color32::from_white_alpha(if spawner.enabled {
-                SPAWNER_ALPHA
-            } else {
-                SPAWNER_DISABLED_ALPHA
-            }))
-            .sense(egui::Sense::drag()),
-        );
-
-        if resp.hovered() {
-            let egui::Pos2 { x, y } = resp.hover_pos().unwrap();
-            pointer_ev.send(PointerHits::new(
-                PointerId::Mouse,
-                vec![(id, HitData::new(id, 0.0, Some(Vec3::new(x, y, 0.0)), None))],
-                // egui is at depth 1_000_000, we need to be in front of that.
-                1_000_001.0,
-            ));
-        }
     }
 
     #[cfg(feature = "dom")]

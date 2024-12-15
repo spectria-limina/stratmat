@@ -26,10 +26,6 @@ impl Spawnable for PlayerSprite {
 
     fn spawner_name(&self) -> std::borrow::Cow<'static, str> { format!("{:#?}", self.job).into() }
 
-    fn texture_handle(&self, asset_server: &AssetServer) -> Handle<Image> {
-        asset_server.load(self.asset_path())
-    }
-
     fn insert(&self, entity: &mut EntityCommands) { entity.insert((Player {}, *self)); }
 }
 
@@ -90,7 +86,7 @@ impl PlayerWindow {
                                 let sprite = PlayerSprite { job: Some(job) };
                                 panel.spawn(Spawner::<PlayerSprite>::new(
                                     sprite,
-                                    asset_server.load(sprite.asset_path()),
+                                    sprite.asset_path().into(),
                                 ));
                             }
                         });

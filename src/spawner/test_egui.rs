@@ -51,10 +51,7 @@ fn draw_test_win<T: Spawnable>(world: &mut World) {
 }
 
 fn spawn_test_entities(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Spawner::new(
-        Waymark::A,
-        asset_server.load(Waymark::A.asset_path()),
-    ));
+    commands.spawn(Spawner::new(Waymark::A, Waymark::A.asset_path().into()));
     commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
         Vec2::ZERO,
         Vec2::splat(200.0),
@@ -187,10 +184,7 @@ mod test {
     }
 
     fn spawn_test_entities(mut commands: Commands, asset_server: Res<AssetServer>) {
-        commands.spawn(Spawner::new(
-            Waymark::A,
-            asset_server.load(Waymark::A.asset_path()),
-        ));
+        commands.spawn(Spawner::new(Waymark::A, Waymark::A.asset_path().into()));
         commands.spawn(DragSurfaceBundle::new(Rect::from_center_half_size(
             Vec2::ZERO,
             Vec2::splat(200.0),

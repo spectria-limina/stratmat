@@ -43,9 +43,9 @@ impl ColliderFromShape {
 }
 
 #[derive(Copy, Clone, Debug, Component, Reflect, Serialize, Deserialize)]
-#[require(AlphaScale, Transform, Visibility)]
+#[require(AlphaScale, Transform)]
 #[require(Shape(||->Shape{ panic!("ShapeDraw must have a Shape")}))]
-#[cfg_attr(feature = "egui", require(WithChild<ShapeFill>, WithChild<ShapeStroke>))]
+#[cfg_attr(feature = "egui", require(WithChild<ShapeFill>, WithChild<ShapeStroke>, Visibility))]
 pub struct DrawShape {
     fill: Option<Color>,
     stroke: Option<Stroke>,
