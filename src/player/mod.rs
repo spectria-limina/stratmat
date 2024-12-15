@@ -5,7 +5,7 @@ use bevy::{
 };
 use job::Job;
 
-use crate::{drag::Draggable, spawner::Spawnable};
+use crate::{drag::Draggable, image::DrawImage, spawner::Spawnable};
 
 pub mod job;
 
@@ -39,23 +39,22 @@ impl Player {
 
 #[derive(Copy, Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, Debug)]
 #[derive(Component, Reflect)]
-#[cfg_attr(feature = "egui", require(Sprite(||Sprite{custom_size: Some(Vec2::splat(PLAYER_SPRITE_SIZE)), ..default()})))]
 pub struct PlayerSprite {
     pub job: Option<Job>,
 }
 
 impl PlayerSprite {
     pub fn update_sprites(
-        #[cfg(feature = "egui")] mut q: Query<(&PlayerSprite, &mut Sprite), Changed<PlayerSprite>>,
-        asset_server: Res<AssetServer>,
+        q: Query<(Entity, &PlayerSprite), (Changed<PlayerSprite>, With<Player>)>,
+        mut commands: Commands,
     ) {
-        #[cfg(feature = "egui")]
-        for (player_sprite, mut sprite) in &mut q {
-            sprite.image = asset_server.load(player_sprite.asset_path());
-            sprite.custom_size = Some(Vec2::splat(PLAYER_SPRITE_SIZE));
+        for (id, sprite) in &q {
+            commands.entity(id).insert((
+                DrawImage::new(sprite.asset_path().into(), Vec2::splat(PLAYER_SPRITE_SIZE)),
+                #[cfg(feature = "egui")]
+                Sprite::default(),
+            ));
         }
-        #[cfg(feature = "dom")]
-        todo!();
     }
 
     pub fn asset_path(self) -> &'static str {
@@ -66,7 +65,15 @@ impl PlayerSprite {
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) { app.add_systems(PostUpdate, PlayerSprite::update_sprites); }
+    fn build(&self, app: &mut App) {
+        #[cfg(not(feature = "egui"))]
+        app.add_systems(PostUpdate, PlayerSprite::update_sprites);
+        #[cfg(feature = "egui")]
+        app.add_systems(
+            PostUpdate,
+            PlayerSprite::update_sprites.before(DrawImage::load_images),
+        );
+    }
 }
 
 pub fn plugin() -> PlayerPlugin { PlayerPlugin }

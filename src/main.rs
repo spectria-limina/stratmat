@@ -40,6 +40,7 @@ mod spawner;
 #[cfg(test)]
 mod testing;
 mod waymark;
+#[cfg(feature = "egui")]
 mod widget;
 
 /// Collision layers.
@@ -132,6 +133,7 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         .add_plugins(Shape2dPlugin::default())
         .add_plugins(player::window::plugin())
         .add_plugins(waymark::window::plugin())
+        .add_plugins(widget::plugin())
         .add_systems(Startup, spawn_camera);
 
     #[cfg(feature = "egui")]

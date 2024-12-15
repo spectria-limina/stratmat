@@ -35,9 +35,9 @@ pub struct ImagePlugin;
 impl Plugin for ImagePlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "egui")]
-        app.add_systems(PreUpdate, DrawImage::load_images)
+        app.add_systems(PostUpdate, DrawImage::load_images)
             .add_systems(
-                PreUpdate,
+                PostUpdate,
                 (DrawImage::update_sprites, DrawImage::update_texture_ids)
                     .after(DrawImage::load_images),
             );

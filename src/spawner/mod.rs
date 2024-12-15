@@ -14,11 +14,12 @@ use bevy::{
 use bevy_egui::{self, EguiUserTextures};
 use itertools::Itertools;
 
+#[cfg(feature = "egui")]
+use crate::widget::{widget, InitWidget, WidgetCtx, WidgetSystemId};
 use crate::{
     arena::Arena,
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
     image::DrawImage,
-    widget::{widget, InitWidget, WidgetCtx, WidgetSystemId},
 };
 
 #[cfg(feature = "egui")]
@@ -64,7 +65,7 @@ pub trait Spawnable: Component + Reflect + TypePath + Clone + PartialEq + Debug 
 #[derive(Debug, Clone, Component)]
 #[component(on_add = Spawner::<T>::on_add)]
 #[component(on_remove = Spawner::<T>::on_remove)]
-#[require(InitWidget(|| widget!()))]
+#[cfg_attr(feature = "egui", require(InitWidget(|| widget!())))]
 pub struct Spawner<T: Spawnable> {
     pub target: T,
     pub path: PathBuf,
@@ -168,9 +169,6 @@ impl<T: Spawnable> Spawner<T> {
         // Forward to the general dragging implementation.
         commands.run_system_cached_with(crate::drag::start_drag, id);
     }
-
-    #[cfg(feature = "dom")]
-    pub fn show(_: WidgetCtx) { todo!() }
 }
 
 /// Plugin for spawner support
