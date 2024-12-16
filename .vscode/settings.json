@@ -2,7 +2,6 @@
     "editor.formatOnSave": true,
     "rust-analyzer.showUnlinkedFileNotification": false
     // *** dom profile ***
-    /*
     ,
     "rust-analyzer.cargo.buildScripts.overrideCommand": null,
     "rust-analyzer.cargo.allTargets": false,
@@ -15,5 +14,4 @@
         "--profile",
         "dom"
     ],
-    */
 }

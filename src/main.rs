@@ -29,6 +29,8 @@ use wasm_bindgen::prelude::*;
 mod arena;
 mod asset;
 mod color;
+#[cfg(feature = "dom")]
+mod component;
 mod debug;
 mod drag;
 mod ecs;

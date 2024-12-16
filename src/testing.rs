@@ -17,15 +17,11 @@ pub fn add_test_camera(mut commands: Commands, win_q: Query<&Window, With<Primar
         win_rect.size(),
         win_rect.center(),
     );
-    commands.spawn((
-        Camera2d,
-        OrthographicProjection::default_2d(),
-        Transform {
-            translation: win_rect.center().extend(0.0),
-            scale: Vec3::new(1.0, -1.0, 1.0),
-            rotation: Quat::IDENTITY,
-        },
-    ));
+    commands.spawn((Camera2d, OrthographicProjection::default_2d(), Transform {
+        translation: win_rect.center().extend(0.0),
+        scale: Vec3::new(1.0, -1.0, 1.0),
+        rotation: Quat::IDENTITY,
+    }));
 }
 
 #[derive(Bundle, Default)]

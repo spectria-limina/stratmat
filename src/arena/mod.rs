@@ -8,14 +8,18 @@ use bevy::{
     asset::{AssetLoader, ParseAssetPathError},
     prelude::*,
 };
+use component::{ArenaWebComponents, ARENA_COMPONENT_TAG};
+use custom_elements::CustomElement;
 use itertools::Itertools;
 use serde::Deserialize;
 use thiserror::Error;
 
 use crate::{
-    asset::{
-        AssetHookExt, AssetHookTarget, AssetListing, LifecycleExts, ListingExt
-    }, image::DrawImage, shape::{ColliderFromShape, Shape}, waymark::{Preset, Waymark}, Layer
+    asset::{AssetHookExt, AssetHookTarget, AssetListing, LifecycleExts, ListingExt},
+    image::DrawImage,
+    shape::{ColliderFromShape, Shape},
+    waymark::{Preset, Waymark},
+    Layer,
 };
 
 #[cfg(feature = "egui")]
@@ -23,6 +27,13 @@ mod menu_egui;
 pub mod menu {
     #[cfg(feature = "egui")]
     pub use super::menu_egui::*;
+}
+
+#[cfg(feature = "dom")]
+mod component_dom;
+pub mod component {
+    #[cfg(feature = "dom")]
+    pub use super::component_dom::*;
 }
 
 /// The file extension of `Arena` files.
@@ -136,8 +147,10 @@ pub struct ArenaLoaded;
 /// This includes resetting the camera and updating the [`GameCoordOffset`].
 fn spawn_arena(
     In(arena): In<ArenaMeta>,
-    #[cfg(feature = "egui")]
-    mut camera_q: Query<&'static mut OrthographicProjection, With<Camera2d>>,
+    #[cfg(feature = "egui")] mut camera_q: Query<
+        &'static mut OrthographicProjection,
+        With<Camera2d>,
+    >,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
 ) {
@@ -149,15 +162,12 @@ fn spawn_arena(
         camera_q.single_mut().scaling_mode = ScalingMode::AutoMin {
             min_width: arena.size.x * ARENA_VIEWPORT_SCALE,
             min_height: arena.size.y * ARENA_VIEWPORT_SCALE,
-    };
-}
+        };
+    }
     let mut entity = commands.spawn((
         Arena(arena.clone()),
         Name::new("Arena Background"),
-        DrawImage::new(
-           arena.background_path.into(),
-           arena.size,
-        ),
+        DrawImage::new(arena.background_path.into(), arena.size),
         Transform::from_xyz(0.0, 0.0, ARENA_BACKGROUND_Z),
         arena.shape,
         ColliderFromShape,
@@ -193,6 +203,13 @@ impl Plugin for ArenaPlugin {
             .init_asset_loader::<ArenaLoader>()
             .load_global_asset::<ArenaListing>(ARENA_LISTING_PATH)
             .add_systems(Startup, spawn_default_arena);
+
+        #[cfg(feature = "dom")]
+        ArenaWebComponents::define(ARENA_COMPONENT_TAG);
+        #[cfg(feature = "dom")]
+        app.init_non_send_resource::<ArenaWebComponents>()
+            .add_systems(First, ArenaWebComponents::sync_web_components)
+            .add_systems(Last, Arena::display_web);
     }
 }
 
@@ -207,7 +224,7 @@ fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.add_observer(|ev: Trigger<ArenaLoaded>, mut commands: Commands| {
         commands.entity(ev.observer()).despawn();
-    let waymarks = r#"{
+        let waymarks = r#"{
   "Name":"TEA",
   "MapID":694,
   "A":{"X":100.0,"Y":0.0,"Z":88.0,"ID":0,"Active":true},
@@ -219,9 +236,9 @@ fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
   "Three":{"X":107.8,"Y":0.0,"Z":107.8,"ID":6,"Active":true},
   "Four":{"X":107.8,"Y":0.0,"Z":100.0,"ID":7,"Active":true}
 }"#;
-    let preset: Preset = serde_json::de::from_str(waymarks).unwrap();
-    Waymark::spawn_from_preset(&mut commands, preset, ev.entity());
-});
+        let preset: Preset = serde_json::de::from_str(waymarks).unwrap();
+        Waymark::spawn_from_preset(&mut commands, preset, ev.entity());
+    });
 }
 
 pub fn plugin() -> ArenaPlugin { ArenaPlugin }

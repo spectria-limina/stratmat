@@ -1947,6 +1947,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 
 [[package]]
+name = "custom-elements"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6274ad25234bd2b10fbe440bb70aaacddadfe94a4d98a0d93034947f86c45028"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4427,6 +4438,7 @@ dependencies = [
  "chrono",
  "clap",
  "convert_case",
+ "custom-elements",
  "derive-where",
  "derive_more",
  "enum-iterator",
