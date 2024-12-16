@@ -16,7 +16,7 @@ use float_eq::assert_float_eq;
 use super::*;
 use crate::{
     drag,
-    ecs::{EntityWorldExts, NestedSystemExts},
+    ecs::{self, EntityWorldExts, NestedSystemExts},
     testing::*,
     waymark::Waymark,
     widget::{egui_context, Widget, WidgetSystemId},
@@ -80,6 +80,7 @@ fn test_app() -> (App, Entity) {
     .add_systems(PreUpdate, forward_window_events)
     .add_plugins(EguiPlugin)
     .add_plugins(drag::plugin())
+    .add_plugins(ecs::plugin())
     .add_plugins(super::plugin::<Waymark>())
     .add_systems(Startup, add_test_camera)
     .add_systems(Startup, spawn_test_entities)
