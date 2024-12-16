@@ -135,4 +135,4 @@ opt-level = "z"
 
 [patch.crates-io]
 # These crates haven't yet released with 0.15 support.
-avian2d = { git = "https://github.com/Jondolf/avian.git", rev = "c4840dd" }
+avian2d = { git = "https://github.com/Jondolf/avian.git", rev = "b47c30c" }

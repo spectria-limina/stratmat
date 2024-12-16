@@ -116,11 +116,11 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
     app.insert_resource(args.clone())
         .add_plugins(default_plugins)
         .add_plugins(
-            PhysicsPlugins::default(), /* FIXME: Re-disable once Jondolf/avian#571 is fixed.
-                                          .disable::<IntegratorPlugin>()
-                                          .disable::<SolverPlugin>()
-                                          .disable::<SleepingPlugin>(),
-                                       */
+            PhysicsPlugins::default()
+                .build()
+                .disable::<IntegratorPlugin>()
+                .disable::<SolverPlugin>()
+                .disable::<SleepingPlugin>(),
         )
         .add_plugins(asset::plugin())
         .add_plugins(arena::plugin())
