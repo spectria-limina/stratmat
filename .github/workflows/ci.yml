@@ -15,12 +15,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "cargo"
     - name: Build
       run: cargo build --all --verbose
     - name: Test
       run: cargo test --all --verbose
+
   build-wasm:
     runs-on: ubuntu-latest
     if: github.ref != 'refs/heads/main'
@@ -29,13 +28,45 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "cargo"
     - name: Install Target
       run: rustup target add wasm32-unknown-unknown
     - name: Build
       run: cargo build --all --verbose --target wasm32-unknown-unknown
+
+  build-wasm-dom:
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main'
+    env: 
+      RUSTFLAGS: "--cfg=web_sys_unstable_apis"
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+    - name: Install Target
+      run: rustup target add wasm32-unknown-unknown
+    - name: Build
+      run: cargo build --all --verbose --target wasm32-unknown-unknown --no-default-features --features dom
+
   build-release-wasm:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    env: 
+      RUSTFLAGS: "--cfg=web_sys_unstable_apis"
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+    - name: Install Target
+      run: rustup target add wasm32-unknown-unknown
+    - name: Install Bindgen
+      uses: jetli/wasm-bindgen-action@v0.2.0
+    - name: Build
+      run: cargo build --profile release-size --target wasm32-unknown-unknown
+    - name: Upload Stratmat Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: stratmat.wasm
+        path: target/wasm32-unknown-unknown/stratmat.wasm
+
+  build-release-wasm-dom:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     env: 
@@ -47,21 +78,42 @@ jobs:
         shared-key: "cargo"
     - name: Install Target
       run: rustup target add wasm32-unknown-unknown
-    - name: Install Bindgen
-      uses: jetli/wasm-bindgen-action@v0.2.0
-    - name: Build
-      run: cargo build --profile release-size --target wasm32-unknown-unknown
-    - name: Run Bindgen
-      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat target/wasm32-unknown-unknown/release-size/stratmat.wasm
-    - name: Build Components
+    - name: Build 
       run: cargo build --profile release-size --target wasm32-unknown-unknown --no-default-features --features dom
-    - name: Run Bindgen Components
-      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat_components target/wasm32-unknown-unknown/release-size/stratmat.wasm
+    - name: Rename output
+      run: mv target/wasm32-unknown-unknown/stratmat.wasm target/wasm32-unknown-unknown/stratmat_components.wasm
+    - name: Upload Stratmat Components Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: stratmat.wasm
+        path: target/wasm32-unknown-unknown/stratmat_components.wasm
+
+  package-release:
+    needs: 
+    - build-release-wasm
+    - build-release-wasm-dom
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Download Stratmat Package
+      uses: actions/download-artifact@v4
+      with:
+        path: public
+        name: stratmat.wasm
+    - name: Download Stratmat Components Package
+      uses: actions/download-artifact@v4
+      with:
+        path: public
+        name: stratmat_components.wasm
+    - name: Run Bindgen
+      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat stratmat.wasm
+    - name: Run Bindgen DOM
+      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat_components stratmat_components.wasm
     - name: Optimise Wasm
       uses: NiklasEi/wasm-opt-action@v2
       with:
         file: public/static/app/stratmat_bg.wasm
-    - name: Optimise Wasm
+    - name: Optimise Wasm DOM
       uses: NiklasEi/wasm-opt-action@v2
       with:
         file: public/static/app/stratmat_components_bg.wasm
@@ -75,9 +127,10 @@ jobs:
         name: release-package
         path: public
         include-hidden-files: true
+
   deploy-gh-pages:
     needs: 
-    - build-release-wasm
+    - package-release
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
