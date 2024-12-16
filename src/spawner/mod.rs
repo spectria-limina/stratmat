@@ -19,7 +19,7 @@ use crate::widget::{widget, InitWidget, WidgetCtx, WidgetSystemId};
 use crate::{
     arena::Arena,
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},
-    image::DrawImage,
+    image::{DrawImage, DrawImageKind},
 };
 
 #[cfg(feature = "egui")]
@@ -96,9 +96,7 @@ impl<T: Spawnable> Spawner<T> {
             )))
             .on::<Self>()
             .observe(Self::start_drag);
-        entity.insert(DrawImage::new(spawner.path, T::size()));
-        #[cfg(feature = "egui")]
-        entity.insert(crate::image::EguiTextureId::default());
+        entity.insert(DrawImage::new(spawner.path, T::size(), DrawImageKind::Ui));
     }
 
     pub fn on_remove(mut world: DeferredWorld, id: Entity, _: ComponentId) {

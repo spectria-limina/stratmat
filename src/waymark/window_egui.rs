@@ -163,19 +163,17 @@ impl WaymarkWindow {
     /// Setup the window.
     pub fn on_add(mut world: DeferredWorld, id: Entity, _: ComponentId) {
         world.commands().queue(move |world: &mut World| {
-            world.resource_scope(move |world: &mut World, asset_server: Mut<AssetServer>| {
-                world.entity_mut(id).with_children(move |window| {
-                    window
-                        .spawn(SpawnerPanel::<Waymark>::new())
-                        .with_children(move |panel| {
-                            for waymark in enum_iterator::all::<Waymark>() {
-                                panel.spawn(Spawner::<Waymark>::new(
-                                    waymark,
-                                    waymark.asset_path().into(),
-                                ));
-                            }
-                        });
-                });
+            world.entity_mut(id).with_children(move |window| {
+                window
+                    .spawn(SpawnerPanel::<Waymark>::new())
+                    .with_children(move |panel| {
+                        for waymark in enum_iterator::all::<Waymark>() {
+                            panel.spawn(Spawner::<Waymark>::new(
+                                waymark,
+                                waymark.asset_path().into(),
+                            ));
+                        }
+                    });
             });
         });
     }

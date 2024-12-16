@@ -13,7 +13,6 @@ impl<T: Spawnable> Spawner<T> {
         let (spawner, texture_id) = spawner_q
             .get(id)
             .expect("Spawner::show called without a Spawner");
-        debug!("Drawing Spawner<{:?}>: {:?}", type_name::<T>(), spawner);
         let resp = ui.add(
             egui::Image::new((texture_id.0, egui::Vec2::new(T::size().x, T::size().y)))
                 .tint(egui::Color32::from_white_alpha(if spawner.enabled {

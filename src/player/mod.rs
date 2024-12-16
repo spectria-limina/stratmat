@@ -5,7 +5,11 @@ use bevy::{
 };
 use job::Job;
 
-use crate::{drag::Draggable, image::DrawImage, spawner::Spawnable};
+use crate::{
+    drag::Draggable,
+    image::{DrawImage, DrawImageKind},
+    spawner::Spawnable,
+};
 
 pub mod job;
 
@@ -25,15 +29,21 @@ const PLAYER_Z: f32 = 500.0;
 #[require(Transform(|| Transform::from_xyz(0.0, 0.0, PLAYER_Z)))]
 #[require(Collider(|| Collider::circle(PLAYER_COLLIDER_SIZE)))]
 #[require(Draggable, PlayerSprite)]
-#[component(on_add = Self::set_name)]
+#[component(on_add = Self::on_add)]
 pub struct Player {}
 
 impl Player {
-    pub fn set_name(mut world: DeferredWorld, id: Entity, _: ComponentId) {
-        if let Some(job) = world.get::<PlayerSprite>(id).unwrap().job {
+    pub fn on_add(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+        let sprite = *world.get::<PlayerSprite>(id).unwrap();
+        if let Some(job) = sprite.job {
             let name = job.to_string();
             world.commands().entity(id).insert_if_new(Name::new(name));
         }
+        world.commands().entity(id).insert(DrawImage::new(
+            sprite.asset_path().into(),
+            Vec2::splat(PLAYER_SPRITE_SIZE),
+            DrawImageKind::Sprite,
+        ));
     }
 }
 
@@ -45,15 +55,15 @@ pub struct PlayerSprite {
 
 impl PlayerSprite {
     pub fn update_sprites(
-        q: Query<(Entity, &PlayerSprite), (Changed<PlayerSprite>, With<Player>)>,
+        q: Query<(Entity, &PlayerSprite, &DrawImage), (Changed<PlayerSprite>, With<Player>)>,
         mut commands: Commands,
     ) {
-        for (id, sprite) in &q {
-            commands.entity(id).insert((
-                DrawImage::new(sprite.asset_path().into(), Vec2::splat(PLAYER_SPRITE_SIZE)),
-                #[cfg(feature = "egui")]
-                Sprite::default(),
-            ));
+        for (id, sprite, draw) in &q {
+            commands.entity(id).insert((DrawImage::new(
+                sprite.asset_path().into(),
+                Vec2::splat(PLAYER_SPRITE_SIZE),
+                draw.kind,
+            ),));
         }
     }
 
@@ -65,15 +75,7 @@ impl PlayerSprite {
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        #[cfg(not(feature = "egui"))]
-        app.add_systems(PostUpdate, PlayerSprite::update_sprites);
-        #[cfg(feature = "egui")]
-        app.add_systems(
-            PostUpdate,
-            PlayerSprite::update_sprites.before(DrawImage::load_images),
-        );
-    }
+    fn build(&self, app: &mut App) { app.add_systems(PostUpdate, PlayerSprite::update_sprites); }
 }
 
 pub fn plugin() -> PlayerPlugin { PlayerPlugin }

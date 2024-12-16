@@ -23,7 +23,7 @@ use crate::{
     arena::{Arena, GameCoordOffset},
     color::AlphaScale,
     drag::Draggable,
-    image::DrawImage,
+    image::{DrawImage, DrawImageKind},
     shape::{ColliderFromShape, DrawShape, Shape, Stroke},
 };
 
@@ -240,11 +240,10 @@ impl Waymark {
                     DrawImage::new(
                         waymark.asset_path().into(),
                         Vec2::splat(WAYMARK_SIZE * IMAGE_SCALE),
+                        DrawImageKind::Sprite,
                     ),
                     AlphaScale::default(),
                 ));
-                #[cfg(feature = "egui")]
-                image_child.insert(Sprite::default());
 
                 parent.spawn((
                     Name::new("Waymark Shape"),

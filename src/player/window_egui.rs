@@ -77,20 +77,18 @@ impl PlayerWindow {
         ];
 
         world.commands().queue(move |world: &mut World| {
-            world.resource_scope(move |world: &mut World, asset_server: Mut<AssetServer>| {
-                world.entity_mut(id).with_children(move |window| {
-                    window
-                        .spawn(SpawnerPanel::<PlayerSprite>::new())
-                        .with_children(move |panel| {
-                            for job in JOBS {
-                                let sprite = PlayerSprite { job: Some(job) };
-                                panel.spawn(Spawner::<PlayerSprite>::new(
-                                    sprite,
-                                    sprite.asset_path().into(),
-                                ));
-                            }
-                        });
-                });
+            world.entity_mut(id).with_children(move |window| {
+                window
+                    .spawn(SpawnerPanel::<PlayerSprite>::new())
+                    .with_children(move |panel| {
+                        for job in JOBS {
+                            let sprite = PlayerSprite { job: Some(job) };
+                            panel.spawn(Spawner::<PlayerSprite>::new(
+                                sprite,
+                                sprite.asset_path().into(),
+                            ));
+                        }
+                    });
             });
         });
     }
