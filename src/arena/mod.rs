@@ -8,7 +8,9 @@ use bevy::{
     asset::{AssetLoader, ParseAssetPathError},
     prelude::*,
 };
+#[cfg(feature = "dom")]
 use component::{ArenaWebComponents, ARENA_COMPONENT_TAG};
+#[cfg(feature = "dom")]
 use custom_elements::CustomElement;
 use itertools::Itertools;
 use serde::Deserialize;

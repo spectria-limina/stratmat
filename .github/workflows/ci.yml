@@ -53,10 +53,18 @@ jobs:
       run: cargo build --profile release-size --target wasm32-unknown-unknown
     - name: Run Bindgen
       run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat target/wasm32-unknown-unknown/release-size/stratmat.wasm
+    - name: Build Components
+      run: cargo build --profile release-size --target wasm32-unknown-unknown --no-default-features --features dom
+    - name: Run Bindgen Components
+      run: wasm-bindgen --target web --no-typescript --out-dir public/static/app --out-name stratmat_components target/wasm32-unknown-unknown/release-size/stratmat.wasm
     - name: Optimise Wasm
       uses: NiklasEi/wasm-opt-action@v2
       with:
-        file: public/static/app/stratmat_bgwasm
+        file: public/static/app/stratmat_bg.wasm
+    - name: Optimise Wasm
+      uses: NiklasEi/wasm-opt-action@v2
+      with:
+        file: public/static/app/stratmat_components_bg.wasm
     - name: Tataru
       run: cargo run --package tataru -- --all
     - name: Copy Assets to public/

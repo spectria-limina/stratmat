@@ -7,10 +7,16 @@
   <main>
     <canvas id="stratmat" style="display: none"
       data-stratmat-asset-root="/static/app/assets/"
-      data-stratmat-log-filter="stratmat::arena=debug,stratmat::component=debug,info"
       ></canvas>
     </canvas>
-    <stratmat-arena id="arena" style="width: 1100px; height: 1100px;"></stratmat-arena>
+    <stratmat-arena id="arena" style="
+      max-width: 90vw;
+      max-height: 90vh;
+      width: 1100px;
+      height: 1100px;
+      display: block;
+      margin: 0 auto;
+      "></stratmat-arena>
   </main>
   <script type="module">
     import init from "/static/app/stratmat.js"

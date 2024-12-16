@@ -8,11 +8,11 @@ use bevy::{
 use custom_elements::CustomElement;
 use itertools::Itertools;
 use js_sys::WebAssembly::Global;
-use wasm_bindgen::JsCast;
-use web_sys::{console, HtmlElement, SvgElement, SvgsvgElement};
+use wasm_bindgen::{JsCast, JsValue};
+use web_sys::{console, HtmlElement, SvgElement, SvgImageElement, SvgsvgElement};
 
 use super::Arena;
-use crate::{component::WebComponent, image::DrawImage};
+use crate::{asset::RootAssetPath, component::WebComponent, image::DrawImage};
 
 #[derive(Default, Deref, DerefMut)]
 pub struct ArenaWebComponents(HashMap<Entity, WebComponent>);
@@ -88,37 +88,56 @@ impl Arena {
             >,
         >,
         components: NonSend<ArenaWebComponents>,
+        root_path: Res<RootAssetPath>,
     ) {
-        let Some(q) = q else {
-            debug_once!("can't display arena: no arena");
-            return;
+        let run = move || -> Result<(), JsValue> {
+            let Some(q) = q else {
+                debug_once!("can't display arena: no arena");
+                return Ok(());
+            };
+            let (id, arena, draw, transform) = *q;
+
+            let Some(web) = components.get(&id) else {
+                debug_once!("can't display arena: no web component");
+                return Ok(());
+            };
+            debug_once!("displaying arena");
+
+            let document = web_sys::window()
+                .ok_or_else(|| JsValue::from("no window!?"))?
+                .document()
+                .ok_or_else(|| JsValue::from("no document!?"))?;
+            let svg = document
+                .create_element_ns(Some(SVG_NAMESPACE), "svg")?
+                .dyn_into::<SvgsvgElement>()?;
+            svg.set_attribute(
+                "viewBox",
+                &format!(
+                    "{} {} {} {}",
+                    -arena.size.x / 2.0,
+                    -arena.size.y / 2.0,
+                    arena.size.x,
+                    arena.size.y,
+                ),
+            );
+
+            let image = document
+                .create_element_ns(Some(SVG_NAMESPACE), "image")?
+                .dyn_into::<SvgImageElement>()?;
+            image
+                .href()
+                .set_base_val(root_path.join(&draw.path).to_str().unwrap());
+            image.x().base_val().set_value(-draw.size.x / 2.0)?;
+            image.y().base_val().set_value(-draw.size.y / 2.0)?;
+            image.height().base_val().set_value(draw.size.x)?;
+            image.width().base_val().set_value(draw.size.y)?;
+            svg.append_child(&image)?;
+
+            web.shadow_root.replace_children_with_node_1(&svg);
+            Ok(())
         };
-        let (id, arena, image, transform) = *q;
-
-        let Some(web) = components.get(&id) else {
-            debug_once!("can't display arena: no web component");
-            return;
-        };
-        debug_once!("displaying arena");
-
-        let document = web_sys::window().unwrap().document().unwrap();
-        let svg = document
-            .create_element_ns(Some(SVG_NAMESPACE), "svg")
-            .unwrap()
-            .dyn_into::<SvgsvgElement>()
-            .unwrap();
-        svg.set_attribute(
-            "viewBox",
-            &format!(
-                "{} {} {} {}",
-                -arena.size.x / 2.0,
-                -arena.size.y / 2.0,
-                -arena.size.x,
-                -arena.size.y,
-            ),
-        );
-
-        web.shadow_root.replace_children_with_node_1(&svg);
-        web.element.style.set_property("display", "'inline-block'");
+        if let Err(e) = run() {
+            error!("{e:?}");
+        }
     }
 }

@@ -12,6 +12,7 @@ compile_error!("Features 'winit' and 'dom' are incompatible.");
 
 use std::path::{Path, PathBuf};
 
+use asset::RootAssetPath;
 use avian2d::prelude::*;
 #[cfg(feature = "egui")]
 use bevy::winit::WinitSettings;
@@ -107,6 +108,9 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
     #[cfg(feature = "dom")]
     {
         default_plugins = default_plugins.disable::<InputPlugin>();
+        app.insert_resource(RootAssetPath(
+            args.asset_root.clone().unwrap_or_else(|| PathBuf::new()),
+        ));
     }
 
     app.insert_resource(args.clone())
