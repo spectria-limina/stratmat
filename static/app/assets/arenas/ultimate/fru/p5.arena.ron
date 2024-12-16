@@ -1,0 +1,9 @@
+(
+    name: "Futures Rewritten (Ultimate) — Phase 5 — Pandora",
+    short_name: "Phase 5 — Pandora",
+    map_id: 1006,
+    background_path: "/sprites/arenas/ultimate/fru/p1.png",
+    size: Vec2(40.0, 40.0),
+    offset: Vec2(100.0, 100.0),
+    shape: Circle(radius: 20.0),
+)

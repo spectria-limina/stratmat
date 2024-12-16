@@ -1,0 +1,9 @@
+(
+    name: "Futures Rewritten (Ultimate) — Phase 4 — Roommates",
+    short_name: "Phase 4 — Roommates",
+    map_id: 1006,
+    background_path: "/sprites/arenas/ultimate/fru/p3.png",
+    size: Vec2(40.0, 40.0),
+    offset: Vec2(100.0, 100.0),
+    shape: Circle(radius: 20.0),
+)

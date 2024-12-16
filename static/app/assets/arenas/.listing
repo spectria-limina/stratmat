@@ -1,0 +1,43 @@
+{
+  "name": "Arenas",
+  "subdirs": {
+    "savage": {
+      "name": "Savage",
+      "subdirs": {
+        "pandaemonium": {
+          "name": "Pandæmonium",
+          "subdirs": {
+            "anabaseios": {
+              "name": "Anabaseios",
+              "contents": [
+                "p9s.arena.ron"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "ultimate": {
+      "name": "Ultimate",
+      "subdirs": {
+        "fru": {
+          "name": "Futures Rewritten",
+          "contents": [
+            "i1.arena.ron",
+            "p1.arena.ron",
+            "p2.arena.ron",
+            "p3.arena.ron",
+            "p4.arena.ron",
+            "p5.arena.ron"
+          ]
+        },
+        "tea": {
+          "name": "The Epic of Alexander",
+          "contents": [
+            "p1.arena.ron"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Stratmat Sandbox</title>
+</head>
+<body style="background-color: black">
+  <main>
+    <canvas id="stratmat" style="height: 100% !important; width: 100% !important"
+      data-stratmat-asset-root="/static/app/assets/"></canvas>
+    </canvas>
+  </main>
+  <script type="module">
+    import init from "/static/app/stratmat.js"
+
+    init().catch((error) => {
+      if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
+        throw error;
+      }
+    });
+  </script>
+</body>
+</html>
