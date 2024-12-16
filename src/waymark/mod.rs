@@ -190,7 +190,6 @@ impl Waymark {
         fn system(
             In(id): In<Entity>,
             q: Query<(&Waymark, Option<&PresetEntry>)>,
-            arena_q: Single<Entity, With<Arena>>,
             asset_server: Res<AssetServer>,
             offset: Option<Res<GameCoordOffset>>,
             mut commands: Commands,

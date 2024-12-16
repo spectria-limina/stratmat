@@ -201,8 +201,7 @@ impl Plugin for ArenaPlugin {
             .init_asset_listing::<ArenaMeta>()
             .register_type::<ArenaMeta>()
             .init_asset_loader::<ArenaLoader>()
-            .load_global_asset::<ArenaListing>(ARENA_LISTING_PATH)
-            .add_systems(Startup, spawn_default_arena);
+            .load_global_asset::<ArenaListing>(ARENA_LISTING_PATH);
 
         #[cfg(feature = "dom")]
         ArenaWebComponents::define(ARENA_COMPONENT_TAG);
@@ -213,7 +212,7 @@ impl Plugin for ArenaPlugin {
     }
 }
 
-fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_default_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
     let handle = asset_server.load::<ArenaMeta>(asset_path("ultimate/fru/p1"));
     commands.on_asset_loaded(
         handle.clone(),

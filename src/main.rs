@@ -130,7 +130,8 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         .add_plugins(image::plugin())
         .add_plugins(player::plugin())
         .add_plugins(shape::plugin())
-        .add_plugins(waymark::plugin());
+        .add_plugins(waymark::plugin())
+        .add_systems(Startup, arena::spawn_default_arena);
 
     #[cfg(feature = "egui")]
     app.add_plugins(EguiPlugin)

@@ -36,11 +36,6 @@ pub mod panel {
 
 #[cfg(all(feature = "egui", test))]
 mod test_egui;
-#[cfg(test)]
-pub mod test {
-    #[cfg(feature = "egui")]
-    pub use super::test_egui::*;
-}
 
 /// The alpha (out of 255) of an enabled waymark spawner widget.
 const SPAWNER_ALPHA: u8 = 230;
@@ -123,7 +118,7 @@ impl<T: Spawnable> Spawner<T> {
         spawner_q: Query<(&Spawner<T>, Option<&Parent>)>,
         #[cfg(feature = "egui")] camera_q: Single<(&Camera, &GlobalTransform)>,
         children_q: Query<&mut Children>,
-        arena_q: Single<Entity, With<Arena>>,
+        arena_q: Option<Single<Entity, With<Arena>>>,
         mut commands: Commands,
     ) {
         let id = ev.entity();
@@ -162,7 +157,11 @@ impl<T: Spawnable> Spawner<T> {
             entity.insert(Transform::from_translation(translation.with_z(T::Z)));
         }
 
-        entity.set_parent(*arena_q);
+        if let Some(arena_id) = arena_q {
+            entity.set_parent(*arena_id);
+        } else {
+            warn!("Spawner {:?} spawning an entity without a parent", id);
+        }
 
         // Forward to the general dragging implementation.
         commands.run_system_cached_with(crate::drag::start_drag, id);
