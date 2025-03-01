@@ -11,7 +11,7 @@ use bevy_egui::{
     EguiContexts,
 };
 
-use crate::ecs::{HasInnerArg, NestedSystem, NestedSystemExts, NestedSystemId};
+use crate::ecs::{HasInnerArg, NestedSystemCtx, NestedSystemExts, NestedSystemId};
 
 // TODO: TEST TEST TEST
 pub fn egui_contexts_scope<U, F: FnOnce(SystemParamItem<EguiContexts>) -> U>(
@@ -27,14 +27,14 @@ pub fn egui_context(world: &mut World) -> egui::Context {
 }
 
 pub struct WidgetCtx<'a> {
-    pub ns: &'a mut NestedSystem<'a>,
+    pub ns: &'a mut NestedSystemCtx<'a>,
     pub id: Entity,
     pub ui: &'a mut Ui,
 }
 
 impl SystemInput for WidgetCtx<'_> {
     type Param<'i> = WidgetCtx<'i>;
-    type Inner<'i> = (&'i mut NestedSystem<'i>, Entity, &'i mut Ui);
+    type Inner<'i> = (&'i mut NestedSystemCtx<'i>, Entity, &'i mut Ui);
 
     fn wrap((ns, id, ui): Self::Inner<'_>) -> Self::Param<'_> { WidgetCtx { ns, id, ui } }
 }
@@ -49,7 +49,7 @@ pub type WidgetSystemId = NestedSystemId<InMut<'static, Ui>>;
 pub struct Widget(WidgetSystemId);
 
 impl Widget {
-    pub fn show(&self, nested: &mut NestedSystem, ui: &mut Ui) {
+    pub fn show(&self, nested: &mut NestedSystemCtx, ui: &mut Ui) {
         nested.run_nested_with(self.0, ui)
     }
     pub fn show_world(&self, world: &mut World, ui: &mut Ui) { world.run_nested_with(self.0, ui) }
