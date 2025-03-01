@@ -10,8 +10,8 @@ use itertools::Itertools;
 use super::{job::Job, Player, PlayerSprite, PLAYER_Z};
 use crate::{
     ecs::{EntityWorldExts, NestedSystemExts},
+    egui::widget::{egui_context, Widget, WidgetSystemId},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
-    widget::{egui_context, Widget, WidgetSystemId},
 };
 
 const SIZE: f32 = 35.0;

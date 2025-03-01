@@ -16,7 +16,12 @@ use asset::RootAssetPath;
 use avian2d::prelude::*;
 #[cfg(feature = "egui")]
 use bevy::winit::WinitSettings;
-use bevy::{input::InputPlugin, log::LogPlugin, prelude::*};
+use bevy::{
+    color::palettes::css::{GOLD, GOLDENROD},
+    input::InputPlugin,
+    log::LogPlugin,
+    prelude::*,
+};
 #[cfg(feature = "egui")]
 use bevy_egui::EguiPlugin;
 #[cfg(feature = "egui")]
@@ -24,6 +29,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 #[cfg(feature = "egui")]
 use bevy_vector_shapes::Shape2dPlugin;
 use clap::{ArgAction, Parser as _};
+use hitbox::Hitbox;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -35,6 +41,8 @@ mod component;
 mod debug;
 mod drag;
 mod ecs;
+#[cfg(feature = "egui")]
+mod egui;
 mod hitbox;
 mod image;
 mod player;
@@ -43,8 +51,6 @@ mod spawner;
 #[cfg(test)]
 mod testing;
 mod waymark;
-#[cfg(feature = "egui")]
-mod widget;
 
 /// Collision layers.
 // avian's derive macro causes this warning on nightly
@@ -140,8 +146,12 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         .add_plugins(Shape2dPlugin::default())
         .add_plugins(player::window::plugin())
         .add_plugins(waymark::window::plugin())
-        .add_plugins(widget::plugin())
+        .add_plugins(egui::widget::plugin())
+        .add_plugins(egui::menu::plugin())
         .add_systems(Startup, spawn_camera);
+
+    // Must come after egui::menu if egui is enabled.
+    app.add_plugins(hitbox::plugin());
 
     #[cfg(feature = "egui")]
     if args.debug_inspector {
@@ -159,6 +169,9 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         app.add_systems(PostUpdate, debug::log_events::<CollisionStarted>);
         app.add_systems(PostUpdate, debug::log_events::<CollisionEnded>);
     }
+
+    app.world_mut()
+        .spawn(Hitbox::new(hitbox::HitboxKind::Player, GOLD.into(), 5.0));
 
     app.run();
     Ok(())

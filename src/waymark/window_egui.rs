@@ -11,8 +11,8 @@ use super::{Preset, Waymark, WAYMARK_Z};
 use crate::{
     arena::Arena,
     ecs::{EntityWorldExts, NestedSystemExts},
+    egui::widget::{egui_context, Widget, WidgetSystemId},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
-    widget::{egui_context, Widget, WidgetSystemId},
 };
 
 const SPAWNER_SIZE: f32 = 40.0;

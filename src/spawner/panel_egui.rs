@@ -9,7 +9,7 @@ use bevy_egui::egui;
 use super::{Spawnable, Spawner};
 use crate::{
     ecs::{EntityWorldExts as _, NestedSystemExts},
-    widget::{widget, InitWidget, Widget, WidgetCtx, WidgetSystemId},
+    egui::widget::{widget, InitWidget, Widget, WidgetCtx, WidgetSystemId},
 };
 
 #[derive(Component, derive_more::Debug, Reflect)]

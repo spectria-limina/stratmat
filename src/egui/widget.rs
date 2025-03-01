@@ -80,8 +80,8 @@ macro_rules! widget {
         $crate::widget!(Self::show)
     };
     ($show:path) => {
-        $crate::widget::InitWidget(
-            |world: &mut World, id: Entity| -> $crate::widget::WidgetSystemId {
+        $crate::egui::widget::InitWidget(
+            |world: &mut World, id: Entity| -> $crate::egui::widget::WidgetSystemId {
                 debug!(
                     "Registering widget {:?} {:?} with show function {:?}",
                     id,

@@ -17,9 +17,9 @@ use super::*;
 use crate::{
     arena, drag,
     ecs::{self, EntityWorldExts, NestedSystemExts},
+    egui::widget::{egui_context, Widget, WidgetSystemId},
     testing::*,
     waymark::Waymark,
-    widget::{egui_context, Widget, WidgetSystemId},
 };
 
 // TODO: Put this somewhere better lol.

@@ -15,7 +15,7 @@ use bevy_egui::{self, EguiUserTextures};
 use itertools::Itertools;
 
 #[cfg(feature = "egui")]
-use crate::widget::{widget, InitWidget, WidgetCtx, WidgetSystemId};
+use crate::egui::widget::{widget, InitWidget, WidgetCtx, WidgetSystemId};
 use crate::{
     arena::Arena,
     ecs::{EntityExts, EntityExtsOf, NestedSystemExts},

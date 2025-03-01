@@ -5,31 +5,34 @@ use bevy_egui::{
 };
 
 use super::{despawn_all_arenas, spawn_arena, ArenaListing, ArenaMeta};
-use crate::asset::OptionalGlobalAsset;
+use crate::{
+    asset::OptionalGlobalAsset,
+    egui::{
+        menu::TopMenu,
+        widget::{widget, InitWidget, WidgetCtx},
+    },
+};
 
 #[derive(Component, Debug)]
+#[require(InitWidget(|| widget!()))]
 pub struct ArenaMenu {}
 
 impl ArenaMenu {
     pub fn show(
-        mut q: Query<&mut ArenaMenu>,
+        WidgetCtx {
+            ns: _ns,
+            id: _id,
+            ui,
+        }: WidgetCtx,
         arenas: OptionalGlobalAsset<ArenaListing>,
         assets: Res<Assets<ArenaMeta>>,
-        mut contexts: EguiContexts,
         mut commands: Commands,
     ) {
-        let ctx = contexts.ctx_mut();
-        for mut _menu in &mut q {
-            egui::TopBottomPanel::top("top").show(ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
-                    if let Some(ref listing) = arenas.option() {
-                        Self::submenu(ui, listing, &assets, &mut commands);
-                    } else {
-                        ui.menu_button("Arenas", |ui| {
-                            ui.label(RichText::new("Loading...").italics())
-                        });
-                    }
-                });
+        if let Some(ref listing) = arenas.option() {
+            Self::submenu(ui, listing, &assets, &mut commands);
+        } else {
+            ui.menu_button("Arenas", |ui| {
+                ui.label(RichText::new("Loading...").italics())
             });
         }
     }
@@ -66,10 +69,12 @@ pub struct ArenaMenuPlugin;
 
 impl Plugin for ArenaMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, ArenaMenu::show)
-            .add_systems(Startup, |mut commands: Commands| {
-                commands.spawn(ArenaMenu {});
-            });
+        app.add_systems(
+            Startup,
+            |top: Single<Entity, With<TopMenu>>, mut commands: Commands| {
+                commands.entity(*top).with_child(ArenaMenu {});
+            },
+        );
     }
 }
 
