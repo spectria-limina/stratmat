@@ -41,8 +41,6 @@ mod component;
 mod debug;
 mod drag;
 mod ecs;
-#[cfg(feature = "egui")]
-mod egui;
 mod hitbox;
 mod image;
 mod player;
@@ -50,6 +48,7 @@ mod shape;
 mod spawner;
 #[cfg(test)]
 mod testing;
+mod ui;
 mod waymark;
 
 /// Collision layers.
@@ -146,12 +145,19 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         .add_plugins(Shape2dPlugin::default())
         .add_plugins(player::window::plugin())
         .add_plugins(waymark::window::plugin())
-        .add_plugins(egui::widget::plugin())
-        .add_plugins(egui::menu::plugin())
+        .add_plugins(ui::widget::plugin())
+        .add_plugins(ui::menu::plugin())
         .add_systems(Startup, spawn_camera);
 
     // Must come after egui::menu if egui is enabled.
     app.add_plugins(hitbox::plugin());
+
+    #[cfg(feature = "egui")]
+    app.register_type::<bevy_vector_shapes::shapes::ShapeFill>()
+        .register_type::<bevy_vector_shapes::shapes::ShapeMaterial>()
+        .register_type::<bevy_vector_shapes::shapes::DiscComponent>()
+        .register_type::<bevy_vector_shapes::shapes::LineComponent>()
+        .register_type::<bevy_vector_shapes::shapes::RectangleComponent>();
 
     #[cfg(feature = "egui")]
     if args.debug_inspector {
@@ -170,8 +176,10 @@ fn start(args: Args, #[cfg(feature = "egui")] primary_window: Window) -> eyre::R
         app.add_systems(PostUpdate, debug::log_events::<CollisionEnded>);
     }
 
-    app.world_mut()
-        .spawn(Hitbox::new(hitbox::HitboxKind::Player, GOLD.into(), 5.0));
+    app.world_mut().spawn((
+        Hitbox::new(hitbox::HitboxKind::Directional, GOLD.into(), 5.0),
+        Name::new("Hitbox"),
+    ));
 
     app.run();
     Ok(())

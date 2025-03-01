@@ -7,15 +7,16 @@ use bevy_egui::{
 use super::{despawn_all_arenas, spawn_arena, ArenaListing, ArenaMeta};
 use crate::{
     asset::OptionalGlobalAsset,
-    egui::{
+    ui::{
         menu::TopMenu,
         widget::{widget, InitWidget, WidgetCtx},
+        UiSortKey,
     },
 };
 
 #[derive(Component, Debug)]
 #[require(InitWidget(|| widget!()))]
-pub struct ArenaMenu {}
+pub struct ArenaMenu;
 
 impl ArenaMenu {
     pub fn show(
@@ -72,7 +73,11 @@ impl Plugin for ArenaMenuPlugin {
         app.add_systems(
             Startup,
             |top: Single<Entity, With<TopMenu>>, mut commands: Commands| {
-                commands.entity(*top).with_child(ArenaMenu {});
+                commands.entity(*top).with_child((
+                    ArenaMenu,
+                    UiSortKey(10),
+                    Name::new("Arena Menu"),
+                ));
             },
         );
     }

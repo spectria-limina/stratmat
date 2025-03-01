@@ -11,7 +11,7 @@ use super::{Preset, Waymark, WAYMARK_Z};
 use crate::{
     arena::Arena,
     ecs::{EntityWorldExts, NestedSystemExts},
-    egui::widget::{egui_context, Widget, WidgetSystemId},
+    ui::widget::{egui_context, Widget, WidgetSystemId},
     spawner::{self, panel::SpawnerPanel, Spawnable, Spawner},
 };
 
